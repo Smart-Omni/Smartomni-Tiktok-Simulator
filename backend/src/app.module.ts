@@ -12,6 +12,8 @@ import { SeedService } from './seed/seed.service';
 import { StartupSeeder } from './seed/startup-seeder';
 import { TestAdminModule } from './test-admin/test-admin.module';
 import { TiktokFaultMiddleware, TiktokModule } from './tiktok/tiktok.module';
+import { MediaModule } from './media/media.module';
+import { DisputeModule } from './dispute/dispute.module';
 import { WebhookQueueService } from './webhooks/webhook-queue.service';
 import { FetchWebhookTransport, SystemWorkerTime, WebhookTransport, WebhookWorkerService, WorkerTime } from './webhooks/webhook-worker.service';
 
@@ -44,6 +46,8 @@ export class CoreModule {}
     DemoModule,
     TestAdminModule,
     TiktokModule,
+    MediaModule,
+    DisputeModule,
     // Three separate routers. TikTok-shaped paths stay at the root (exact contract paths), /demo and /test-admin are namespaced.
     RouterModule.register([
       { path: 'health', module: HealthModule },

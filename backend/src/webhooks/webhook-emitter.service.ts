@@ -20,6 +20,7 @@ export const WEBHOOK_TYPE: Record<string, number> = {
   RETURN_STATUS_CHANGE: 12,
   NEW_CONVERSATION: 13,
   NEW_MESSAGE: 14,
+  DISPUTE_STATUS_CHANGE: 15,
 };
 
 export interface WebhookEnvelope {
