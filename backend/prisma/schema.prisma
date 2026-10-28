@@ -111,8 +111,8 @@ model Shop {
 model Buyer {
   id            String         @id @default(uuid())
   externalId    String         @unique
-  shopId        String
-  shop          Shop           @relation(fields: [shopId], references: [id])
+  shopId        String?
+  shop          Shop?          @relation(fields: [shopId], references: [id])
   name          String
   email         String
   phone         String

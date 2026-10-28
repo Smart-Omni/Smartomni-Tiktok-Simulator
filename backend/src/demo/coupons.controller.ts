@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, Inject, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, Inject, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { Coupon, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -7,7 +7,7 @@ import { ZodPipe } from '../common/zod.pipe';
 import { couponStatus, normalizeCode, PROMO_CODE_PATTERN } from '../coupons/coupon-rules';
 import { PrismaService } from '../prisma/prisma.service';
 import { numericId } from '../seed/seed-data';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import { assertSellerShop, assertShopAccess, DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
 
 const Money = z.number().int().min(1).max(2_000_000_000);
 const Discount = z.discriminatedUnion('type', [
@@ -44,9 +44,7 @@ const UpdateCoupon = z
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
 }
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
-}
+
 
 function discountText(c: Coupon): string {
   return c.discountType === 'AMOUNT_OFF' ? `${c.amountOffVnd} VND off` : `${c.percentage}% off${c.maxDiscountVnd != null ? ` (max ${c.maxDiscountVnd} VND)` : ''}`;
@@ -87,7 +85,7 @@ export class CouponsDemoController {
   @UseGuards(DemoSessionGuard)
   async list(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     const now = this.clock.now();
     const rows = await this.prisma.coupon.findMany({ where: { shopId }, orderBy: { seq: 'asc' } });
     if (p.role === 'SELLER') return { items: rows.map((c) => sellerView(c, now)) };
@@ -101,8 +99,7 @@ export class CouponsDemoController {
   @UseGuards(DemoSessionGuard)
   async create(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateCoupon)) body: z.infer<typeof CreateCoupon>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can create coupons');
+    assertSellerShop(p, shopId);
     const now = this.clock.now();
     const id = randomUUID();
     try {
@@ -137,8 +134,7 @@ export class CouponsDemoController {
   @UseGuards(DemoSessionGuard)
   async update(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('couponId') couponId: string, @Body(new ZodPipe(UpdateCoupon)) body: z.infer<typeof UpdateCoupon>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can edit coupons');
+    assertSellerShop(p, shopId);
     const existing = await this.prisma.coupon.findUnique({ where: { shopId_externalId: { shopId, externalId: couponId } } });
     if (!existing) throw new NotFoundException('Unknown coupon');
     const startAt = body.startAt ? new Date(body.startAt) : existing.startAt;

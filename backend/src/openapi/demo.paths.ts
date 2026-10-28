@@ -428,6 +428,62 @@ export const paths: PathsFragment = {
     }),
   },
 
+  '/demo/catalog': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Public marketplace product catalog',
+      description: 'Public, browsable by anyone. Returns active products across all active shops on the marketplace.',
+      handler: 'CatalogDemoController.marketplaceCatalog',
+      security: [],
+      query: [
+        { name: 'q', description: 'Search term for product title or description.', example: 'ao thun' },
+        { name: 'shopId', description: 'Filter products by shop id.', example: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11' },
+        { name: 'limit', description: 'Maximum products to return (1-100, default 20).', example: '20' },
+        { name: 'cursor', description: 'Monotonic listing sequence cursor for keyset pagination.', example: '10' },
+      ],
+      ok: {
+        description: 'Marketplace products.',
+        schema: obj({
+          currency: str(),
+          items: arr(
+            obj({
+              id: str('Marketplace product id'),
+              title: str(),
+              description: str(),
+              imageUrl: str('Relative URL of GET /demo/media/products/{file}'),
+              minPriceVnd: int(),
+              maxPriceVnd: int(),
+              skus: arr(obj({ id: str('Marketplace SKU id'), name: str(), attributeName: str(), priceVnd: int(), available: bool(), stock: int() })),
+              shop: obj({ id: str(), name: str() }),
+            }),
+          ),
+          nextCursor: str(undefined, { nullable: true }),
+        }),
+      },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/catalog/{shopId}/{productId}': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Public marketplace product detail',
+      description: 'Public. Returns product detail with shop information.',
+      handler: 'CatalogDemoController.marketplaceProductDetail',
+      security: [],
+      pathParams: [shopId, { name: 'productId', description: 'Marketplace product id (externalId) or row UUID.', example: '7500123456789012' }],
+      ok: {
+        description: 'Product detail with shop info.',
+        schema: obj({
+          currency: str(),
+          shop: obj({ id: str(), name: str() }),
+          product: obj({ id: str(), title: str(), description: str(), imageUrl: str(), minPriceVnd: int(), maxPriceVnd: int(), skus: arr(obj({ id: str(), name: str(), attributeName: str(), priceVnd: int(), available: bool(), stock: int() })) }),
+        }),
+      },
+      errors: { 404: 'Product not available.' },
+      errorShape: 'nest',
+    }),
+  },
+
   // ---------------------------------------------------------------- Demo Catalog
   '/demo/shops/{shopId}/catalog': {
     get: op({
@@ -611,6 +667,60 @@ export const paths: PathsFragment = {
         example: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="600" height="600" fill="hsl(210,45%,86%)"/><text x="300" y="310" font-family="sans-serif" font-size="34" text-anchor="middle" fill="hsl(210,40%,25%)">Ao thun co tron</text></svg>',
       },
       errors: { 404: 'Malformed id or unknown product.' },
+      errorShape: 'nest',
+    }),
+  },
+
+  '/demo/cart': {
+    get: op({
+      tag: 'Demo Orders',
+      summary: 'Marketplace buyer cart grouped by shop',
+      description: 'BUYER only. Returns all items currently in the buyer\'s cart grouped by shop.',
+      handler: 'OrdersDemoController.marketplaceCart',
+      security: SESSION,
+      ok: {
+        description: 'Cart grouped by shop.',
+        schema: obj({
+          currency: str(),
+          shops: arr(
+            obj({
+              shop: obj({ id: str(), name: str() }),
+              items: arr(
+                obj({
+                  skuId: str(),
+                  productId: str(),
+                  productTitle: str(),
+                  skuName: str(),
+                  sellerSku: str(),
+                  quantity: int(),
+                  unitPriceVnd: int(),
+                  lineTotalVnd: int(),
+                  available: bool(),
+                }),
+              ),
+              shopTotalVnd: int(),
+            }),
+          ),
+          totalVnd: int(),
+          itemCount: int(),
+        }),
+      },
+      errors: { 401: UNAUTH, 403: NOT_BUYER },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/buyer/orders': {
+    get: op({
+      tag: 'Demo Orders',
+      summary: 'Marketplace buyer orders across all shops',
+      description: 'BUYER only. Returns all orders placed by the buyer across all shops with shop details.',
+      handler: 'OrdersDemoController.marketplaceBuyerOrders',
+      security: SESSION,
+      ok: {
+        description: 'Buyer orders.',
+        schema: obj({ items: arr(OrderView) }),
+      },
+      errors: { 401: UNAUTH, 403: NOT_BUYER },
       errorShape: 'nest',
     }),
   },

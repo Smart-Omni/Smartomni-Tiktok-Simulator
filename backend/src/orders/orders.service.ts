@@ -46,7 +46,7 @@ export class OrderRuleError extends BadRequestException {
   }
 }
 
-const orderInclude = { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } } } satisfies Prisma.OrderInclude;
+const orderInclude = { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } }, shop: { select: { id: true, name: true } } } satisfies Prisma.OrderInclude;
 export type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
 
 /**
@@ -87,9 +87,9 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
 
   // ---- cart -----------------------------------------------------------------------------------------------------
 
-  async cart(buyerId: string) {
+  async cart(buyerId: string, shopId?: string) {
     const items = await this.prisma.cartItem.findMany({
-      where: { buyerId },
+      where: { buyerId, ...(shopId ? { sku: { shopId } } : {}) },
       include: { sku: { include: { product: true, inventory: true } } },
       orderBy: { updatedAt: 'asc' },
     });
@@ -361,8 +361,8 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
     return { order_id: o.externalId, order_status: o.status, is_on_hold_order: o.isOnHold, update_time: Math.floor(o.updatedAt.getTime() / 1000) };
   }
 
-  async listForBuyer(buyerId: string): Promise<OrderRow[]> {
-    return this.prisma.order.findMany({ where: { buyerId }, orderBy: { seq: 'desc' }, include: orderInclude });
+  async listForBuyer(buyerId: string, shopId?: string): Promise<OrderRow[]> {
+    return this.prisma.order.findMany({ where: { buyerId, ...(shopId ? { shopId } : {}) }, orderBy: { seq: 'desc' }, include: orderInclude });
   }
 
   async listForShop(shopId: string, take = 100): Promise<OrderRow[]> {

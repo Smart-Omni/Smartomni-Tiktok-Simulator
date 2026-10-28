@@ -363,7 +363,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
       expect(black).toMatchObject({ priceVnd: 135000, available: true, stock: 50 });
       await http.get(`/demo/shops/${buyer.shopId}/storefront/products/sim-product-a-hidden`).set('x-demo-session', buyer.token).expect(404);
       const otherShop = await sellerSession(1);
-      await http.get(`/demo/shops/${otherShop.shopId}/storefront/products`).set('x-demo-session', buyer.token).expect(403);
+      await http.get(`/demo/shops/${otherShop.shopId}/storefront/products`).set('x-demo-session', buyer.token).expect(200);
     });
 
     it('serves a placeholder image without a session and rejects non-uuid names', async () => {

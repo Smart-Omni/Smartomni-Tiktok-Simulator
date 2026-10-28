@@ -2,7 +2,14 @@ import { Body, Controller, ForbiddenException, Get, Inject, Param, Post, Req, Us
 import { z } from 'zod';
 import { AftersaleRow, AftersaleService, REJECT_REASONS, REQUEST_REASONS, RETURN_TYPES } from '../aftersale/aftersale.service';
 import { ZodPipe } from '../common/zod.pipe';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  assertSellerShop,
+  assertShopAccess,
+  DemoPrincipal,
+  DemoRequest,
+  DemoSessionGuard,
+} from './demo-session.guard';
 
 const CreateReturn = z.object({
   orderId: z.string().min(1).max(100),
@@ -17,15 +24,10 @@ const Reject = z.object({ reason: z.string().min(1).max(100), comment: z.string(
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
 }
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
-}
-function buyerOf(p: DemoPrincipal): { id: string; shopId: string } {
+
+function buyerOf(p: DemoPrincipal, shopId?: string): { id: string; shopId: string } {
   if (p.role !== 'BUYER' || !p.buyerId) throw new ForbiddenException('Only a buyer session can do this');
-  return { id: p.buyerId, shopId: p.shopId };
-}
-function assertSeller(p: DemoPrincipal): void {
-  if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can do this');
+  return { id: p.buyerId, shopId: shopId ?? p.shopId };
 }
 
 /** What the demo UIs see of a request: integer VND components and the units grouped per SKU. */
@@ -57,7 +59,10 @@ export function aftersaleView(r: AftersaleRow) {
 /** Buyer aftersale requests and Seller decisions through /demo (the TikTok-shaped write operations live on the TikTok router). */
 @Controller()
 export class AftersaleDemoController {
-  constructor(@Inject(AftersaleService) private readonly aftersale: AftersaleService) {}
+  constructor(
+    @Inject(AftersaleService) private readonly aftersale: AftersaleService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+  ) {}
 
   private rid(req: DemoRequest): string | undefined {
     return (req as { requestId?: string }).requestId;
@@ -67,8 +72,8 @@ export class AftersaleDemoController {
   @UseGuards(DemoSessionGuard)
   async list(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    const rows = await this.aftersale.listForShop(shopId, p.role === 'BUYER' ? buyerOf(p).id : undefined);
+    await assertShopAccess(p, shopId, this.prisma);
+    const rows = await this.aftersale.listForShop(shopId, p.role === 'BUYER' ? buyerOf(p, shopId).id : undefined);
     return { items: rows.map(aftersaleView), requestReasons: REQUEST_REASONS, rejectReasons: REJECT_REASONS };
   }
 
@@ -76,40 +81,39 @@ export class AftersaleDemoController {
   @UseGuards(DemoSessionGuard)
   async createReturn(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateReturn)) body: z.infer<typeof CreateReturn>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    return { request: aftersaleView(await this.aftersale.createReturn(buyerOf(p), body.orderId, { items: body.items, returnType: body.returnType, reason: body.reason }, this.rid(req))) };
+    await assertShopAccess(p, shopId, this.prisma);
+    return { request: aftersaleView(await this.aftersale.createReturn(buyerOf(p, shopId), body.orderId, { items: body.items, returnType: body.returnType, reason: body.reason }, this.rid(req))) };
   }
 
   @Post('shops/:shopId/aftersale/cancellations')
   @UseGuards(DemoSessionGuard)
   async createCancellation(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateCancellation)) body: z.infer<typeof CreateCancellation>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    return { request: aftersaleView(await this.aftersale.createCancellation(buyerOf(p), body.orderId, body.reason, this.rid(req))) };
+    await assertShopAccess(p, shopId, this.prisma);
+    return { request: aftersaleView(await this.aftersale.createCancellation(buyerOf(p, shopId), body.orderId, body.reason, this.rid(req))) };
   }
 
   @Post('shops/:shopId/aftersale/:id/cancel')
   @UseGuards(DemoSessionGuard)
   async buyerCancel(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('id') id: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    return { request: aftersaleView(await this.aftersale.buyerCancelReturn(buyerOf(p), id, this.rid(req))) };
+    await assertShopAccess(p, shopId, this.prisma);
+    return { request: aftersaleView(await this.aftersale.buyerCancelReturn(buyerOf(p, shopId), id, this.rid(req))) };
   }
 
   @Post('shops/:shopId/aftersale/:id/ship-back')
   @UseGuards(DemoSessionGuard)
   async shipBack(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('id') id: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    return { request: aftersaleView(await this.aftersale.buyerShipBack(buyerOf(p), id, this.rid(req))) };
+    await assertShopAccess(p, shopId, this.prisma);
+    return { request: aftersaleView(await this.aftersale.buyerShipBack(buyerOf(p, shopId), id, this.rid(req))) };
   }
 
   @Post('shops/:shopId/aftersale/:id/approve')
   @UseGuards(DemoSessionGuard)
   async approve(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('id') id: string, @Body(new ZodPipe(Approve)) body: z.infer<typeof Approve>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const existing = await this.aftersale.byExternal(shopId, id);
     const r = existing.kind === 'CANCELLATION' ? await this.aftersale.approveCancellation(shopId, id, 'SELLER', this.rid(req)) : await this.aftersale.approveReturn(shopId, id, body.decision, 'SELLER', { requestId: this.rid(req) });
     return { changed: r.changed, request: aftersaleView(r.request) };
@@ -119,8 +123,7 @@ export class AftersaleDemoController {
   @UseGuards(DemoSessionGuard)
   async reject(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('id') id: string, @Body(new ZodPipe(Reject)) body: z.infer<typeof Reject>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const existing = await this.aftersale.byExternal(shopId, id);
     const r =
       existing.kind === 'CANCELLATION'

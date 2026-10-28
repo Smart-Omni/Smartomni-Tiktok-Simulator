@@ -9254,6 +9254,266 @@
         }
       }
     },
+    "/demo/catalog": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Public marketplace product catalog",
+        "description": "Public, browsable by anyone. Returns active products across all active shops on the marketplace.\n\nHandler: `CatalogDemoController.marketplaceCatalog`.",
+        "operationId": "CatalogDemoController_marketplaceCatalog",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Marketplace products.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Marketplace product id"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "imageUrl": {
+                            "type": "string",
+                            "description": "Relative URL of GET /demo/media/products/{file}"
+                          },
+                          "minPriceVnd": {
+                            "type": "integer"
+                          },
+                          "maxPriceVnd": {
+                            "type": "integer"
+                          },
+                          "skus": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Marketplace SKU id"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "attributeName": {
+                                  "type": "string"
+                                },
+                                "priceVnd": {
+                                  "type": "integer"
+                                },
+                                "available": {
+                                  "type": "boolean"
+                                },
+                                "stock": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          },
+                          "shop": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Search term for product title or description.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "ao thun"
+          },
+          {
+            "name": "shopId",
+            "in": "query",
+            "required": false,
+            "description": "Filter products by shop id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum products to return (1-100, default 20).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "20"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Monotonic listing sequence cursor for keyset pagination.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "10"
+          }
+        ]
+      }
+    },
+    "/demo/catalog/{shopId}/{productId}": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Public marketplace product detail",
+        "description": "Public. Returns product detail with shop information.\n\nHandler: `CatalogDemoController.marketplaceProductDetail`.",
+        "operationId": "CatalogDemoController_marketplaceProductDetail",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Product detail with shop info.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "shop": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "imageUrl": {
+                          "type": "string"
+                        },
+                        "minPriceVnd": {
+                          "type": "integer"
+                        },
+                        "maxPriceVnd": {
+                          "type": "integer"
+                        },
+                        "skus": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "attributeName": {
+                                "type": "string"
+                              },
+                              "priceVnd": {
+                                "type": "integer"
+                              },
+                              "available": {
+                                "type": "boolean"
+                              },
+                              "stock": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not available.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          },
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Marketplace product id (externalId) or row UUID.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "7500123456789012"
+          }
+        ]
+      }
+    },
     "/demo/shops/{shopId}/catalog": {
       "get": {
         "tags": [
@@ -11092,6 +11352,324 @@
             "example": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.svg"
           }
         ]
+      }
+    },
+    "/demo/cart": {
+      "get": {
+        "tags": [
+          "Demo Orders"
+        ],
+        "summary": "Marketplace buyer cart grouped by shop",
+        "description": "BUYER only. Returns all items currently in the buyer's cart grouped by shop.\n\nHandler: `OrdersDemoController.marketplaceCart`.",
+        "operationId": "OrdersDemoController_marketplaceCart",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart grouped by shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string"
+                    },
+                    "shops": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "shop": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "skuId": {
+                                  "type": "string"
+                                },
+                                "productId": {
+                                  "type": "string"
+                                },
+                                "productTitle": {
+                                  "type": "string"
+                                },
+                                "skuName": {
+                                  "type": "string"
+                                },
+                                "sellerSku": {
+                                  "type": "string"
+                                },
+                                "quantity": {
+                                  "type": "integer"
+                                },
+                                "unitPriceVnd": {
+                                  "type": "integer"
+                                },
+                                "lineTotalVnd": {
+                                  "type": "integer"
+                                },
+                                "available": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "shopTotalVnd": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "totalVnd": {
+                      "type": "integer"
+                    },
+                    "itemCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session is not a BUYER session (buyerOf).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/buyer/orders": {
+      "get": {
+        "tags": [
+          "Demo Orders"
+        ],
+        "summary": "Marketplace buyer orders across all shops",
+        "description": "BUYER only. Returns all orders placed by the buyer across all shops with shop details.\n\nHandler: `OrdersDemoController.marketplaceBuyerOrders`.",
+        "operationId": "OrdersDemoController_marketplaceBuyerOrders",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Buyer orders.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Marketplace order id (externalId).",
+                            "example": "576011223344556677"
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "Order status (OAS values).",
+                            "enum": [
+                              "UNPAID",
+                              "ON_HOLD",
+                              "AWAITING_SHIPMENT",
+                              "PARTIALLY_SHIPPING",
+                              "AWAITING_COLLECTION",
+                              "IN_TRANSIT",
+                              "DELIVERED",
+                              "COMPLETED",
+                              "CANCELLED"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "paidAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "releaseAt": {
+                            "type": "string",
+                            "description": "End of the ON_HOLD period (business clock).",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "cancelReason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "buyerRequestedCancel": {
+                            "type": "boolean",
+                            "description": "True while a buyer cancel request is awaiting the seller."
+                          },
+                          "recipient": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "phone": {
+                                "type": "string"
+                              },
+                              "addressLine": {
+                                "type": "string"
+                              },
+                              "district": {
+                                "type": "string"
+                              },
+                              "city": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "buyer": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "amounts": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string",
+                                "example": "VND"
+                              },
+                              "productTotalVnd": {
+                                "type": "integer"
+                              },
+                              "sellerDiscountVnd": {
+                                "type": "integer"
+                              },
+                              "platformDiscountVnd": {
+                                "type": "integer"
+                              },
+                              "subTotalVnd": {
+                                "type": "integer",
+                                "description": "productTotal - sellerDiscount - platformDiscount"
+                              },
+                              "shippingFeeVnd": {
+                                "type": "integer"
+                              },
+                              "taxVnd": {
+                                "type": "integer"
+                              },
+                              "totalVnd": {
+                                "type": "integer",
+                                "description": "subTotal + shipping + tax"
+                              }
+                            }
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "skuId": {
+                                  "type": "string"
+                                },
+                                "productId": {
+                                  "type": "string"
+                                },
+                                "productName": {
+                                  "type": "string"
+                                },
+                                "skuName": {
+                                  "type": "string"
+                                },
+                                "sellerSku": {
+                                  "type": "string"
+                                },
+                                "unitPriceVnd": {
+                                  "type": "integer"
+                                },
+                                "quantity": {
+                                  "type": "integer",
+                                  "description": "Units of this SKU in the order"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "status",
+                          "amounts",
+                          "items"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session is not a BUYER session (buyerOf).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/demo/shops/{shopId}/cart": {

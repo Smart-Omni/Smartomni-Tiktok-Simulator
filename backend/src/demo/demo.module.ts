@@ -34,11 +34,17 @@ import { CouponsDemoController } from './coupons.controller';
 import { FulfillmentDemoController } from './fulfillment.controller';
 import { InventoryDemoController } from './inventory.controller';
 import { OrdersDemoController } from './orders.controller';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import {
+  assertSellerShop,
+  assertShopAccess,
+  DemoPrincipal,
+  DemoRequest,
+  DemoSessionGuard,
+} from './demo-session.guard';
 
 const CreateSession = z.union([
   z.object({ role: z.literal('SELLER'), sellerId: z.string().min(1), shopId: z.string().min(1).optional() }),
-  z.object({ role: z.literal('BUYER'), buyerId: z.string().min(1) }),
+  z.object({ role: z.literal('BUYER'), buyerId: z.string().min(1), shopId: z.string().min(1).optional() }),
 ]);
 
 const ConsentQuery = z.object({ app_key: z.string().min(1).max(200), redirect_uri: z.string().max(2000).optional(), state: z.string().max(512).optional() });
@@ -52,11 +58,6 @@ const ConsentDecision = z.object({
 function principal(req: DemoRequest): DemoPrincipal {
   if (!req.demo) throw new UnauthorizedException();
   return req.demo;
-}
-
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  // 403 (not 404) so cross-shop attempts are visible in the HTTP log as denied.
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
 }
 
 @Controller()
@@ -84,17 +85,21 @@ export class DemoController {
   async createSession(@Body(new ZodPipe(CreateSession)) body: z.infer<typeof CreateSession>) {
     let shopId: string;
     let buyerId: string | null = null;
+    let scope: 'MARKETPLACE' | 'SHOP';
     if (body.role === 'SELLER') {
       const seller = await this.prisma.seller.findUnique({ where: { id: body.sellerId }, include: { shops: true } });
       if (!seller) throw new NotFoundException('Unknown seller');
       const shop = body.shopId ? seller.shops.find((s) => s.id === body.shopId) : seller.shops[0];
       if (!shop) throw new BadRequestException('Seller has no such shop');
       shopId = shop.id;
+      scope = 'SHOP';
     } else {
       const buyer = await this.prisma.buyer.findUnique({ where: { id: body.buyerId } });
       if (!buyer) throw new NotFoundException('Unknown buyer');
-      shopId = buyer.shopId;
+      const fallbackShop = await this.prisma.shop.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
+      shopId = buyer.shopId ?? body.shopId ?? fallbackShop?.id ?? 'default-shop';
       buyerId = buyer.id;
+      scope = 'MARKETPLACE';
     }
     const raw = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + this.config.demoSessionTtlMs);
@@ -102,7 +107,7 @@ export class DemoController {
       data: { tokenHash: hashToken(raw), role: body.role, shopId, buyerId, expiresAt },
     });
     // The raw token is returned exactly once and never stored or logged (redacted by key name).
-    return { sessionToken: raw, role: body.role, shopId, buyerId, expiresAt: expiresAt.toISOString() };
+    return { sessionToken: raw, role: body.role, scope, shopId, buyerId, expiresAt: expiresAt.toISOString() };
   }
 
   @Delete('sessions/current')
@@ -123,13 +128,13 @@ export class DemoController {
     const buyer = p.buyerId
       ? await this.prisma.buyer.findUnique({ where: { id: p.buyerId }, select: { id: true, name: true, city: true } })
       : null;
-    return { role: p.role, shop, buyer };
+    return { role: p.role, scope: p.scope, shop, buyer };
   }
 
   @Get('shops/:shopId')
   @UseGuards(DemoSessionGuard)
   async shop(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
-    assertOwnShop(principal(req), shopId);
+    await assertShopAccess(principal(req), shopId, this.prisma);
     const shop = await this.prisma.shop.findUniqueOrThrow({
       where: { id: shopId },
       select: { id: true, name: true, region: true, currency: true, status: true, warehouses: { select: { id: true, code: true, name: true, city: true } } },
@@ -140,7 +145,7 @@ export class DemoController {
   @Get('shops/:shopId/products')
   @UseGuards(DemoSessionGuard)
   async products(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
-    assertOwnShop(principal(req), shopId);
+    assertSellerShop(principal(req), shopId);
     const items = await this.prisma.product.findMany({
       where: { shopId },
       orderBy: { title: 'asc' },
@@ -159,7 +164,7 @@ export class DemoController {
   @UseGuards(DemoSessionGuard)
   async buyers(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    assertSellerShop(p, shopId);
     if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can list buyers');
     const items = await this.prisma.buyer.findMany({ where: { shopId }, select: { id: true, name: true, city: true }, orderBy: { name: 'asc' } });
     return { items };
