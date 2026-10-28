@@ -22245,6 +22245,376 @@
           }
         }
       }
+    },
+    "/api/v2/media/upload": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Mock media upload",
+        "description": "Upload mock media (image or video) and get a TikTok Shop Open API formatted response with media_id and media_url.\n\nHandler: `MediaController.uploadMedia`.",
+        "operationId": "MediaController_uploadMedia",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Upload succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "media_id": {
+                          "type": "string",
+                          "description": "Media ID"
+                        },
+                        "media_url": {
+                          "type": "string",
+                          "description": "Hosted media URL"
+                        }
+                      },
+                      "required": [
+                        "media_id",
+                        "media_url"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "Success",
+                  "request_id": "mock_req_123",
+                  "data": {
+                    "media_id": "mock_media_123456",
+                    "media_url": "https://simulator.smartomni.local/uploads/mock_evidence.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "Image or video binary file",
+                    "format": "binary"
+                  },
+                  "file_name": {
+                    "type": "string",
+                    "description": "Optional custom filename"
+                  },
+                  "media_id": {
+                    "type": "string",
+                    "description": "Optional custom media_id"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/simulator/dispute/trigger": {
+      "post": {
+        "tags": [
+          "Simulator Dispute"
+        ],
+        "summary": "Trigger dispute simulation event",
+        "description": "Triggers dispute state transitions (DISPUTE_PENDING_REVIEW, DISPUTE_APPROVED, DISPUTE_REJECTED). When DISPUTE_APPROVED is triggered, fires a DISPUTE_STATUS_CHANGE webhook event with compensation and adjustment info.\n\nHandler: `DisputeController.trigger`.",
+        "operationId": "DisputeController_trigger",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Dispute trigger processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dispute_id": {
+                          "type": "string"
+                        },
+                        "dispute_status": {
+                          "type": "string"
+                        },
+                        "order_id": {
+                          "type": "string"
+                        },
+                        "webhook_dispatched": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "dispute_id",
+                        "dispute_status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "message": "Success",
+                  "data": {
+                    "dispute_id": "mock_dispute_123456",
+                    "dispute_status": "DISPUTE_APPROVED",
+                    "order_id": "5770000000000000001",
+                    "webhook_dispatched": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "description": "Dispute status",
+                    "enum": [
+                      "DISPUTE_PENDING_REVIEW",
+                      "DISPUTE_APPROVED",
+                      "DISPUTE_REJECTED"
+                    ]
+                  },
+                  "dispute_id": {
+                    "type": "string",
+                    "description": "Dispute ID"
+                  },
+                  "order_id": {
+                    "type": "string",
+                    "description": "Order ID"
+                  },
+                  "return_id": {
+                    "type": "string",
+                    "description": "Return / Aftersale ID"
+                  },
+                  "shop_id": {
+                    "type": "string",
+                    "description": "Shop ID"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Dispute reason"
+                  },
+                  "compensation_amount": {
+                    "type": "integer",
+                    "description": "Compensation amount (VND)"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "Currency",
+                    "default": "VND"
+                  },
+                  "webhook_url": {
+                    "type": "string",
+                    "description": "Target webhook URL override"
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "DISPUTE_APPROVED",
+                "dispute_id": "mock_dispute_123456",
+                "order_id": "5770000000000000001",
+                "compensation_amount": 100000
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/simulator/dispute": {
+      "get": {
+        "tags": [
+          "Simulator Dispute"
+        ],
+        "summary": "List simulated disputes",
+        "description": "Returns all currently tracked dispute records in the simulator.\n\nHandler: `DisputeController.list`.",
+        "operationId": "DisputeController_list",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Dispute list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "disputes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "disputeId": {
+                                "type": "string"
+                              },
+                              "orderId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "disputes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/simulator/dispute/{id}": {
+      "get": {
+        "tags": [
+          "Simulator Dispute"
+        ],
+        "summary": "Get simulated dispute by ID",
+        "description": "Returns the dispute record and its current status.\n\nHandler: `DisputeController.get`.",
+        "operationId": "DisputeController_get",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Dispute detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "disputeId": {
+                          "type": "string"
+                        },
+                        "orderId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "disputeId",
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Dispute not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Dispute ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "mock_dispute_123456"
+          }
+        ]
+      }
     }
   },
   "components": {
