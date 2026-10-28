@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Header,
   Inject,
@@ -11,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -22,7 +22,13 @@ import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { logInventory } from '../inventory/inventory-log';
 import { numericId } from '../seed/seed-data';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import {
+  assertSellerShop,
+  assertShopAccess,
+  DemoPrincipal,
+  DemoRequest,
+  DemoSessionGuard,
+} from './demo-session.guard';
 
 /** Statuses a seller may set from the Seller UI (subset of the OAS product statuses; the rest are platform-driven). */
 const SELLER_STATUSES = ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED', 'DELETED'] as const;
@@ -70,12 +76,6 @@ type ProductRow = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
 }
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
-}
-function assertSeller(p: DemoPrincipal): void {
-  if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can change the catalog');
-}
 
 function sellerView(p: ProductRow) {
   return {
@@ -122,9 +122,7 @@ function buyerView(p: ProductRow) {
 const escapeXml = (s: string): string => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
 
 /**
- * Seller product management and the Buyer storefront. These are /demo endpoints (simulator-defined, NOT TikTok OpenAPI):
- * the contract only lists read operations for products, so writes never appear on the TikTok router.
- * Business timestamps use the business clock; ordering (`seq`) is independent of it.
+ * Seller product management, Buyer storefront, and Public Marketplace Catalog.
  */
 @Controller()
 export class CatalogDemoController {
@@ -133,14 +131,92 @@ export class CatalogDemoController {
     @Inject(BusinessClock) private readonly clock: BusinessClock,
   ) {}
 
+  // ---- Public Marketplace Storefront --------------------------------------------------------------------------
+
+  @Get('catalog')
+  async marketplaceCatalog(
+    @Query('q') q?: string,
+    @Query('shopId') shopId?: string,
+    @Query('limit') limitStr?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const limit = Math.min(Math.max(Number(limitStr) || 20, 1), 100);
+    const query = q?.trim();
+
+    const where: Prisma.ProductWhereInput = {
+      status: 'ACTIVATE',
+      isNotForSale: false,
+      shop: { status: 'ACTIVE' },
+      ...(shopId ? { shopId } : {}),
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: 'insensitive' } },
+              { description: { contains: query, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(cursor ? { seq: { gt: Number(cursor) || 0 } } : {}),
+    };
+
+    const products = await this.prisma.product.findMany({
+      where,
+      orderBy: { seq: 'asc' },
+      take: limit + 1,
+      include: {
+        ...productInclude,
+        shop: { select: { id: true, name: true } },
+      },
+    });
+
+    const hasNext = products.length > limit;
+    const items = hasNext ? products.slice(0, limit) : products;
+    const nextCursor = hasNext && items.length > 0 ? String(items[items.length - 1].seq) : null;
+
+    return {
+      currency: 'VND',
+      items: items.map((p) => ({
+        ...buyerView(p),
+        shop: { id: p.shop.id, name: p.shop.name },
+      })),
+      nextCursor,
+    };
+  }
+
+  @Get('catalog/:shopId/:productId')
+  async marketplaceProductDetail(
+    @Param('shopId') shopId: string,
+    @Param('productId') productId: string,
+  ) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        shopId,
+        OR: [{ externalId: productId }, { id: productId }],
+        status: 'ACTIVATE',
+        isNotForSale: false,
+        shop: { status: 'ACTIVE' },
+      },
+      include: {
+        ...productInclude,
+        shop: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!product) throw new NotFoundException('This product is not available');
+    return {
+      currency: 'VND',
+      shop: { id: product.shop.id, name: product.shop.name },
+      product: buyerView(product),
+    };
+  }
+
   // ---- Seller -------------------------------------------------------------------------------------------------
 
   @Get('shops/:shopId/catalog')
   @UseGuards(DemoSessionGuard)
   async sellerList(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const [products, warehouses] = await Promise.all([
       this.prisma.product.findMany({ where: { shopId }, orderBy: { seq: 'asc' }, include: productInclude }),
       this.prisma.warehouse.findMany({ where: { shopId }, orderBy: { code: 'asc' }, select: { externalId: true, name: true, city: true, isDefault: true } }),
@@ -152,8 +228,7 @@ export class CatalogDemoController {
   @UseGuards(DemoSessionGuard)
   async create(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateProduct)) body: z.infer<typeof CreateProduct>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const warehouses = await this.prisma.warehouse.findMany({ where: { shopId } });
     const now = this.clock.now();
     const productId = randomUUID();
@@ -185,8 +260,7 @@ export class CatalogDemoController {
     @Body(new ZodPipe(UpdateProduct)) body: z.infer<typeof UpdateProduct>,
   ) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const existing = await this.ownedProduct(shopId, productId);
     if (existing.status === 'DELETED') throw new BadRequestException('A deleted product cannot be edited');
     const updated = await this.prisma.product.update({
@@ -202,8 +276,7 @@ export class CatalogDemoController {
   @UseGuards(DemoSessionGuard)
   async remove(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('productId') productId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const existing = await this.ownedProduct(shopId, productId);
     const updated = await this.prisma.product.update({ where: { id: existing.id }, data: { status: 'DELETED', updatedAt: this.clock.now() }, include: productInclude });
     return sellerView(updated);
@@ -218,8 +291,7 @@ export class CatalogDemoController {
     @Body(new ZodPipe(SkuInput)) body: z.infer<typeof SkuInput>,
   ) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const existing = await this.ownedProduct(shopId, productId);
     if (existing.status === 'DELETED') throw new BadRequestException('A deleted product cannot be edited');
     if (existing.skus.length >= 100) throw new BadRequestException('A product can have at most 100 SKUs');
@@ -243,8 +315,7 @@ export class CatalogDemoController {
     @Body(new ZodPipe(UpdateSku)) body: z.infer<typeof UpdateSku>,
   ) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const sku = await this.prisma.sku.findFirst({ where: { id: skuId, shopId }, include: { product: true } });
     if (!sku) throw new NotFoundException('Unknown SKU');
     if (sku.product.status === 'DELETED') throw new BadRequestException('A deleted product cannot be edited');
@@ -279,7 +350,7 @@ export class CatalogDemoController {
   @Get('shops/:shopId/storefront/products')
   @UseGuards(DemoSessionGuard)
   async storefront(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
-    assertOwnShop(principal(req), shopId);
+    await assertShopAccess(principal(req), shopId, this.prisma);
     const products = await this.prisma.product.findMany({ where: { shopId, status: 'ACTIVATE', isNotForSale: false }, orderBy: { seq: 'asc' }, include: productInclude });
     return { currency: 'VND', items: products.map(buyerView) };
   }
@@ -288,7 +359,7 @@ export class CatalogDemoController {
   @Get('shops/:shopId/storefront/products/:productId')
   @UseGuards(DemoSessionGuard)
   async storefrontDetail(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('productId') productId: string) {
-    assertOwnShop(principal(req), shopId);
+    await assertShopAccess(principal(req), shopId, this.prisma);
     const product = await this.prisma.product.findUnique({
       where: { shopId_externalId: { shopId, externalId: productId } },
       include: productInclude,

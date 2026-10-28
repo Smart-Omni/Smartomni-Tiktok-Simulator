@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { ChatService, parseText, SUPPORTED_MESSAGE_TYPES } from '../chat/chat.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import {
+  assertShopAccess,
+  DemoPrincipal,
+  DemoRequest,
+  DemoSessionGuard,
+} from './demo-session.guard';
 
 const TextBody = z.object({ text: z.string().min(1).max(2000) });
 
@@ -18,9 +23,6 @@ export function chatMessageView(m: ChatMessage) {
 
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
-}
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
 }
 
 /** Buyer and Seller chat. /demo only: the TikTok API reads and sends through its own signed endpoints. Text only (see `supportedTypes`). */
@@ -41,7 +43,7 @@ export class ChatDemoController {
   @UseGuards(DemoSessionGuard)
   async conversations(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     const rows = await this.prisma.conversation.findMany({ where: { shopId, ...(p.role === 'BUYER' ? { buyerId: p.buyerId } : {}) }, orderBy: { seq: 'asc' } });
     return { supportedTypes: SUPPORTED_MESSAGE_TYPES, unsupported: 'IMAGE, VIDEO, PRODUCT_CARD, ORDER_CARD, RETURN_REFUND_CARD, COUPON_CARD, LOGISTICS_CARD (uploads and cards are not simulated)', items: await Promise.all(rows.map((c) => this.summary(c))) };
   }
@@ -50,7 +52,7 @@ export class ChatDemoController {
   @UseGuards(DemoSessionGuard)
   async messages(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('conversationId') conversationId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     const c = await this.chat.assertParticipant({ role: p.role, shopId, buyerId: p.buyerId }, conversationId);
     const rows = await this.prisma.chatMessage.findMany({ where: { conversationId: c.id, isVisible: true }, orderBy: { index: 'asc' }, take: 500 });
     return { conversation: await this.summary(c), items: rows.map(chatMessageView) };
@@ -61,7 +63,7 @@ export class ChatDemoController {
   @UseGuards(DemoSessionGuard)
   async buyerSend(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(TextBody)) body: z.infer<typeof TextBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     if (p.role !== 'BUYER' || !p.buyerId) throw new ForbiddenException('Only a buyer session can start a conversation');
     const conversation = await this.chat.conversationForBuyer(shopId, p.buyerId);
     return this.send(req, conversation.id, 'BUYER', body.text);
@@ -72,7 +74,7 @@ export class ChatDemoController {
   @UseGuards(DemoSessionGuard)
   async reply(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('conversationId') conversationId: string, @Body(new ZodPipe(TextBody)) body: z.infer<typeof TextBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     const c = await this.chat.assertParticipant({ role: p.role, shopId, buyerId: p.buyerId }, conversationId);
     if (p.role === 'SELLER' && !c.canSendMessage) throw new BadRequestException({ code: 'cannot_send_message', message: 'The shop cannot send messages in this conversation' });
     return this.send(req, c.id, p.role === 'SELLER' ? 'SHOP' : 'BUYER', body.text);

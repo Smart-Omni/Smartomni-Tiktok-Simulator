@@ -4,7 +4,13 @@ import { AftersaleService } from '../aftersale/aftersale.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { OrderRow, OrdersService } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import {
+  assertSellerShop,
+  assertShopAccess,
+  DemoPrincipal,
+  DemoRequest,
+  DemoSessionGuard,
+} from './demo-session.guard';
 
 const CartItemBody = z.object({ skuId: z.string().min(1).max(100), quantity: z.number().int().min(0).max(20) });
 const Recipient = z.object({
@@ -28,12 +34,10 @@ const ReasonBody = z.object({ reason: z.string().trim().min(1).max(300).default(
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
 }
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
-}
-function buyerOf(p: DemoPrincipal): { id: string; shopId: string } {
+
+function buyerOf(p: DemoPrincipal, shopId?: string): { id: string; shopId: string } {
   if (p.role !== 'BUYER' || !p.buyerId) throw new ForbiddenException('Only a buyer session can do this');
-  return { id: p.buyerId, shopId: p.shopId };
+  return { id: p.buyerId, shopId: shopId ?? p.shopId };
 }
 
 /** What the demo UIs see: integer VND components, lines grouped per SKU with a quantity. */
@@ -48,6 +52,8 @@ export function orderView(o: OrderRow) {
   const shippingFee = o.originalShippingFee - o.shippingFeeDiscount;
   return {
     id: o.externalId,
+    shopId: o.shopId,
+    ...(o.shop ? { shop: { id: o.shop.id, name: o.shop.name } } : {}),
     status: o.status,
     createdAt: o.createdAt.toISOString(),
     updatedAt: o.updatedAt.toISOString(),
@@ -80,12 +86,92 @@ export class OrdersDemoController {
     @Inject(AftersaleService) private readonly aftersale: AftersaleService,
   ) {}
 
+  // ---- Marketplace Buyer Cart & Orders ------------------------------------------------------------------------
+
+  @Get('cart')
+  @UseGuards(DemoSessionGuard)
+  async marketplaceCart(@Req() req: DemoRequest) {
+    const p = principal(req);
+    const buyer = buyerOf(p);
+    const cartItems = await this.prisma.cartItem.findMany({
+      where: { buyerId: buyer.id },
+      include: {
+        sku: {
+          include: {
+            product: {
+              include: {
+                shop: { select: { id: true, name: true, status: true } },
+              },
+            },
+            inventory: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    const shopMap = new Map<string, { shop: { id: string; name: string }; items: any[]; shopTotalVnd: number }>();
+    let totalVnd = 0;
+    let itemCount = 0;
+
+    for (const item of cartItems) {
+      const shop = item.sku.product.shop;
+      if (shop.status !== 'ACTIVE') continue;
+
+      const lineTotalVnd = item.sku.priceVnd * item.quantity;
+      totalVnd += lineTotalVnd;
+      itemCount += item.quantity;
+
+      const formattedItem = {
+        skuId: item.sku.externalId,
+        productId: item.sku.product.externalId,
+        productTitle: item.sku.product.title,
+        skuName: item.sku.name,
+        sellerSku: item.sku.sellerSku,
+        quantity: item.quantity,
+        unitPriceVnd: item.sku.priceVnd,
+        lineTotalVnd,
+        available:
+          item.sku.product.status === 'ACTIVATE' &&
+          !item.sku.product.isNotForSale &&
+          item.sku.status === 'NORMAL' &&
+          item.sku.inventory.reduce((n, l) => n + l.quantity, 0) >= item.quantity,
+      };
+
+      let group = shopMap.get(shop.id);
+      if (!group) {
+        group = { shop: { id: shop.id, name: shop.name }, items: [], shopTotalVnd: 0 };
+        shopMap.set(shop.id, group);
+      }
+      group.items.push(formattedItem);
+      group.shopTotalVnd += lineTotalVnd;
+    }
+
+    return {
+      currency: 'VND',
+      shops: [...shopMap.values()],
+      totalVnd,
+      itemCount,
+    };
+  }
+
+  @Get('buyer/orders')
+  @UseGuards(DemoSessionGuard)
+  async marketplaceBuyerOrders(@Req() req: DemoRequest) {
+    const p = principal(req);
+    const buyer = buyerOf(p);
+    const rows = await this.orders.listForBuyer(buyer.id);
+    return { items: rows.map(orderView) };
+  }
+
+  // ---- Shop-Scoped Cart & Orders -----------------------------------------------------------------------------
+
   @Get('shops/:shopId/cart')
   @UseGuards(DemoSessionGuard)
   async cart(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    const items = await this.orders.cart(buyerOf(p).id);
+    await assertShopAccess(p, shopId, this.prisma);
+    const items = await this.orders.cart(buyerOf(p, shopId).id, shopId);
     return { currency: 'VND', items, totalVnd: items.reduce((n, i) => n + i.lineTotalVnd, 0) };
   }
 
@@ -93,8 +179,8 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async setCartItem(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CartItemBody)) body: z.infer<typeof CartItemBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    await this.orders.setCartItem(buyerOf(p), body.skuId, body.quantity);
+    await assertShopAccess(p, shopId, this.prisma);
+    await this.orders.setCartItem(buyerOf(p, shopId), body.skuId, body.quantity);
     return this.cart(req, shopId);
   }
 
@@ -102,14 +188,23 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async checkout(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CheckoutBody)) body: z.infer<typeof CheckoutBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    const buyer = buyerOf(p);
+    await assertShopAccess(p, shopId, this.prisma);
+    const buyer = buyerOf(p, shopId);
     const fromCart = !body.items;
-    const items = body.items ? body.items.map((i) => ({ skuExternalId: i.skuId, quantity: i.quantity })) : (await this.orders.cart(buyer.id)).map((i) => ({ skuExternalId: i.skuId, quantity: i.quantity }));
+    const items = body.items
+      ? body.items.map((i) => ({ skuExternalId: i.skuId, quantity: i.quantity }))
+      : (await this.orders.cart(buyer.id, shopId)).map((i) => ({ skuExternalId: i.skuId, quantity: i.quantity }));
     const row = await this.prisma.buyer.findUniqueOrThrow({ where: { id: buyer.id } });
     const recipient = body.recipient ?? { name: row.name, phone: row.phone, addressLine: row.addressLine, district: row.district, city: row.city };
     const { order, replayed } = await this.orders.checkout(buyer, { checkoutKey: body.checkoutKey, items, recipient, buyerMessage: body.buyerMessage, couponCode: body.couponCode }, (req as { requestId?: string }).requestId);
-    if (fromCart && !replayed) await this.prisma.cartItem.deleteMany({ where: { buyerId: buyer.id } });
+    if (fromCart && !replayed) {
+      await this.prisma.cartItem.deleteMany({
+        where: {
+          buyerId: buyer.id,
+          sku: { shopId: buyer.shopId },
+        },
+      });
+    }
     return { replayed, order: orderView(order) };
   }
 
@@ -117,8 +212,8 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async pay(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    const { order, replayed } = await this.orders.pay(buyerOf(p), orderId, (req as { requestId?: string }).requestId);
+    await assertShopAccess(p, shopId, this.prisma);
+    const { order, replayed } = await this.orders.pay(buyerOf(p, shopId), orderId, (req as { requestId?: string }).requestId);
     return { replayed, order: orderView(order) };
   }
 
@@ -126,16 +221,24 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async cancel(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string, @Body(new ZodPipe(ReasonBody)) body: z.infer<typeof ReasonBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     if (p.role === 'BUYER') {
       const rid = (req as { requestId?: string }).requestId;
-      const row = await this.prisma.order.findFirst({ where: { buyerId: buyerOf(p).id, shopId, externalId: orderId }, select: { id: true, status: true } });
+      const row = await this.prisma.order.findFirst({ where: { buyerId: buyerOf(p, shopId).id, shopId, externalId: orderId }, select: { id: true, status: true } });
       // Phase 07b: once the order is paid and released (AWAITING_SHIPMENT) a cancel is a REQUEST the seller must approve, recorded as an aftersale cancellation
-      if (row?.status === 'AWAITING_SHIPMENT') await this.aftersale.createCancellation(buyerOf(p), orderId, body.reason, rid);
-      else return { order: orderView(await this.orders.buyerCancel(buyerOf(p), orderId, body.reason, rid)) };
-      const updated = await this.prisma.order.findUniqueOrThrow({ where: { id: row.id }, include: { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } } } });
+      if (row?.status === 'AWAITING_SHIPMENT') await this.aftersale.createCancellation(buyerOf(p, shopId), orderId, body.reason, rid);
+      else return { order: orderView(await this.orders.buyerCancel(buyerOf(p, shopId), orderId, body.reason, rid)) };
+      const updated = await this.prisma.order.findUniqueOrThrow({
+        where: { id: row.id },
+        include: {
+          lines: { orderBy: [{ externalId: 'asc' }] },
+          buyer: { select: { externalId: true, name: true } },
+          shop: { select: { id: true, name: true } },
+        },
+      });
       return { order: orderView(updated) };
     }
+    assertSellerShop(p, shopId);
     const order = await this.prisma.order.findFirst({ where: { shopId, externalId: orderId }, select: { id: true } });
     if (!order) throw new NotFoundException('Unknown order');
     const updated = await this.orders.transition(order.id, 'CANCELLED', 'SELLER', { note: body.reason, cancelReason: body.reason, initiator: 'SELLER', requestId: (req as { requestId?: string }).requestId });
@@ -147,8 +250,8 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async list(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    const rows = p.role === 'BUYER' ? await this.orders.listForBuyer(buyerOf(p).id) : await this.orders.listForShop(shopId);
+    await assertShopAccess(p, shopId, this.prisma);
+    const rows = p.role === 'BUYER' ? await this.orders.listForBuyer(buyerOf(p, shopId).id, shopId) : await this.orders.listForShop(shopId);
     return { items: rows.map(orderView) };
   }
 
@@ -156,10 +259,14 @@ export class OrdersDemoController {
   @UseGuards(DemoSessionGuard)
   async detail(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     const order = await this.prisma.order.findFirst({
-      where: { shopId, externalId: orderId, ...(p.role === 'BUYER' ? { buyerId: buyerOf(p).id } : {}) },
-      include: { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } } },
+      where: { shopId, externalId: orderId, ...(p.role === 'BUYER' ? { buyerId: buyerOf(p, shopId).id } : {}) },
+      include: {
+        lines: { orderBy: [{ externalId: 'asc' }] },
+        buyer: { select: { externalId: true, name: true } },
+        shop: { select: { id: true, name: true } },
+      },
     });
     if (!order) throw new NotFoundException('Unknown order');
     return { order: orderView(order), history: (await this.orders.audits(order.id)).map((a) => ({ from: a.fromStatus, to: a.toStatus, actor: a.actor, note: a.note, at: a.at.toISOString() })) };

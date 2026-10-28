@@ -140,7 +140,9 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const cart = (await http.get(`/demo/shops/${buyer.shopId}/cart`).set('x-demo-session', buyer.token).expect(200)).body;
       expect(cart.totalVnd).toBe(258000);
       const other = await t.sellerSession(1);
-      await http.get(`/demo/shops/${other.shopId}/cart`).set('x-demo-session', buyer.token).expect(403);
+      const otherCart = (await http.get(`/demo/shops/${other.shopId}/cart`).set('x-demo-session', buyer.token).expect(200)).body;
+      expect(otherCart.items).toHaveLength(0);
+      await http.get(`/demo/shops/${buyer.shopId}/cart`).set('x-demo-session', other.token).expect(403);
       const res = await http.post(`/demo/shops/${buyer.shopId}/checkout`).set('x-demo-session', buyer.token).send({ checkoutKey: 'key-cart-0001' }).expect(201);
       expect(res.body.order.items[0].quantity).toBe(2);
       expect((await http.get(`/demo/shops/${buyer.shopId}/cart`).set('x-demo-session', buyer.token)).body.items).toHaveLength(0);
@@ -223,7 +225,11 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       await http.post(`/demo/shops/${b2.shopId}/orders/${id}/pay`).set('x-demo-session', b2.token).send({}).expect(404);
       await http.get(`/demo/shops/${b2.shopId}/orders/${id}`).set('x-demo-session', b2.token).expect(404);
       const other = await t.buyerSession(1);
-      await http.get(`/demo/shops/${b1.shopId}/orders`).set('x-demo-session', other.token).expect(403);
+      const otherOrders = (await http.get(`/demo/shops/${b1.shopId}/orders`).set('x-demo-session', other.token).expect(200)).body;
+      expect(otherOrders.items).toHaveLength(0);
+      await http.get(`/demo/shops/${b1.shopId}/orders/${id}`).set('x-demo-session', other.token).expect(404);
+      const otherSeller = await t.sellerSession(1);
+      await http.get(`/demo/shops/${b1.shopId}/orders`).set('x-demo-session', otherSeller.token).expect(403);
     });
   });
 

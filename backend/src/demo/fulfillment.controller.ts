@@ -1,18 +1,13 @@
-import { Body, Controller, ForbiddenException, Get, Header, Inject, NotFoundException, Param, Post, Req, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Inject, NotFoundException, Param, Post, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { ZodPipe } from '../common/zod.pipe';
 import { DOC_TYPES, FulfillmentService } from '../fulfillment/fulfillment.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
+import { assertSellerShop, assertShopAccess, DemoPrincipal, DemoRequest, DemoSessionGuard } from './demo-session.guard';
 
 const LabelBody = z.object({ documentType: z.enum(DOC_TYPES).default('SHIPPING_LABEL') });
 const principal = (req: DemoRequest): DemoPrincipal => req.demo!;
-function assertOwnShop(p: DemoPrincipal, shopId: string): void {
-  if (p.shopId !== shopId) throw new ForbiddenException('This session cannot access another shop');
-}
-function assertSeller(p: DemoPrincipal): void {
-  if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can do this');
-}
+
 
 /** Seller fulfillment actions and the Buyer tracking view (/demo: not TikTok OpenAPI), plus the public label download. */
 @Controller()
@@ -26,8 +21,7 @@ export class FulfillmentDemoController {
   @UseGuards(DemoSessionGuard)
   async arrange(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const pkg = await this.fulfillment.arrangeShipment(shopId, orderId, 'SELLER', (req as { requestId?: string }).requestId);
     return this.view(shopId, orderId, pkg.status, true);
   }
@@ -36,8 +30,7 @@ export class FulfillmentDemoController {
   @UseGuards(DemoSessionGuard)
   async advance(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const pkg = await this.fulfillment.advanceShipment(shopId, orderId, 'SELLER', (req as { requestId?: string }).requestId);
     return this.view(shopId, orderId, pkg.status, true);
   }
@@ -47,7 +40,7 @@ export class FulfillmentDemoController {
   @UseGuards(DemoSessionGuard)
   async fulfillmentOf(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
+    await assertShopAccess(p, shopId, this.prisma);
     if (p.role === 'BUYER') {
       const own = await this.prisma.order.findFirst({ where: { shopId, externalId: orderId, buyerId: p.buyerId ?? '' }, select: { id: true } });
       if (!own) throw new NotFoundException('Unknown order');
@@ -59,8 +52,7 @@ export class FulfillmentDemoController {
   @UseGuards(DemoSessionGuard)
   async label(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('orderId') orderId: string, @Body(new ZodPipe(LabelBody)) body: z.infer<typeof LabelBody>) {
     const p = principal(req);
-    assertOwnShop(p, shopId);
-    assertSeller(p);
+    assertSellerShop(p, shopId);
     const order = await this.fulfillment.orderOf(shopId, orderId);
     const pkg = await this.prisma.package.findUnique({ where: { orderId: order.id } });
     if (!pkg) throw new NotFoundException('This order has no package yet');
