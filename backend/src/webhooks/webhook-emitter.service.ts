@@ -5,30 +5,17 @@ import { BusinessClock } from '../clock/clock';
 import { FaultService } from '../faults/fault.service';
 
 /**
- * Numeric `type` per topic according to TikTok OpenAPI standards.
- * 1: ORDER_STATUS_CHANGE
- * 2: RECIPIENT_ADDRESS_UPDATE
- * 3: PACKAGE_UPDATE
- * 4: REVERSE_STATUS_UPDATE (Reverse/Return/Refund/Dispute)
- * 5: PRODUCT_STATUS_CHANGE (Product status update)
- * 6: SELLER_DEAUTHORIZATION
- * 7: UPCOMING_AUTHORIZATION_EXPIRATION
- * 8: PRODUCT_AUDIT_STATUS_CHANGE
- * 11: CANCELLATION_STATUS_CHANGE
- * 12: RETURN_STATUS_CHANGE
- * 13: NEW_CONVERSATION
- * 14: NEW_MESSAGE
- * 15: DISPUTE_STATUS_CHANGE
+ * Numeric `type` per topic. Only ORDER_STATUS_CHANGE = 1 appears in a (secondary) sample; the others are NOT verified
+ * (contracts/schemas/webhook-envelope.json). They are marked here so nobody mistakes them for contract values.
  */
 export const WEBHOOK_TYPE: Record<string, number> = {
   ORDER_STATUS_CHANGE: 1,
+  // UNVERIFIED recollection of the Partner Center list; receivers must route on topic-specific fields, not on `type` alone.
   RECIPIENT_ADDRESS_UPDATE: 2,
   PACKAGE_UPDATE: 3,
-  REVERSE_STATUS_UPDATE: 4,
-  PRODUCT_STATUS_CHANGE: 5,
+  PRODUCT_STATUS_CHANGE: 4,
   SELLER_DEAUTHORIZATION: 6,
   UPCOMING_AUTHORIZATION_EXPIRATION: 7,
-  PRODUCT_AUDIT_STATUS_CHANGE: 8,
   CANCELLATION_STATUS_CHANGE: 11,
   RETURN_STATUS_CHANGE: 12,
   NEW_CONVERSATION: 13,
@@ -42,100 +29,6 @@ export interface WebhookEnvelope {
   shop_id: string;
   timestamp: number;
   data: Record<string, unknown>;
-}
-
-export interface SellerDeauthorizationPayload {
-  seller_id?: string;
-  shop_id: string;
-  app_key?: string;
-  deauthorized_time: number;
-}
-
-export interface UpcomingAuthorizationExpirationPayload {
-  seller_id?: string;
-  shop_id: string;
-  app_key?: string;
-  expiration_time: number;
-}
-
-export interface ReverseStatusUpdatePayload {
-  reverse_id: string;
-  return_id: string;
-  order_id: string;
-  reverse_type: string;
-  return_type: string;
-  reverse_status: string;
-  return_status: string;
-  arbitration_status: string;
-  update_time: number;
-  [key: string]: unknown;
-}
-
-export interface ProductStatusChangePayload {
-  product_id: string;
-  status: string;
-  audit_status?: string;
-  update_time: number;
-  [key: string]: unknown;
-}
-
-export function buildSellerDeauthorizationData(shopId: string, appKey?: string, deauthorizedTime?: number): SellerDeauthorizationPayload {
-  return {
-    shop_id: shopId,
-    seller_id: shopId,
-    ...(appKey ? { app_key: appKey } : {}),
-    deauthorized_time: deauthorizedTime ?? Math.floor(Date.now() / 1000),
-  };
-}
-
-export function buildUpcomingAuthExpirationData(shopId: string, appKey?: string, expirationTime?: number): UpcomingAuthorizationExpirationPayload {
-  return {
-    shop_id: shopId,
-    seller_id: shopId,
-    ...(appKey ? { app_key: appKey } : {}),
-    expiration_time: expirationTime ?? Math.floor(Date.now() / 1000) + 30 * 86400,
-  };
-}
-
-export function buildReverseStatusUpdateData(params: {
-  reverseId: string;
-  orderId: string;
-  reverseType: string;
-  reverseStatus: string;
-  arbitrationStatus?: string;
-  updateTime?: number;
-  extra?: Record<string, unknown>;
-}): ReverseStatusUpdatePayload {
-  const updateTime = params.updateTime ?? Math.floor(Date.now() / 1000);
-  const arbitrationStatus = params.arbitrationStatus ?? 'NO_ARBITRATION';
-  return {
-    reverse_id: params.reverseId,
-    return_id: params.reverseId,
-    order_id: params.orderId,
-    reverse_type: params.reverseType,
-    return_type: params.reverseType,
-    reverse_status: params.reverseStatus,
-    return_status: params.reverseStatus,
-    arbitration_status: arbitrationStatus,
-    update_time: updateTime,
-    ...(params.extra ?? {}),
-  };
-}
-
-export function buildProductStatusChangeData(params: {
-  productId: string;
-  status: string;
-  auditStatus?: string;
-  updateTime?: number;
-  extra?: Record<string, unknown>;
-}): ProductStatusChangePayload {
-  return {
-    product_id: params.productId,
-    status: params.status,
-    audit_status: params.auditStatus ?? (params.status === 'ACTIVATE' ? 'APPROVED' : 'NONE'),
-    update_time: params.updateTime ?? Math.floor(Date.now() / 1000),
-    ...(params.extra ?? {}),
-  };
 }
 
 /**
@@ -152,7 +45,7 @@ export class WebhookEmitter {
   async emit(tx: Prisma.TransactionClient, shop: Pick<Shop, 'id' | 'tiktokShopId'>, topic: string, data: Record<string, unknown>, requestId?: string | null): Promise<number> {
     const subs = await tx.webhookSubscription.findMany({ where: { shopId: shop.id, eventType: topic }, orderBy: { createdAt: 'asc' } });
     if (subs.length === 0) return 0;
-    const reorder = await this.faults.consume('WEBHOOK', shop.id, topic, ['REORDER'], tx);
+    const reorder = await this.faults.consume('WEBHOOK', shop.id, topic, ['REORDER'], tx) // same transaction client: never take a second pool connection inside a transaction;
     const holdMs = reorder ? Math.min(Number((reorder.params as { holdMs?: number } | null)?.holdMs ?? 5000), 600000) : 0;
     const now = this.clock.now();
     for (const sub of subs) {
@@ -171,6 +64,7 @@ export class WebhookEmitter {
           payload: envelope as unknown as Prisma.InputJsonValue,
           targetUrl: sub.address,
           requestId: requestId ?? null,
+          // scheduling uses real time (worker time), never the business clock
           nextAttemptAt: new Date(Date.now() + holdMs),
         },
       });

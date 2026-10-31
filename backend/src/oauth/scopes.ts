@@ -13,11 +13,11 @@ export const SCOPE_FULFILLMENT_READ = 'sim.fulfillment.read';
 export const SCOPE_FULFILLMENT_WRITE = 'sim.fulfillment.write';
 /** Placeholder scope for coupon reads (Phase 09a). Tokens issued earlier must re-authorize. */
 export const SCOPE_PROMOTION_READ = 'sim.promotion.read';
+/** Placeholder scope for product reads; the simulator also uses it for the warehouse list (listing needs warehouses). */
 /** Placeholder scopes for customer-service conversations (official names unresolved). */
 export const SCOPE_CONVERSATION_READ = 'sim.conversation.read';
 export const SCOPE_CONVERSATION_WRITE = 'sim.conversation.write';
 export const SCOPE_PRODUCT_READ = 'sim.product.read';
-export const SCOPE_PRODUCT_WRITE = 'sim.product.write';
 
 /** Placeholder scopes for cancellations, returns/refunds, reject reasons and aftersale eligibility (official names unresolved). Older tokens must re-authorize. */
 export const SCOPE_AFTERSALE_READ = 'sim.aftersale.read';
@@ -26,8 +26,7 @@ export const SCOPE_AFTERSALE_WRITE = 'sim.aftersale.write';
 /** Every scope a seeded app is granted by default (override with SEED_APP_SCOPES). Add new phase scopes here ONLY. */
 export const DEFAULT_APP_SCOPES = [
   SCOPE_AUTHORIZED_SHOPS,
-  SCOPE_PRODUCT_READ,
-  SCOPE_PRODUCT_WRITE,
+  'sim.product.read',
   SCOPE_ORDER_READ,
   SCOPE_EVENT_MANAGE,
   SCOPE_INVENTORY_WRITE,
