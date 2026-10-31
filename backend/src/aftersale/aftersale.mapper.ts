@@ -8,39 +8,8 @@ function refund(currency: string, subtotal: number, shipping: number) {
   return { currency, refund_subtotal: vnd(subtotal), refund_shipping_fee: vnd(shipping), refund_tax: '0', refund_total: vnd(subtotal + shipping) };
 }
 
-const REASON_TEXT_VI: Record<string, string> = {
-  CHANGED_MIND: 'Đổi ý, không muốn mua nữa',
-  DAMAGED_ITEM: 'Hàng bị lỗi hoặc hư hỏng',
-  NOT_AS_DESCRIBED: 'Sản phẩm không đúng mô tả',
-  WRONG_ITEM: 'Giao sai hàng',
-  OTHER: 'Lý do khác',
-  ITEM_AS_DESCRIBED: 'Sản phẩm đúng mô tả',
-  RETURN_WINDOW_EXPIRED: 'Hết thời hạn đổi trả',
-  ITEM_USED_OR_DAMAGED: 'Sản phẩm đã qua sử dụng hoặc bị hư hỏng',
-  ALREADY_SHIPPED: 'Đơn hàng đã giao cho đơn vị vận chuyển',
-};
-
-const REASON_TEXT_EN: Record<string, string> = {
-  CHANGED_MIND: 'Changed mind',
-  DAMAGED_ITEM: 'Damaged item',
-  NOT_AS_DESCRIBED: 'Not as described',
-  WRONG_ITEM: 'Wrong item',
-  OTHER: 'Other reason',
-  ITEM_AS_DESCRIBED: 'The item matches its description',
-  RETURN_WINDOW_EXPIRED: 'The request is outside the return window',
-  ITEM_USED_OR_DAMAGED: 'The returned item is used or damaged',
-  ALREADY_SHIPPED: 'The order has already been handed to the carrier',
-};
-
-export function getReturnReasonText(reason: string, locale?: string): string {
-  if (locale?.toLowerCase().startsWith('vi')) {
-    return REASON_TEXT_VI[reason] ?? reason;
-  }
-  return REASON_TEXT_EN[reason] ?? reason;
-}
-
-/** `data.return_orders[]` item of Search Returns (OAS 202602 / 202309). Amounts are strings. */
-export function returnItem(r: AftersaleRow, locale?: string) {
+/** `data.return_orders[]` item of Search Returns (OAS: schemas/ops/return.search.response.json). Amounts are strings. */
+export function returnItem(r: AftersaleRow) {
   return {
     return_id: r.externalId,
     order_id: r.order.externalId,
@@ -48,9 +17,7 @@ export function returnItem(r: AftersaleRow, locale?: string) {
     return_type: r.type,
     role: r.role,
     return_reason: r.reason,
-    return_reason_text: getReturnReasonText(r.reason, locale),
-    arbitration_status: r.arbitrationStatus ?? 'NO_ARBITRATION',
-    ...(r.sellerProposedReturnType ? { seller_proposed_return_type: r.sellerProposedReturnType } : {}),
+    return_reason_text: r.reason,
     create_time: secs(r.createdAt),
     update_time: secs(r.updatedAt),
     refund_amount: refund(r.currency, r.refundSubtotal, r.refundShipping),

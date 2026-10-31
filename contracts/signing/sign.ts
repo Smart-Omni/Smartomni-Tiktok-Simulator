@@ -1,8 +1,7 @@
 // API and webhook signing helpers. Uses only node:crypto.
 //
 // API signing: the algorithm mirrors the TTS Open Toolkit's local proxy-broker signer (indirect evidence; see signing/README.md),
-// NOT the Partner Center "common parameters" page (client-rendered, unreadable on 2026-10-14).
-// Webhook signing per TikTok OpenAPI & SmartOmni WebhookHmacValidator: HMAC-SHA256(app_secret, path + timestamp + raw_body).
+// NOT the Partner Center "common parameters" page (client-rendered, unreadable on 2026-10-14). Webhook signing is SECONDARY (Hookdeck).
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const EXCLUDED_QUERY_KEYS = new Set(["sign", "access_token"]);
@@ -39,19 +38,8 @@ export function signApiRequest(secret: string, path: string, query: Record<strin
   return createHmac("sha256", secret).update(apiStringToSign(secret, path, query, body)).digest("hex");
 }
 
-export function signWebhook(path: string, timestamp: string | number, appSecret: string, rawBody: string): string;
-export function signWebhook(appKey: string, appSecret: string, rawBody: string): string;
-export function signWebhook(a: string, b: string | number, c: string, d?: string): string {
-  if (d !== undefined) {
-    // standard TikTok OpenAPI & SmartOmni WebhookHmacValidator: HMAC(app_secret, path + timestamp + raw_body)
-    const path = a;
-    const timestamp = b;
-    const appSecret = c;
-    const rawBody = d;
-    return createHmac("sha256", appSecret).update(`${path}${timestamp}${rawBody}`).digest("hex");
-  }
-  // legacy: HMAC(app_secret, app_key + raw_body)
-  return createHmac("sha256", b as string).update(a + c).digest("hex");
+export function signWebhook(appKey: string, appSecret: string, rawBody: string): string {
+  return createHmac("sha256", appSecret).update(appKey + rawBody).digest("hex");
 }
 
 export function safeEqualHex(a: string, b: string): boolean {
@@ -60,11 +48,6 @@ export function safeEqualHex(a: string, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-export function verifyWebhook(path: string, timestamp: string | number, appSecret: string, rawBody: string, header: string): boolean;
-export function verifyWebhook(appKey: string, appSecret: string, rawBody: string, header: string): boolean;
-export function verifyWebhook(a: string, b: string | number, c: string, d: string, e?: string): boolean {
-  if (e !== undefined) {
-    return safeEqualHex(signWebhook(a, b, c, d), e);
-  }
-  return safeEqualHex(signWebhook(a, b as string, c), d);
+export function verifyWebhook(appKey: string, appSecret: string, rawBody: string, header: string): boolean {
+  return safeEqualHex(signWebhook(appKey, appSecret, rawBody), header);
 }
