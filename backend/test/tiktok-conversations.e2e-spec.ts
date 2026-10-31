@@ -162,15 +162,20 @@ describe('Phase 08: conversations (customer-service API, demo chat, events)', ()
       await send({ type: 'TEXT', content: JSON.stringify({ content: 'x'.repeat(2000) }) }).expect(200);
     });
 
-    it('send version 202606 and image upload are explicitly unsupported, never faked', async () => {
+    it('send version 202606 and image upload are supported per TikTok OpenAPI', async () => {
       const a = await t.connect(0);
       const conv = await conversationByNick(a.accessToken, 'Trần Văn An');
-      const r606 = await http.post(`/customer_service/202606/conversations/${conv.id}/messages`).send({});
-      expect(r606.status).toBe(501);
-      expect(r606.body.simulator_fault.kind).toBe('unsupported_operation');
-      const up = await http.post('/customer_service/202309/images/upload').send({});
-      expect(up.status).toBe(501);
-      expect(up.body.message).toContain('unsupported');
+      const r606 = await t.call('POST', `/customer_service/202606/conversations/${conv.id}/messages`, a.accessToken, {
+        body: { type: 'TEXT', content: JSON.stringify({ content: 'Xin chào bạn' }) },
+      }).expect(200);
+      expect(r606.body.code).toBe(0);
+      expect(r606.body.data.message_id).toBeDefined();
+
+      const up = await t.call('POST', '/customer_service/202309/images/upload', a.accessToken, {
+        body: { image_data: 'test' },
+      }).expect(200);
+      expect(up.body.code).toBe(0);
+      expect(up.body.data.url).toBeDefined();
     });
 
     it('a conversation with can_send_message=false refuses the shop and leaves no message or event behind', async () => {

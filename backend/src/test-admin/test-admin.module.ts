@@ -81,6 +81,13 @@ const WebhookEnqueue = z.object({
   maxAttempts: z.number().int().min(1).max(20).optional(),
 });
 
+const AftersaleArbitrate = z.object({
+  arbitration_status: z.enum(['IN_ARBITRATION', 'ARBITRATION_WIN', 'ARBITRATION_LOSS']).optional(),
+  decision: z.enum(['WIN', 'LOSS', 'ARBITRATION_WIN', 'ARBITRATION_LOSS', 'IN_ARBITRATION']).optional(),
+  shopId: z.string().min(1).optional(),
+  note: z.string().max(300).optional(),
+}).refine((b) => b.arbitration_status || b.decision, { message: 'Either arbitration_status or decision is required' });
+
 const CatalogBulk = z.object({ shopId: z.string().min(1), count: z.number().int().min(1).max(500), skusPerProduct: z.number().int().min(1).max(5).default(2) });
 
 const OrderTransition = z.object({ to: z.enum(ORDER_STATUSES), shopId: z.string().min(1).optional(), note: z.string().max(300).optional(), cancelReason: z.string().max(300).optional() });
@@ -416,6 +423,28 @@ export class TestAdminController {
     const exists = await this.prisma.webhookJob.findUnique({ where: { id: jobId }, select: { id: true } });
     if (!exists) throw new NotFoundException('Unknown webhook job');
     return this.queue.replay(jobId, req.requestId);
+  }
+
+  @Post('aftersale/:ref/arbitration')
+  async arbitrateAftersale(
+    @Req() req: Rq,
+    @Param('ref') ref: string,
+    @Body(new ZodPipe(AftersaleArbitrate)) body: z.infer<typeof AftersaleArbitrate>,
+  ) {
+    const aftersaleReq = await this.aftersale.findForAdmin(ref, body.shopId);
+    const targetStatus = (body.arbitration_status ?? (body.decision?.includes('WIN') ? 'ARBITRATION_WIN' : body.decision?.includes('LOSS') ? 'ARBITRATION_LOSS' : 'IN_ARBITRATION')) as any;
+    const result = await this.aftersale.arbitrate(
+      aftersaleReq.shopId,
+      aftersaleReq.externalId,
+      targetStatus,
+      'OPERATOR',
+      { note: body.note, requestId: req.requestId },
+    );
+    return {
+      id: result.request.externalId,
+      arbitration_status: result.request.arbitrationStatus,
+      changed: result.changed,
+    };
   }
 }
 

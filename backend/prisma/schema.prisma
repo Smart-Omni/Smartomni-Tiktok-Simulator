@@ -747,6 +747,8 @@ model AftersaleRequest {
   rejectReason         String?
   rejectComment        String?
   returnTrackingNumber String?
+  arbitrationStatus    String            @default("NO_ARBITRATION")
+  sellerProposedReturnType String?
   currency             String            @default("VND")
   refundSubtotal       Int
   refundShipping       Int               @default(0)
