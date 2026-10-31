@@ -150,7 +150,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
         expect(r.status).toBe(400);
         expect(r.body.simulator_fault.kind).toBe('invalid_input');
       }
-      for (const body of [{ status: 'WHATEVER' }, { listing_platforms: ['TIKTOK_SHOP'] }, { nope: 1 }, { create_time_ge: 'x' }, { seller_skus: 'A' }]) {
+      for (const body of [{ status: 'WHATEVER' }, { unsupp_filter: ['x'] }, { nope: 1 }, { create_time_ge: 'x' }, { seller_skus: 'A' }]) {
         const r = await search(accessToken, { page_size: '10' }, body);
         expect(r.status).toBe(400);
         expect(r.body.simulator_fault.kind).toBe('invalid_input');

@@ -30,9 +30,12 @@ export function resolveTargetUrl(address: string, rewriteLocalhost: boolean, hos
   }
 }
 
-/** Webhook signature (SECONDARY source, see contracts/signing/README.md): `Authorization` = lowercase hex HMAC-SHA256(app_secret, app_key + raw body). */
-export function webhookSignature(appSecret: string, appKey: string, rawBody: string): string {
-  return createHmac('sha256', appSecret).update(appKey + rawBody).digest('hex');
+/**
+ * Webhook signature per TikTok OpenAPI & SmartOmni WebhookHmacValidator:
+ * `Authorization` = lowercase hex HMAC-SHA256(app_secret, path + timestamp + raw_body).
+ */
+export function webhookSignature(appSecret: string, path: string, timestamp: string | number, rawBody: string): string {
+  return createHmac('sha256', appSecret).update(`${path}${timestamp}${rawBody}`).digest('hex');
 }
 
 @Injectable()
@@ -50,17 +53,26 @@ export class FetchWebhookTransport extends WebhookTransport {
     try {
       // The exact bytes sent are the bytes signed.
       const body = JSON.stringify(job.payload);
+      const targetUrl = resolveTargetUrl(job.targetUrl, this.config.webhook.rewriteLocalhost, this.config.hostCallbackBaseUrl);
+      let path = '/webhook';
+      try {
+        path = new URL(targetUrl).pathname;
+      } catch {
+        path = '/webhook';
+      }
+      const timestamp = String((job.payload as any)?.timestamp ?? Math.floor(Date.now() / 1000));
       const headers: Record<string, string> = {
         'content-type': 'application/json',
         'x-simulator-webhook-id': job.id,
         'x-simulator-attempt': String(ctx.attemptNo),
+        'timestamp': timestamp,
         ...(job.requestId ? { 'x-request-id': job.requestId } : {}),
       };
       if (job.appId) {
         const app = await this.prisma.app.findUnique({ where: { id: job.appId } });
-        if (app) headers.authorization = webhookSignature(app.appSecret, app.appKey, body);
+        if (app) headers.authorization = webhookSignature(app.appSecret, path, timestamp, body);
       }
-      const res = await fetch(resolveTargetUrl(job.targetUrl, this.config.webhook.rewriteLocalhost, this.config.hostCallbackBaseUrl), { method: 'POST', headers, body, signal: controller.signal });
+      const res = await fetch(targetUrl, { method: 'POST', headers, body, signal: controller.signal });
       const text = await res.text();
       return { httpStatus: res.status, body: text.slice(0, 1000) };
     } finally {

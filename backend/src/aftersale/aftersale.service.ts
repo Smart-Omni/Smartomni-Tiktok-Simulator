@@ -6,7 +6,7 @@ import { APP_CONFIG, AppConfig } from '../config/config';
 import { OrderRuleError, OrdersService, TransitionContext } from '../orders/orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { numericId } from '../seed/seed-data';
-import { WebhookEmitter } from '../webhooks/webhook-emitter.service';
+import { buildReverseStatusUpdateData, WebhookEmitter } from '../webhooks/webhook-emitter.service';
 
 /** Interactive transactions take row locks and do several statements; same budget as the order service. */
 const TX_OPTIONS = { maxWait: 15_000, timeout: 20_000 } as const;
@@ -19,8 +19,10 @@ export const CANCEL = {
   CANCELLED: 'CANCELLATION_REQUEST_CANCELLED',
   COMPLETE: 'CANCELLATION_REQUEST_COMPLETE',
 } as const;
+
 export const RETURN = {
   PENDING: 'RETURN_OR_REFUND_REQUEST_PENDING',
+  AWAITING_BUYER: 'AWAITING_BUYER_RESPONSE',
   REJECT: 'REFUND_OR_RETURN_REQUEST_REJECT',
   AWAITING_SHIP: 'AWAITING_BUYER_SHIP',
   SHIPPED: 'BUYER_SHIPPED_ITEM',
@@ -29,8 +31,17 @@ export const RETURN = {
   CANCEL: 'RETURN_OR_REFUND_REQUEST_CANCEL',
   COMPLETE: 'RETURN_OR_REFUND_REQUEST_COMPLETE',
 } as const;
-export const RETURN_TYPES = ['REFUND', 'RETURN_AND_REFUND'] as const;
+
+export const RETURN_TYPES = ['REFUND', 'RETURN_AND_REFUND', 'EXCHANGE', 'REPLACEMENT'] as const;
 export type ReturnType = (typeof RETURN_TYPES)[number];
+
+export const ARBITRATION_STATUSES = [
+  'NO_ARBITRATION',
+  'IN_ARBITRATION',
+  'ARBITRATION_WIN',
+  'ARBITRATION_LOSS',
+] as const;
+export type ArbitrationStatus = (typeof ARBITRATION_STATUSES)[number];
 
 /** Rejection reasons offered by Get Reject Reasons. The OAS documents no value list: these names are SIMULATOR choices (unverified). */
 export const REJECT_REASONS = [
@@ -107,8 +118,15 @@ export class AftersaleService implements OnModuleInit {
   }
 
   /** Return/refund of chosen units of a DELIVERED/COMPLETED order inside the (business-clock) return window. */
-  async createReturn(buyer: Buyer, orderExternalId: string, input: { items: { skuId: string; quantity: number }[]; returnType: string; reason: string }, requestId?: string): Promise<AftersaleRow> {
-    if (!(RETURN_TYPES as readonly string[]).includes(input.returnType)) throw new OrderRuleError('invalid_return_type', `returnType must be one of ${RETURN_TYPES.join(', ')}`);
+  async createReturn(
+    buyer: Buyer,
+    orderExternalId: string,
+    input: { items: { skuId: string; quantity: number }[]; returnType: string; reason: string; sellerProposedReturnType?: string },
+    requestId?: string,
+  ): Promise<AftersaleRow> {
+    if (!(RETURN_TYPES as readonly string[]).includes(input.returnType)) {
+      throw new OrderRuleError('invalid_return_type', `returnType must be one of ${RETURN_TYPES.join(', ')}`);
+    }
     const wanted = new Map<string, number>();
     for (const it of input.items) {
       if (!Number.isInteger(it.quantity) || it.quantity < 1) throw new OrderRuleError('invalid_quantity', 'quantity must be a positive integer');
@@ -129,8 +147,19 @@ export class AftersaleService implements OnModuleInit {
           chosen.push(...units.slice(0, qty));
         }
         const created = await this.insertRequest(tx, {
-          shopId: order.shopId, orderId: order.id, kind: 'RETURN', type: input.returnType, status: RETURN.PENDING, reason: input.reason, role: 'BUYER',
-          refundSubtotal: chosen.reduce((n, l) => n + unitPaid(l), 0), refundShipping: 0, lines: chosen, now,
+          shopId: order.shopId,
+          orderId: order.id,
+          kind: 'RETURN',
+          type: input.returnType,
+          status: RETURN.PENDING,
+          reason: input.reason,
+          role: 'BUYER',
+          arbitrationStatus: 'NO_ARBITRATION',
+          sellerProposedReturnType: input.sellerProposedReturnType,
+          refundSubtotal: chosen.reduce((n, l) => n + unitPaid(l), 0),
+          refundShipping: 0,
+          lines: chosen,
+          now,
         });
         await this.record(tx, created.id, null, RETURN.PENDING, 'BUYER', input.reason, now);
         await this.emit(tx, created, now, requestId);
@@ -145,7 +174,7 @@ export class AftersaleService implements OnModuleInit {
   async buyerCancelReturn(buyer: Buyer, externalId: string, requestId?: string): Promise<AftersaleRow> {
     const req = await this.ownedByBuyer(buyer, externalId, 'RETURN');
     if (req.status === RETURN.CANCEL) return req;
-    return this.move(req.id, [RETURN.PENDING, RETURN.AWAITING_SHIP], RETURN.CANCEL, 'BUYER', 'buyer cancelled the request', { deactivate: true, requestId });
+    return this.move(req.id, [RETURN.PENDING, RETURN.AWAITING_SHIP, RETURN.AWAITING_BUYER], RETURN.CANCEL, 'BUYER', 'buyer cancelled the request', { deactivate: true, requestId });
   }
 
   /** Buyer hands the approved return to the (fake) carrier. */
@@ -153,6 +182,50 @@ export class AftersaleService implements OnModuleInit {
     const req = await this.ownedByBuyer(buyer, externalId, 'RETURN');
     if (req.status === RETURN.SHIPPED) return req;
     return this.move(req.id, [RETURN.AWAITING_SHIP], RETURN.SHIPPED, 'BUYER', 'return shipped', { patch: { returnTrackingNumber: `SIMRET${String(Date.now()).slice(-9)}` }, requestId });
+  }
+
+  // ---- dispute & arbitration state machine ---------------------------------------------------------------------
+
+  /**
+   * Transitions arbitration_status for a return request:
+   * NO_ARBITRATION -> IN_ARBITRATION (buyer dispute)
+   * IN_ARBITRATION -> ARBITRATION_WIN | ARBITRATION_LOSS (TikTok admin adjudication)
+   * Automatically emits REVERSE_STATUS_UPDATE webhook.
+   */
+  async arbitrate(
+    shopId: string,
+    externalId: string,
+    toStatus: ArbitrationStatus,
+    actor: Actor,
+    opts: { note?: string; requestId?: string } = {},
+  ): Promise<{ request: AftersaleRow; changed: boolean }> {
+    const req = await this.byExternal(shopId, externalId, 'RETURN');
+    const current = req.arbitrationStatus as ArbitrationStatus;
+    if (current === toStatus) return { request: req, changed: false };
+
+    if (current === 'NO_ARBITRATION') {
+      if (toStatus !== 'IN_ARBITRATION') {
+        throw new OrderRuleError('invalid_arbitration_transition', `cannot jump from NO_ARBITRATION to ${toStatus}; must move to IN_ARBITRATION first`);
+      }
+    } else if (current === 'IN_ARBITRATION') {
+      if (toStatus !== 'ARBITRATION_WIN' && toStatus !== 'ARBITRATION_LOSS') {
+        throw new OrderRuleError('invalid_arbitration_transition', `invalid arbitration transition from IN_ARBITRATION to ${toStatus}`);
+      }
+    } else if (current === 'ARBITRATION_WIN' || current === 'ARBITRATION_LOSS') {
+      throw new OrderRuleError('invalid_arbitration_transition', `arbitration is already in terminal state ${current} and cannot transition to ${toStatus}`);
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const now = this.clock.now();
+      await tx.aftersaleRequest.update({
+        where: { id: req.id },
+        data: { arbitrationStatus: toStatus, updatedAt: now },
+      });
+      const note = opts.note ?? (toStatus === 'IN_ARBITRATION' ? 'Buyer raised arbitration dispute' : `TikTok admin adjudicated arbitration: ${toStatus}`);
+      await this.record(tx, req.id, current, req.status, actor, note, now);
+      await this.emit(tx, req, now, opts.requestId);
+      return { request: await this.mustFind(tx, req.id), changed: true };
+    }, TX_OPTIONS);
   }
 
   // ---- seller decisions -----------------------------------------------------------------------------------------
@@ -189,7 +262,7 @@ export class AftersaleService implements OnModuleInit {
 
   /**
    * Approve a return/refund. Supported decisions: APPROVE_REFUND (REFUND type), APPROVE_RETURN and APPROVE_RECEIVED_PACKAGE (RETURN_AND_REFUND).
-   * When `decision` is omitted it is inferred from the type and the current status. Replacement/partial-refund decisions are NOT modelled.
+   * When `decision` is omitted it is inferred from the type and the current status.
    */
   async approveReturn(shopId: string, externalId: string, decision: string | undefined, actor: Actor, opts: { idempotencyKey?: string; requestId?: string } = {}): Promise<{ request: AftersaleRow; changed: boolean }> {
     const req = await this.byExternal(shopId, externalId, 'RETURN');
@@ -300,14 +373,41 @@ export class AftersaleService implements OnModuleInit {
 
   private async insertRequest(
     tx: Tx,
-    a: { shopId: string; orderId: string; kind: string; type: string; status: string; reason: string; role: Role; refundSubtotal: number; refundShipping: number; lines: { id: string; salePrice: number; sellerDiscount: number; platformDiscount: number }[]; now: Date },
+    a: {
+      shopId: string;
+      orderId: string;
+      kind: string;
+      type: string;
+      status: string;
+      reason: string;
+      role: Role;
+      refundSubtotal: number;
+      refundShipping: number;
+      lines: { id: string; salePrice: number; sellerDiscount: number; platformDiscount: number }[];
+      now: Date;
+      arbitrationStatus?: string;
+      sellerProposedReturnType?: string;
+    },
   ) {
     const id = randomUUID();
     await tx.aftersaleRequest.create({
       data: {
-        id, shopId: a.shopId, orderId: a.orderId, externalId: numericId(a.kind === 'CANCELLATION' ? '5780' : '5790', `aftersale:${id}`),
-        kind: a.kind, type: a.type, status: a.status, reason: a.reason, role: a.role,
-        refundSubtotal: a.refundSubtotal, refundShipping: a.refundShipping, refundTotal: a.refundSubtotal + a.refundShipping, createdAt: a.now, updatedAt: a.now,
+        id,
+        shopId: a.shopId,
+        orderId: a.orderId,
+        externalId: numericId(a.kind === 'CANCELLATION' ? '5780' : '5790', `aftersale:${id}`),
+        kind: a.kind,
+        type: a.type,
+        status: a.status,
+        reason: a.reason,
+        role: a.role,
+        arbitrationStatus: a.arbitrationStatus ?? 'NO_ARBITRATION',
+        sellerProposedReturnType: a.sellerProposedReturnType ?? null,
+        refundSubtotal: a.refundSubtotal,
+        refundShipping: a.refundShipping,
+        refundTotal: a.refundSubtotal + a.refundShipping,
+        createdAt: a.now,
+        updatedAt: a.now,
         lines: { create: a.lines.map((l) => ({ id: randomUUID(), orderLineId: l.id, externalId: numericId('5791', `aline:${id}:${l.id}`), refundSubtotal: unitPaid(l), active: true })) },
       },
     });
@@ -323,8 +423,21 @@ export class AftersaleService implements OnModuleInit {
     const r = await tx.aftersaleRequest.findUniqueOrThrow({ where: { id: req.id }, include: { order: { select: { externalId: true } } } });
     const shop = await tx.shop.findUniqueOrThrow({ where: { id: r.shopId } });
     const common = { order_id: r.order.externalId, update_time: Math.floor(now.getTime() / 1000) };
-    const data = r.kind === 'CANCELLATION' ? { ...common, cancel_id: r.externalId, cancel_status: r.status, cancel_type: r.type } : { ...common, return_id: r.externalId, return_status: r.status, return_type: r.type };
-    await this.emitter.emit(tx, shop, r.kind === 'CANCELLATION' ? 'CANCELLATION_STATUS_CHANGE' : 'RETURN_STATUS_CHANGE', data, requestId);
+    if (r.kind === 'CANCELLATION') {
+      const data = { ...common, cancel_id: r.externalId, cancel_status: r.status, cancel_type: r.type };
+      await this.emitter.emit(tx, shop, 'CANCELLATION_STATUS_CHANGE', data, requestId);
+    } else {
+      const data = buildReverseStatusUpdateData({
+        reverseId: r.externalId,
+        orderId: r.order.externalId,
+        reverseType: r.type,
+        reverseStatus: r.status,
+        arbitrationStatus: r.arbitrationStatus ?? 'NO_ARBITRATION',
+        updateTime: Math.floor(now.getTime() / 1000),
+      });
+      await this.emitter.emit(tx, shop, 'RETURN_STATUS_CHANGE', data as unknown as Record<string, unknown>, requestId);
+      await this.emitter.emit(tx, shop, 'REVERSE_STATUS_UPDATE', data as unknown as Record<string, unknown>, requestId);
+    }
   }
 
   /** Compare-and-set status change + record + event in one transaction. */

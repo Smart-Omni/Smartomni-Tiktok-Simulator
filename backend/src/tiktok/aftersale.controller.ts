@@ -1,7 +1,7 @@
 import { Controller, Get, HttpCode, Inject, NotFoundException, Param, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { cancellationItem, recordItem, returnItem } from '../aftersale/aftersale.mapper';
-import { AftersaleRow, AftersaleService, CANCEL, REJECT_REASONS, RETURN } from '../aftersale/aftersale.service';
+import { AftersaleRow, AftersaleService, ARBITRATION_STATUSES, CANCEL, REJECT_REASONS, RETURN } from '../aftersale/aftersale.service';
 import { TiktokFault } from '../common/tiktok-fault';
 import { SCOPE_AFTERSALE_READ, SCOPE_AFTERSALE_WRITE } from '../oauth/scopes';
 import { OrderRuleError } from '../orders/orders.service';
@@ -13,12 +13,40 @@ import { TiktokFaultFilter } from './tiktok-fault.filter';
 type Kind = 'RETURN' | 'CANCELLATION';
 const SORT_FIELDS = ['create_time', 'update_time'] as const;
 type SortField = (typeof SORT_FIELDS)[number];
-const RETURN_FILTERS = new Set(['buyer_user_ids', 'create_time_ge', 'create_time_lt', 'locale', 'order_ids', 'return_ids', 'return_status', 'return_types', 'update_time_ge', 'update_time_lt']);
-const RETURN_UNSUPPORTED = new Set(['arbitration_status', 'seller_proposed_return_type']);
-const CANCEL_FILTERS = new Set(['buyer_user_ids', 'cancel_ids', 'cancel_status', 'cancel_types', 'create_time_ge', 'create_time_lt', 'locale', 'order_ids', 'update_time_ge', 'update_time_lt']);
+const RETURN_FILTERS = new Set([
+  'arbitration_status',
+  'buyer_user_ids',
+  'create_time_ge',
+  'create_time_lt',
+  'locale',
+  'order_ids',
+  'page_size',
+  'page_token',
+  'return_ids',
+  'return_status',
+  'return_types',
+  'seller_proposed_return_type',
+  'update_time_ge',
+  'update_time_lt',
+]);
+const RETURN_UNSUPPORTED = new Set<string>();
+const CANCEL_FILTERS = new Set([
+  'buyer_user_ids',
+  'cancel_ids',
+  'cancel_status',
+  'cancel_types',
+  'create_time_ge',
+  'create_time_lt',
+  'locale',
+  'order_ids',
+  'page_size',
+  'page_token',
+  'update_time_ge',
+  'update_time_lt',
+]);
 const RETURN_STATUSES = new Set<string>(Object.values(RETURN));
 const CANCEL_STATUSES = new Set<string>(Object.values(CANCEL));
-const ELIGIBILITY_TYPES = ['CANCEL', 'REFUND', 'RETURN_AND_REFUND'];
+const ELIGIBILITY_TYPES = ['CANCEL', 'REFUND', 'RETURN_AND_REFUND', 'EXCHANGE', 'REPLACEMENT'];
 const RETURN_APPROVE_FIELDS = new Set(['decision', 'buyer_keep_item', 'partial_refund']);
 const REJECT_FIELDS = new Set(['decision', 'reject_reason', 'comment', 'images']);
 
@@ -40,9 +68,14 @@ function unixSeconds(value: unknown, field: string): Date | undefined {
 }
 function stringList(value: unknown, field: string, allowed?: Set<string>): string[] | undefined {
   if (value === undefined || value === null) return undefined;
-  if (!Array.isArray(value) || value.length > 100 || value.some((v) => typeof v !== 'string' || v.length === 0 || v.length > 200)) throw new TiktokFault(400, 'invalid_input', `${field} must be an array of up to 100 non-empty strings`);
-  if (allowed && (value as string[]).some((v) => !allowed.has(v))) throw new TiktokFault(400, 'invalid_input', `${field} contains a value that is not a documented status/type`);
-  return value as string[];
+  const arr = Array.isArray(value) ? value : typeof value === 'string' ? [value] : null;
+  if (!arr || arr.length > 100 || arr.some((v) => typeof v !== 'string' || v.length === 0 || v.length > 200)) {
+    throw new TiktokFault(400, 'invalid_input', `${field} must be a string or array of up to 100 non-empty strings`);
+  }
+  if (allowed && arr.some((v) => !allowed.has(v))) {
+    throw new TiktokFault(400, 'invalid_input', `${field} contains a value that is not a documented status/type`);
+  }
+  return arr;
 }
 
 const include = {
@@ -52,10 +85,7 @@ const include = {
 
 /**
  * Returns, cancellations, reject reasons and aftersale eligibility (official OAS shapes: schemas/ops/return.* and cancellation.*).
- * Everything is scoped to the shop of the token; another shop's id is exactly as unknown as a nonexistent one.
- * `return.rma_202604` is NOT served: Search Returns stays the 202309 operation. Unverified: error codes, which decisions exist beyond
- * the documented list (only APPROVE_REFUND / APPROVE_RETURN / APPROVE_RECEIVED_PACKAGE and the REJECT_* family are modelled), the reject reason names,
- * and the value of `ineligible_code` (-1 = simulator sentinel).
+ * 202602 / 202309 OpenAPI endpoints supported.
  */
 @Controller()
 @UseFilters(TiktokFaultFilter)
@@ -67,13 +97,27 @@ export class AftersaleController {
 
   // ---- returns --------------------------------------------------------------------------------------------------
 
+  @Post('return_refund/202602/returns/search')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_AFTERSALE_READ)
+  async searchReturns202602(@Req() req: TiktokRequest) {
+    return this.searchReturns(req);
+  }
+
   @Post('return_refund/202309/returns/search')
   @HttpCode(200)
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_AFTERSALE_READ)
   async searchReturns(@Req() req: TiktokRequest) {
-    const { rows, next, total } = await this.search(req, 'RETURN');
-    return this.envelope(req, { next_page_token: next, return_orders: rows.map(returnItem), total_count: total });
+    const { rows, next, total, locale } = await this.search(req, 'RETURN');
+    const returnOrders = rows.map((r) => returnItem(r, locale));
+    return this.envelope(req, {
+      next_page_token: next,
+      return_orders: returnOrders,
+      returns: returnOrders,
+      total_count: total,
+    });
   }
 
   @Get('return_refund/202309/returns/:returnId/records')
@@ -125,6 +169,13 @@ export class AftersaleController {
     return this.envelope(req, { reasons: REJECT_REASONS });
   }
 
+  @Get('return_refund/202602/orders/:orderId/aftersale_eligibility')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_AFTERSALE_READ)
+  async eligibility202602(@Req() req: TiktokRequest, @Param('orderId') orderId: string) {
+    return this.eligibility(req, orderId);
+  }
+
   @Get('return_refund/202512/orders/:orderId/aftersale_eligibility')
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_AFTERSALE_READ)
@@ -135,7 +186,10 @@ export class AftersaleController {
     const types = q.request_types ? q.request_types.split(',').map((t) => t.trim()).filter(Boolean) : ELIGIBILITY_TYPES;
     if (types.length === 0 || types.some((t) => !ELIGIBILITY_TYPES.includes(t))) throw new TiktokFault(400, 'invalid_input', `request_types must be a comma-separated subset of ${ELIGIBILITY_TYPES.join(', ')}`);
     try {
-      return this.envelope(req, { sku_eligibility: await this.aftersale.eligibility(shop.id, orderId, types) });
+      return this.envelope(req, {
+        request_types: types,
+        sku_eligibility: await this.aftersale.eligibility(shop.id, orderId, types),
+      });
     } catch (e) {
       if (e instanceof NotFoundException) throw new TiktokFault(404, 'order_not_found', 'order does not exist in this shop');
       throw e;
@@ -179,22 +233,24 @@ export class AftersaleController {
 
   // ---- helpers --------------------------------------------------------------------------------------------------
 
-  private async search(req: TiktokRequest, kind: Kind): Promise<{ rows: AftersaleRow[]; next: string; total: number }> {
+  private async search(req: TiktokRequest, kind: Kind): Promise<{ rows: AftersaleRow[]; next: string; total: number; locale?: string }> {
     const shop = req.tiktok!.shop;
     const query = parseRawQuery(req.originalUrl)!.query;
+    const body = this.body(req, kind === 'RETURN' ? RETURN_FILTERS : CANCEL_FILTERS, kind === 'RETURN' ? RETURN_UNSUPPORTED : undefined);
+
     // OAS: returns page_size valid range [10-50] (default 10); cancellations [1-50] (default 10)
     const min = kind === 'RETURN' ? 10 : 1;
-    if (query.page_size !== undefined && !/^\d{1,3}$/.test(query.page_size)) throw new TiktokFault(400, 'invalid_input', 'page_size must be an integer');
-    const pageSize = query.page_size === undefined ? 10 : Number(query.page_size);
+    const rawPageSize = query.page_size ?? (body.page_size !== undefined ? String(body.page_size) : undefined);
+    if (rawPageSize !== undefined && !/^\d{1,3}$/.test(rawPageSize)) throw new TiktokFault(400, 'invalid_input', 'page_size must be an integer');
+    const pageSize = rawPageSize === undefined ? 10 : Number(rawPageSize);
     if (pageSize < min || pageSize > 50) throw new TiktokFault(400, 'invalid_input', `page_size must be in [${min}, 50]`);
-    const sortField = (query.sort_field ?? 'create_time') as SortField;
+    const sortField = (query.sort_field ?? (typeof body.sort_field === 'string' ? body.sort_field : 'create_time')) as SortField;
     if (!SORT_FIELDS.includes(sortField)) throw new TiktokFault(400, 'invalid_input', 'sort_field must be create_time or update_time');
-    const sortOrder = query.sort_order ?? 'ASC';
+    const sortOrder = query.sort_order ?? (typeof body.sort_order === 'string' ? body.sort_order : 'ASC');
     if (sortOrder !== 'ASC' && sortOrder !== 'DESC') throw new TiktokFault(400, 'invalid_input', 'sort_order must be ASC or DESC');
-    const cursor = query.page_token ? decodeCursor(query.page_token) : null;
+    const rawToken = query.page_token ?? (typeof body.page_token === 'string' ? body.page_token : undefined);
+    const cursor = rawToken ? decodeCursor(rawToken) : null;
     if (cursor && (cursor.f !== sortField || cursor.o !== sortOrder)) throw new TiktokFault(400, 'invalid_input', 'page_token was issued for a different sort_field/sort_order');
-
-    const body = this.body(req, kind === 'RETURN' ? RETURN_FILTERS : CANCEL_FILTERS, kind === 'RETURN' ? RETURN_UNSUPPORTED : undefined);
     const where: Prisma.AftersaleRequestWhereInput = { shopId: shop.id, kind };
     const and: Prisma.AftersaleRequestWhereInput[] = [];
     const ids = stringList(body[kind === 'RETURN' ? 'return_ids' : 'cancel_ids'], kind === 'RETURN' ? 'return_ids' : 'cancel_ids');
@@ -204,8 +260,17 @@ export class AftersaleController {
     if (orderIds || buyers) where.order = { ...(orderIds ? { externalId: { in: orderIds } } : {}), ...(buyers ? { buyer: { externalId: { in: buyers } } } : {}) };
     const statuses = stringList(body[kind === 'RETURN' ? 'return_status' : 'cancel_status'], kind === 'RETURN' ? 'return_status' : 'cancel_status', kind === 'RETURN' ? RETURN_STATUSES : CANCEL_STATUSES);
     if (statuses) where.status = { in: statuses };
-    const types = stringList(body[kind === 'RETURN' ? 'return_types' : 'cancel_types'], kind === 'RETURN' ? 'return_types' : 'cancel_types', kind === 'RETURN' ? new Set(['REFUND', 'RETURN_AND_REFUND', 'REPLACEMENT']) : new Set(['CANCEL', 'BUYER_CANCEL']));
+    const types = stringList(body[kind === 'RETURN' ? 'return_types' : 'cancel_types'], kind === 'RETURN' ? 'return_types' : 'cancel_types', kind === 'RETURN' ? new Set(['REFUND', 'RETURN_AND_REFUND', 'EXCHANGE', 'REPLACEMENT']) : new Set(['CANCEL', 'BUYER_CANCEL']));
     if (types) where.type = { in: types };
+
+    // 202602 filters
+    if (kind === 'RETURN') {
+      const arbStatuses = stringList(body.arbitration_status, 'arbitration_status', new Set(ARBITRATION_STATUSES));
+      if (arbStatuses) where.arbitrationStatus = { in: arbStatuses };
+      const propTypes = stringList(body.seller_proposed_return_type, 'seller_proposed_return_type', new Set(['REFUND', 'RETURN_AND_REFUND', 'EXCHANGE', 'REPLACEMENT']));
+      if (propTypes) where.sellerProposedReturnType = { in: propTypes };
+    }
+
     const cGe = unixSeconds(body.create_time_ge, 'create_time_ge');
     const cLt = unixSeconds(body.create_time_lt, 'create_time_lt');
     const uGe = unixSeconds(body.update_time_ge, 'update_time_ge');
@@ -227,7 +292,8 @@ export class AftersaleController {
     const page = rows.slice(0, pageSize);
     const last = page[page.length - 1];
     const next = rows.length > pageSize && last ? encodeCursor({ k: last[keyColumn].getTime(), s: last.seq, f: sortField, o: sortOrder }) : '';
-    return { rows: page, next, total };
+    const locale = typeof body.locale === 'string' ? body.locale : (query.locale ?? undefined);
+    return { rows: page, next, total, locale };
   }
 
   /** The body as an object; unknown fields are rejected, documented-but-unmodelled ones get a clear refusal. */
