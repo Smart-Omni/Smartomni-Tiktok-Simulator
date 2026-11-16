@@ -23,7 +23,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
   let redirect: string;
 
   beforeAll(async () => {
-    app = await createApp();
+    app = await createApp({ env: { SEED_APP_REDIRECT_URIS: 'http://localhost:8080/api/v1/integrations/tiktok/callback,smartomni://oauth/tiktok' } });
     prisma = app.get(PrismaService);
     cfg = app.get(APP_CONFIG);
     http = request(app.getHttpServer());
@@ -127,9 +127,34 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
       expect(await prisma.authorizationCode.count()).toBe(0);
     });
 
+    it('accepts and denies the registered mobile redirect without changing the web default', async () => {
+      const s = await sellerSession();
+      const mobile = 'smartomni://oauth/tiktok';
+      const query = { app_key: appKey, redirect_uri: mobile, state: 'mobile-state' };
+      const context = await http.get('/demo/authorization/consent').query(query).set('x-demo-session', s.token).expect(200);
+      expect(context.body.redirectUri).toBe(mobile);
+
+      const accepted = await http.post('/demo/authorization/consent').set('x-demo-session', s.token)
+        .send(consentBody('accept', query.state, { redirect_uri: mobile })).expect(201);
+      const acceptedUrl = new URL(accepted.body.redirectUrl);
+      expect(`${acceptedUrl.protocol}//${acceptedUrl.host}${acceptedUrl.pathname}`).toBe(mobile);
+      expect(acceptedUrl.searchParams.get('code')).toMatch(/^sim_ac_/);
+      expect(acceptedUrl.searchParams.get('state')).toBe(query.state);
+      expect((await prisma.authorizationCode.findFirstOrThrow()).redirectUri).toBe(mobile);
+
+      const denied = await http.post('/demo/authorization/consent').set('x-demo-session', s.token)
+        .send(consentBody('deny', query.state, { redirect_uri: mobile })).expect(201);
+      const deniedUrl = new URL(denied.body.redirectUrl);
+      expect(`${deniedUrl.protocol}//${deniedUrl.host}${deniedUrl.pathname}`).toBe(mobile);
+      expect(deniedUrl.searchParams.get('error')).toBe('access_denied');
+      expect(deniedUrl.searchParams.get('state')).toBe(query.state);
+      expect(deniedUrl.searchParams.has('code')).toBe(false);
+      expect(await prisma.authorizationCode.count()).toBe(1);
+    });
+
     it('rejects an unregistered redirect_uri (exact match only) and issues no code', async () => {
       const s = await sellerSession();
-      for (const bad of ['https://evil.example/cb', `${redirect}/`, `${redirect}?x=1`, redirect.replace('localhost', 'localhost.evil.example'), 'javascript:alert(1)']) {
+      for (const bad of ['https://evil.example/cb', `${redirect}/`, `${redirect}?x=1`, redirect.replace('localhost', 'localhost.evil.example'), 'smartomni://oauth/tiktok/', 'smartomni://oauth/tiktok?x=1', 'javascript:alert(1)']) {
         await http.post('/demo/authorization/consent').set('x-demo-session', s.token).send(consentBody('accept', 's', { redirect_uri: bad })).expect(400);
         await http.get('/demo/authorization/consent').query({ app_key: appKey, redirect_uri: bad }).set('x-demo-session', s.token).expect(400);
       }
