@@ -22,6 +22,7 @@ import { FaultService } from '../faults/fault.service';
  */
 export const WEBHOOK_TYPE: Record<string, number> = {
   ORDER_STATUS_CHANGE: 1,
+  INVENTORY_CHANGED_BY_SHOP: 71,
   RECIPIENT_ADDRESS_UPDATE: 2,
   PACKAGE_UPDATE: 3,
   REVERSE_STATUS_UPDATE: 4,

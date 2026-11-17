@@ -52,6 +52,19 @@ describe('Phase 06: Update Inventory (absolute quantities), faults, change log',
   const createFault = (kind: string, params: object = { delayMs: 0 }, remaining: number | null = 1) =>
     http.post('/test-admin/faults').set(admin).send({ shopId: shopAId, target: 'API', kind, pathMatch: '/product/202309/products/', remaining, params }).expect(201);
 
+  describe('inventory webhook', () => {
+    it('queues one post-change snapshot for a changed SKU and none for an absolute retry', async () => {
+      const { accessToken } = await t.connect(0);
+      const appRow = await prisma.app.findFirstOrThrow();
+      await prisma.webhookSubscription.create({ data: { shopId: shopAId, appId: appRow.id, eventType: 'INVENTORY_CHANGED_BY_SHOP', address: 'https://example.test/webhooks', createdAt: new Date(), updatedAt: new Date() } });
+      await update(accessToken, PRODUCT_TEE, body(WHITE_M, 0, 25)).expect(200);
+      await update(accessToken, PRODUCT_TEE, body(WHITE_M, 0, 25)).expect(200);
+      const jobs = await prisma.webhookJob.findMany({ where: { shopId: shopAId, topic: 'INVENTORY_CHANGED_BY_SHOP' } });
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].payload).toMatchObject({ type: 71, data: { product_id: PRODUCT_TEE, sku_id: WHITE_M, quantity_snapshot_after_change: { available_quantity: 25, warehouses: expect.arrayContaining([{ warehouse_id: hn, available_quantity: 0 }, { warehouse_id: hcm, available_quantity: 25 }]) } } });
+    });
+  });
+
   describe('absolute update', () => {
     it('accepts zero in every warehouse and a repeated absolute update stays zero', async () => {
       const { accessToken } = await t.connect(0);
