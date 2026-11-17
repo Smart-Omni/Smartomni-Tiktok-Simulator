@@ -53,6 +53,13 @@ describe('Phase 06: Update Inventory (absolute quantities), faults, change log',
     http.post('/test-admin/faults').set(admin).send({ shopId: shopAId, target: 'API', kind, pathMatch: '/product/202309/products/', remaining, params }).expect(201);
 
   describe('absolute update', () => {
+    it('accepts zero in every warehouse and a repeated absolute update stays zero', async () => {
+      const { accessToken } = await t.connect(0);
+      const zero = body(WHITE_M, 0, 0);
+      expect((await update(accessToken, PRODUCT_TEE, zero).expect(200)).body.data.errors).toEqual([]);
+      expect((await update(accessToken, PRODUCT_TEE, zero).expect(200)).body.data.errors).toEqual([]);
+      expect([await qty(WHITE_M, hn), await qty(WHITE_M, hcm)]).toEqual([0, 0]);
+    });
     it('replaces the quantities; repeating the same request leaves the same state (a safe retry) and the log marks it as a no-op', async () => {
       const { accessToken } = await t.connect(0);
       const first = await update(accessToken, PRODUCT_TEE, body(WHITE_M, 12, 7)).expect(200);
@@ -103,17 +110,16 @@ describe('Phase 06: Update Inventory (absolute quantities), faults, change log',
       expect(conformErrors('ops/product.inventory_update.response.json', res.body)).toEqual([]);
       expect(res.body.data.errors).toHaveLength(1);
       const err = res.body.data.errors[0];
-      expect(err).toMatchObject({ code: expect.any(Number), message: expect.any(String), detail: { sku_id: WHITE_L, extra_errors: [{ warehouse_id: hn, message: expect.stringContaining('[1, 99999]') }] } });
+      expect(err).toMatchObject({ code: expect.any(Number), message: expect.any(String), detail: { sku_id: WHITE_L, extra_errors: [{ warehouse_id: hn, message: expect.stringContaining('[0, 99999]') }] } });
       expect([await qty(WHITE_M, hn), await qty(WHITE_M, hcm)]).toEqual([11, 22]); // valid SKU applied
       expect([await qty(WHITE_L, hn), await qty(WHITE_L, hcm)]).toEqual([30, 20]); // failing SKU untouched: even its valid warehouse (3) was not written
       expect((await prisma.inventoryUpdateAttempt.findFirstOrThrow()).outcome).toBe('PARTIAL');
     });
 
-    it('rejects quantity 0, negatives, fractions and strings; missing, repeated and foreign warehouses; and changes nothing', async () => {
+    it('rejects negative, fractional and string quantities; missing, repeated and foreign warehouses; and changes nothing', async () => {
       const { accessToken } = await t.connect(0);
       const sellerB = await prisma.warehouse.findFirstOrThrow({ where: { shop: { name: { contains: 'Gốm' } } } });
       const bad = [
-        [{ warehouse_id: hn, quantity: 0 }, { warehouse_id: hcm, quantity: 3 }],
         [{ warehouse_id: hn, quantity: -4 }, { warehouse_id: hcm, quantity: 3 }],
         [{ warehouse_id: hn, quantity: 1.5 }, { warehouse_id: hcm, quantity: 3 }],
         [{ warehouse_id: hn, quantity: '5' }, { warehouse_id: hcm, quantity: 3 }],

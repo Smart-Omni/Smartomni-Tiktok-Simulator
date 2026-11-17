@@ -11,8 +11,8 @@ import { TiktokFaultFilter } from './tiktok-fault.filter';
 /** Main / secondary error codes. These two numbers are the EXAMPLE values printed in the official OAS; their meaning is unverified. */
 const MAIN_ERROR = 12052990;
 const EXTRA_ERROR = 12052097;
-/** OAS: "Valid range: [1, 99,999]". */
-const MIN_QUANTITY = 1;
+/** Simulator accepts zero stock; the current Partner Center quantity bounds are inconsistent. */
+const MIN_QUANTITY = 0;
 const MAX_QUANTITY = 99_999;
 const MAX_SKUS_PER_REQUEST = 100;
 const BLOCKED_PRODUCT_STATUSES = new Set(['FREEZE', 'DELETED']);
