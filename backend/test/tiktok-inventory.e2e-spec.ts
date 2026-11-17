@@ -53,6 +53,20 @@ describe('Phase 06: Update Inventory (absolute quantities), faults, change log',
     http.post('/test-admin/faults').set(admin).send({ shopId: shopAId, target: 'API', kind, pathMatch: '/product/202309/products/', remaining, params }).expect(201);
 
   describe('inventory webhook', () => {
+    it('queues Seller edit, checkout and cancellation snapshots with warehouse totals', async () => {
+      const appRow = await prisma.app.findFirstOrThrow();
+      await prisma.webhookSubscription.create({ data: { shopId: shopAId, appId: appRow.id, eventType: 'INVENTORY_CHANGED_BY_SHOP', address: 'https://example.test/webhooks', createdAt: new Date(), updatedAt: new Date() } });
+      const seller = await t.sellerSession(0);
+      const sku = await prisma.sku.findFirstOrThrow({ where: { shopId: shopAId, externalId: WHITE_M } });
+      await http.patch(`/demo/shops/${seller.shopId}/catalog/skus/${sku.id}`).set('x-demo-session', seller.token).send({ stock: { [hn]: 8 } }).expect(200);
+      const buyer = await t.buyerSession(0);
+      const order = await t.checkout(buyer, [{ skuId: WHITE_M, quantity: 2 }], 'inventory-webhook-order').expect(201);
+      await http.post(`/demo/shops/${buyer.shopId}/orders/${order.body.order.id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'test' }).expect(201);
+      const jobs = await prisma.webhookJob.findMany({ where: { shopId: shopAId, topic: 'INVENTORY_CHANGED_BY_SHOP' }, orderBy: { createdAt: 'asc' } });
+      expect(jobs).toHaveLength(3);
+      expect(jobs.map((j) => (j.payload as any).data.change_detail[0].trigger_source)).toEqual(['SELLER', 'ORDER_CREATED', 'ORDER_CANCELLED']);
+      expect(jobs.map((j) => (j.payload as any).data.quantity_snapshot_after_change.available_quantity)).toEqual([33, 31, 33]);
+    });
     it('queues one post-change snapshot for a changed SKU and none for an absolute retry', async () => {
       const { accessToken } = await t.connect(0);
       const appRow = await prisma.app.findFirstOrThrow();

@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { TiktokFault, SIMULATOR_FAULT_CODE } from '../common/tiktok-fault';
 import { FaultService, INVENTORY_FAULT_KINDS } from '../faults/fault.service';
 import { logInventory } from '../inventory/inventory-log';
+import { emitInventoryChanged } from '../inventory/inventory-webhook';
 import { SCOPE_INVENTORY_WRITE } from '../oauth/scopes';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessClock } from '../clock/clock';
@@ -203,12 +204,7 @@ export class InventoryController {
       }
       await logInventory(tx, log);
       if (changed) {
-        const warehouses = assigned.map((a) => ({ warehouse_id: a.externalId, available_quantity: item.inventory.find((i) => (i.warehouse_id ?? (assigned.length === 1 ? a.externalId : '')) === a.externalId)!.quantity as number }));
-        await new WebhookEmitter(this.clock, this.faults).emit(tx, shop, 'INVENTORY_CHANGED_BY_SHOP', {
-          product_id: productId, sku_id: skuExternalId, event_id: requestId + ':' + skuExternalId,
-          quantity_snapshot_after_change: { available_quantity: warehouses.reduce((n, w) => n + w.available_quantity, 0), warehouses },
-          change_detail: [{ trigger_source: 'OPEN_API', occurrence_time: Math.floor(this.clock.now().getTime() / 1000) }],
-        }, requestId);
+        await emitInventoryChanged(tx, new WebhookEmitter(this.clock, this.faults), this.clock, shop, { id: skuId, externalId: skuExternalId, productExternalId: productId }, 'OPEN_API', requestId);
       }
     });
   }
