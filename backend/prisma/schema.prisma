@@ -218,6 +218,15 @@ model Product {
   // OAS values: DRAFT PENDING FAILED ACTIVATE SELLER_DEACTIVATED PLATFORM_DEACTIVATED FREEZE DELETED. DELETED is a soft delete.
   status       String   @default("ACTIVATE")
   isNotForSale Boolean  @default(false)
+  // Listing fields stored from Create/Edit Product (all optional in the OAS body).
+  categoryId        String?
+  brandId           String?
+  mainImages        Json     @default("[]")
+  packageWeight     Json?
+  packageDimensions Json?
+  productAttributes Json     @default("[]")
+  isCodAllowed      Boolean  @default(false)
+  externalProductId String?
   // Immutable, monotonic listing order. Backs the opaque page_token (keyset), so rows added during an import are never skipped or repeated.
   seq          Int      @unique @default(autoincrement())
   skus         Sku[]

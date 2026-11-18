@@ -23929,7 +23929,22 @@
                       "type": "object",
                       "properties": {
                         "check_result": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "PASS | FAILED"
+                        },
+                        "fail_reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
                         }
                       }
                     }

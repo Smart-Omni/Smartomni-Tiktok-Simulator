@@ -59,7 +59,12 @@ export function productDetail(p: ProductWithSkus, publicBaseUrl: string) {
     is_not_for_sale: p.isNotForSale,
     create_time: toSeconds(p.createdAt),
     update_time: toSeconds(p.updatedAt),
-    main_images: [{ uri: `sim/product/${p.id}`, urls: [imageUrl], thumb_urls: [imageUrl], width: 600, height: 600 }],
+    main_images: Array.isArray(p.mainImages) && p.mainImages.length > 0 ? p.mainImages : [{ uri: `sim/product/${p.id}`, urls: [imageUrl], thumb_urls: [imageUrl], width: 600, height: 600 }],
+    ...(p.packageWeight ? { package_weight: p.packageWeight } : {}),
+    ...(p.packageDimensions ? { package_dimensions: p.packageDimensions } : {}),
+    product_attributes: p.productAttributes,
+    is_cod_allowed: p.isCodAllowed,
+    ...(p.externalProductId ? { external_product_id: p.externalProductId } : {}),
     skus: p.skus.map((s) => ({
       ...skuItem(s),
       sales_attributes: [{ id: `attr-${p.externalId}`, name: s.attributeName, value_id: `val-${s.externalId}`, value_name: s.name }],

@@ -114,6 +114,93 @@ const BRANDS_DATA = [
   { id: 'brand_005', name: 'Samsung', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
 ];
 
+/** Demo requirements (DECISIONS DA-6): leaf 100002 requires attr_material, leaf 200002 requires package dimensions. */
+const REQUIRED_ATTRS: Record<string, string[]> = { '100002': ['attr_material'] };
+const DIMENSIONS_REQUIRED = new Set(['200002']);
+
+function attributesFor(categoryId: string) {
+  const req = REQUIRED_ATTRS[categoryId] ?? [];
+  return ATTRIBUTES_DATA.map((a) => ({ ...a, is_requried: req.includes(a.id) }));
+}
+
+export interface ListingFields {
+  categoryId?: string;
+  brandId?: string;
+  mainImages?: Prisma.InputJsonValue;
+  packageWeight?: Prisma.InputJsonValue;
+  packageDimensions?: Prisma.InputJsonValue;
+  productAttributes?: Prisma.InputJsonValue;
+  isCodAllowed?: boolean;
+  externalProductId?: string;
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Shared by Create Product, Edit Product and Listing Check. Fields are optional (the OAS declares no required body
+ * fields), so they are only checked when sent. `existing` supplies stored values for Edit.
+ */
+function checkListing(body: Record<string, unknown>, existing: ListingFields = {}): { reasons: string[]; fields: ListingFields } {
+  const reasons: string[] = [];
+  const fields: ListingFields = {};
+  if (body.category_id !== undefined) {
+    if (typeof body.category_id !== 'string') reasons.push('category_id must be a string');
+    else if (!CATEGORIES_DATA.find((c) => c.id === body.category_id && c.is_leaf)) reasons.push('category_id must be an existing leaf category');
+    else fields.categoryId = body.category_id;
+  }
+  if (body.brand_id !== undefined) {
+    if (typeof body.brand_id !== 'string' || !BRANDS_DATA.some((b) => b.id === body.brand_id)) reasons.push('brand_id does not exist');
+    else fields.brandId = body.brand_id;
+  }
+  if (body.main_images !== undefined) {
+    if (!Array.isArray(body.main_images) || body.main_images.length > 9 || body.main_images.some((i) => !isObj(i) || typeof i.uri !== 'string')) reasons.push('main_images must be an array of up to 9 objects with a uri');
+    else fields.mainImages = body.main_images as Prisma.InputJsonValue;
+  }
+  if (body.package_weight !== undefined) {
+    if (!isObj(body.package_weight) || Number.isNaN(Number(body.package_weight.value)) || Number(body.package_weight.value) <= 0) reasons.push('package_weight.value must be a positive number');
+    else fields.packageWeight = body.package_weight as Prisma.InputJsonValue;
+  }
+  if (body.package_dimensions !== undefined) {
+    const d = body.package_dimensions;
+    if (!isObj(d) || ['length', 'width', 'height'].some((k) => Number.isNaN(Number(d[k])) || Number(d[k]) <= 0)) reasons.push('package_dimensions length, width and height must be positive numbers');
+    else fields.packageDimensions = d as Prisma.InputJsonValue;
+  }
+  if (body.product_attributes !== undefined) {
+    if (!Array.isArray(body.product_attributes) || body.product_attributes.some((a) => !isObj(a) || typeof a.id !== 'string')) reasons.push('product_attributes must be an array of objects with an id');
+    else fields.productAttributes = body.product_attributes as Prisma.InputJsonValue;
+  }
+  if (body.is_cod_allowed !== undefined) {
+    if (typeof body.is_cod_allowed !== 'boolean') reasons.push('is_cod_allowed must be a boolean');
+    else fields.isCodAllowed = body.is_cod_allowed;
+  }
+  if (body.external_product_id !== undefined) {
+    if (typeof body.external_product_id !== 'string' || body.external_product_id.length > 200) reasons.push('external_product_id must be a string up to 200 chars');
+    else fields.externalProductId = body.external_product_id;
+  }
+  if (reasons.length === 0) {
+    const eff = { ...existing, ...fields };
+    if (eff.categoryId) {
+      const sent = new Set(((eff.productAttributes as Array<{ id: string }> | undefined) ?? []).map((a) => a.id));
+      for (const id of REQUIRED_ATTRS[eff.categoryId] ?? []) if (!sent.has(id)) reasons.push(`required attribute ${id} is missing from product_attributes`);
+      if (DIMENSIONS_REQUIRED.has(eff.categoryId) && !eff.packageDimensions) reasons.push('package_dimensions is required for this category');
+      if (eff.isCodAllowed && !rulesFor(eff.categoryId).cod.is_supported) reasons.push('COD is not supported in this category');
+    }
+  }
+  return { reasons, fields };
+}
+
+function rulesFor(categoryId: string) {
+  return {
+    cod: { is_supported: true },
+    package_dimension: { is_required: DIMENSIONS_REQUIRED.has(categoryId) },
+    size_chart: { is_required: false, is_supported: ['100002', '100003', '100004'].includes(categoryId) },
+    product_certifications: [],
+    epr: { is_required: false },
+    fees: [],
+    allowed_special_product_types: [],
+  };
+}
+
 function leafCategory(categoryId: string): void {
   const c = CATEGORIES_DATA.find((x) => x.id === categoryId);
   if (!c || !c.is_leaf) throw new TiktokFault(400, 'invalid_input', 'category_id must be an existing leaf category');
@@ -239,7 +326,14 @@ export class ProductsController {
       include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
     });
     if (!product) throw new TiktokFault(404, 'product_not_found', 'product does not exist in this shop');
-    return this.envelope(req, productDetail(product as ProductWithSkus, this.config.publicApiBaseUrl));
+    const chain: typeof CATEGORIES_DATA = [];
+    for (let c = CATEGORIES_DATA.find((x) => x.id === product.categoryId); c; c = CATEGORIES_DATA.find((x) => x.id === c!.parent_id)) chain.unshift(c);
+    const brand = BRANDS_DATA.find((b) => b.id === product.brandId);
+    return this.envelope(req, {
+      ...productDetail(product as ProductWithSkus, this.config.publicApiBaseUrl),
+      category_chains: chain.map((c) => ({ id: c.id, parent_id: c.parent_id, local_name: c.local_name, is_leaf: c.is_leaf })),
+      ...(brand ? { brand: { id: brand.id, name: brand.name } } : {}),
+    });
   }
 
   /** POST /product/202309/products: Create product */
@@ -259,6 +353,8 @@ export class ProductsController {
     if (!skus) {
       throw new TiktokFault(400, 'invalid_input', 'skus must contain at least 1 SKU');
     }
+    const listing = checkListing(body);
+    if (listing.reasons.length) throw new TiktokFault(400, 'invalid_input', listing.reasons.join('; '));
 
     const defaultWarehouse = await this.prisma.warehouse.findFirst({ where: { shopId: shop.id } });
     const now = this.clock.now();
@@ -276,6 +372,7 @@ export class ProductsController {
           status: 'ACTIVATE',
           createdAt: now,
           updatedAt: now,
+          ...listing.fields,
         },
       });
 
@@ -375,11 +472,18 @@ export class ProductsController {
     const title = typeof body.title === 'string' && body.title.trim().length > 0 ? body.title.trim() : product.title;
     const description = typeof body.description === 'string' ? body.description : product.description;
     const isNotForSale = typeof body.is_not_for_sale === 'boolean' ? body.is_not_for_sale : product.isNotForSale;
+    const listing = checkListing(body, {
+      categoryId: product.categoryId ?? undefined,
+      packageDimensions: (product.packageDimensions ?? undefined) as Prisma.InputJsonValue | undefined,
+      productAttributes: product.productAttributes as Prisma.InputJsonValue,
+      isCodAllowed: product.isCodAllowed,
+    });
+    if (listing.reasons.length) throw new TiktokFault(400, 'invalid_input', listing.reasons.join('; '));
 
     await this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id: product.id },
-        data: { title, description, isNotForSale, updatedAt: now },
+        data: { title, description, isNotForSale, updatedAt: now, ...listing.fields },
       });
 
       // Update SKUs if provided
@@ -505,11 +609,12 @@ export class ProductsController {
     if (skus.length === 0) {
       failedReasons.push('At least one SKU is required');
     }
+    failedReasons.push(...checkListing(body).reasons);
 
-    const result = failedReasons.length === 0 ? 'PASS' : 'FAIL';
+    // OAS: check_result PASS | FAILED, fail_reasons[{code, message}]. Codes are undocumented, so -1 is a simulator sentinel (DA-6).
     return this.envelope(req, {
-      check_result: result,
-      failed_reasons: failedReasons,
+      check_result: failedReasons.length === 0 ? 'PASS' : 'FAILED',
+      fail_reasons: failedReasons.map((message) => ({ code: -1, message })),
     });
   }
 
@@ -537,7 +642,7 @@ export class ProductsController {
   async categoryAttributes(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
     checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
     leafCategory(categoryId);
-    return this.envelope(req, { attributes: ATTRIBUTES_DATA });
+    return this.envelope(req, { attributes: attributesFor(categoryId) });
   }
 
   /** GET /product/202309/categories/{category_id}/rules */
@@ -547,15 +652,7 @@ export class ProductsController {
   async categoryRules(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
     checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
     leafCategory(categoryId);
-    return this.envelope(req, {
-      cod: { is_supported: true },
-      package_dimension: { is_required: false },
-      size_chart: { is_required: false, is_supported: ['100002', '100003', '100004'].includes(categoryId) },
-      product_certifications: [],
-      epr: { is_required: false },
-      fees: [],
-      allowed_special_product_types: [],
-    });
+    return this.envelope(req, rulesFor(categoryId));
   }
 
   /** Old non-OAS path, answers 501 only (DECISIONS DA-3). */

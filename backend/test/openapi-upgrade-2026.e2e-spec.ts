@@ -283,8 +283,8 @@ describe('TikTok OpenAPI 202602 / 202309 / 202606 Upgrade & Dispute State Machin
           body: {
             title: 'Sản phẩm thử nghiệm Mộc Lan',
             description: 'Mô tả chi tiết sản phẩm thủ công mỹ nghệ',
-            category_id: 'cat-vn-handicraft-01',
-            brand_id: 'brand-moc-lan',
+            category_id: '300001',
+            brand_id: 'brand_003',
             skus: [{ outer_sku_id: 'SKU-TEST-001', price: { amount: '150000', currency: 'VND' }, inventory: [{ quantity: 10 }] }],
           },
         })

@@ -301,7 +301,7 @@ export const paths: PathsFragment = {
       handler: 'ProductsController.listingCheck',
       security: ['TiktokSignedApi'],
       errorShape: 'tiktok',
-      ok: { description: 'Listing check result', schema: envelope(obj({ check_result: str() })) },
+      ok: { description: 'Listing check result', schema: envelope(obj({ check_result: str('PASS | FAILED'), fail_reasons: arr(obj({ code: int(), message: str() })) })) },
     }),
   },
 
