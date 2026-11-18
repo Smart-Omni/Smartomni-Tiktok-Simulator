@@ -48,6 +48,9 @@ const RETURN_STATUSES = new Set<string>(Object.values(RETURN));
 const CANCEL_STATUSES = new Set<string>(Object.values(CANCEL));
 const ELIGIBILITY_TYPES = ['CANCEL', 'REFUND', 'RETURN_AND_REFUND', 'EXCHANGE', 'REPLACEMENT'];
 const RETURN_APPROVE_FIELDS = new Set(['decision', 'buyer_keep_item', 'partial_refund']);
+const CREATE_RETURN_FIELDS = new Set(['currency', 'handover_method', 'order_id', 'order_line_item_ids', 'refund_total', 'return_reason', 'return_type', 'shipment_type', 'skus']);
+const CALCULATE_FIELDS = new Set(['handover_method', 'order_id', 'order_line_item_ids', 'reason_name', 'request_type', 'shipment_type', 'skus']);
+const CANCEL_ORDER_FIELDS = new Set(['cancel_reason', 'order_id', 'order_line_item_ids', 'skus']);
 const REJECT_FIELDS = new Set(['decision', 'reject_reason', 'comment', 'images']);
 
 interface Cursor { k: number; s: number; f: SortField; o: 'ASC' | 'DESC' }
@@ -96,6 +99,55 @@ export class AftersaleController {
   ) {}
 
   // ---- returns --------------------------------------------------------------------------------------------------
+
+  /** POST /return_refund/202309/returns: Create Return on behalf of the buyer. */
+  @Post('return_refund/202309/returns')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_AFTERSALE_WRITE)
+  async createReturn(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = this.body(req, CREATE_RETURN_FIELDS);
+    const returnType = this.requiredString(body.return_type, 'return_type');
+    if (returnType !== 'REFUND' && returnType !== 'RETURN_AND_REFUND') throw new TiktokFault(400, 'invalid_input', 'return_type must be REFUND or RETURN_AND_REFUND');
+    if (body.currency !== undefined && body.currency !== null && body.currency !== 'VND') throw new TiktokFault(400, 'invalid_input', 'currency must equal the order currency (VND)');
+    const row = await this.run(() =>
+      this.aftersale.createReturnForBuyer(
+        shop.id,
+        this.requiredString(body.order_id, 'order_id'),
+        { ...this.units(body), returnType, reason: this.requiredString(body.return_reason, 'return_reason'), refundTotal: this.amount(body.refund_total, 'refund_total'), idempotencyKey: this.idempotencyKey(req) },
+        req.requestId,
+      ),
+    );
+    return this.envelope(req, { return_id: row.externalId, return_status: row.status });
+  }
+
+  /** POST /return_refund/202309/refunds/calculate */
+  @Post('return_refund/202309/refunds/calculate')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_AFTERSALE_READ)
+  async calculateRefund(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = this.body(req, CALCULATE_FIELDS);
+    const requestType = this.requiredString(body.request_type, 'request_type');
+    if (!['CANCEL', 'REFUND', 'RETURN_AND_REFUND'].includes(requestType)) throw new TiktokFault(400, 'invalid_input', 'request_type must be CANCEL, REFUND or RETURN_AND_REFUND');
+    const amount = await this.run(() => this.aftersale.calculateRefund(shop.id, this.requiredString(body.order_id, 'order_id'), { requestType, ...this.units(body) }));
+    return this.envelope(req, { order_refund_amount: amount });
+  }
+
+  /** POST /return_refund/202309/cancellations: Seller Cancel Order. */
+  @Post('return_refund/202309/cancellations')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_AFTERSALE_WRITE)
+  async sellerCancel(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = this.body(req, CANCEL_ORDER_FIELDS);
+    const units = this.units(body);
+    const row = await this.run(() => this.aftersale.sellerCancel(shop.id, this.requiredString(body.order_id, 'order_id'), this.requiredString(body.cancel_reason, 'cancel_reason'), units.lineIds, req.requestId));
+    return this.envelope(req, { cancel_id: row.externalId, cancel_status: row.status });
+  }
 
   @Post('return_refund/202602/returns/search')
   @HttpCode(200)
@@ -306,6 +358,28 @@ export class AftersaleController {
       if (!allowed.has(k)) throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
     }
     return body;
+  }
+
+  /** order_line_item_ids and skus[{sku_id, quantity}] from a body. */
+  private units(body: Record<string, unknown>): { lineIds?: string[]; items?: { skuId: string; quantity: number }[] } {
+    const lineIds = stringList(body.order_line_item_ids, 'order_line_item_ids');
+    let items: { skuId: string; quantity: number }[] | undefined;
+    if (body.skus !== undefined && body.skus !== null) {
+      if (!Array.isArray(body.skus) || body.skus.length > 100) throw new TiktokFault(400, 'invalid_input', 'skus must be an array of up to 100 items');
+      items = body.skus.map((x: unknown) => {
+        const o = x as { sku_id?: unknown; quantity?: unknown };
+        if (typeof o?.sku_id !== 'string' || typeof o.quantity !== 'number') throw new TiktokFault(400, 'invalid_input', 'each skus item needs sku_id (string) and quantity (integer)');
+        return { skuId: o.sku_id, quantity: o.quantity };
+      });
+    }
+    return { ...(lineIds ? { lineIds } : {}), ...(items ? { items } : {}) };
+  }
+
+  /** Money in the OAS is a string; VND has no minor units, so it must be a positive integer. */
+  private amount(v: unknown, field: string): number | undefined {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v !== 'string' || !/^[1-9][0-9]{0,11}$/.test(v)) throw new TiktokFault(400, 'invalid_input', `${field} must be a positive integer string (VND)`);
+    return Number(v);
   }
 
   private optionalString(v: unknown, field: string): string | undefined {

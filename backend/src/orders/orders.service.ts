@@ -37,6 +37,8 @@ export interface TransitionContext {
   actor: Actor;
   now: Date;
   requestId?: string;
+  /** Seller Cancel Order: write the aftersale record even when the order was never paid or shipped-ready. */
+  forceRecord?: boolean;
 }
 export type TransitionListener = (ctx: TransitionContext) => Promise<void>;
 
@@ -289,7 +291,7 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
     orderId: string,
     to: OrderStatus,
     actor: Actor,
-    opts: { note?: string; requestId?: string; cancelReason?: string; initiator?: string; patch?: Prisma.OrderUncheckedUpdateManyInput } = {},
+    opts: { note?: string; requestId?: string; cancelReason?: string; initiator?: string; forceRecord?: boolean; patch?: Prisma.OrderUncheckedUpdateManyInput } = {},
   ): Promise<OrderRow> {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
@@ -321,7 +323,7 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
       const updated = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
       const shop = await tx.shop.findUniqueOrThrow({ where: { id: current.shopId } });
       await this.emitter.emit(tx, shop, 'ORDER_STATUS_CHANGE', this.eventData(updated), opts.requestId);
-      for (const listener of this.listeners) await listener({ tx, shop, before: current, after: updated, to, actor, now, requestId: opts.requestId });
+      for (const listener of this.listeners) await listener({ tx, shop, before: current, after: updated, to, actor, now, requestId: opts.requestId, forceRecord: opts.forceRecord });
       return updated;
     }, TX_OPTIONS);
   }

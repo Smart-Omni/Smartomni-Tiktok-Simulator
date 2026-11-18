@@ -758,6 +758,8 @@ model AftersaleRequest {
   returnTrackingNumber String?
   arbitrationStatus    String            @default("NO_ARBITRATION")
   sellerProposedReturnType String?
+  // Create Return idempotency: a repeated key returns the same return_id. NULLs are not unique-constrained.
+  idempotencyKey       String?
   currency             String            @default("VND")
   refundSubtotal       Int
   refundShipping       Int               @default(0)
@@ -768,6 +770,7 @@ model AftersaleRequest {
   records              AftersaleRecord[]
 
   @@unique([shopId, externalId])
+  @@unique([shopId, idempotencyKey])
   @@index([shopId, seq])
   @@index([orderId])
 }

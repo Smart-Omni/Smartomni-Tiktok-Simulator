@@ -8283,6 +8283,536 @@
         }
       }
     },
+    "/return_refund/202309/cancellations": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Seller Cancel Order (202309)",
+        "description": "Cancels a whole order on behalf of the seller. Allowed in UNPAID, ON_HOLD and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.\n\nHandler: `AftersaleController.sellerCancel`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
+        "operationId": "AftersaleController_sellerCancel",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cancel_id": {
+                          "type": "string"
+                        },
+                        "cancel_status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "aftersale_not_found / order not in this shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "cancel_reason": {
+                    "type": "string"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202309/returns": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Create Return (202309)",
+        "description": "Creates a return on behalf of the buyer (role SELLER) for a DELIVERED/COMPLETED order in the return window. `idempotency_key` query: a repeat returns the same return_id. refund_total must not exceed the refundable amount.\n\nHandler: `AftersaleController.createReturn`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
+        "operationId": "AftersaleController_createReturn",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "return_id": {
+                          "type": "string"
+                        },
+                        "return_status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "order not in this shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "in": "query",
+            "required": false,
+            "description": "1-100 characters.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "return_type": {
+                    "type": "string",
+                    "description": "REFUND | RETURN_AND_REFUND"
+                  },
+                  "return_reason": {
+                    "type": "string"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "refund_total": {
+                    "type": "string",
+                    "description": "VND integer string"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "VND"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202309/refunds/calculate": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Calculate Refund (202309)",
+        "description": "Pure read: refund_subtotal = sum of what was paid per free unit; shipping refunded for CANCEL or the whole order; tax 0 (VN). Amounts are strings.\n\nHandler: `AftersaleController.calculateRefund`.\n\nRequired scope (simulator placeholder): `sim.aftersale.read`.",
+        "operationId": "AftersaleController_calculateRefund",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order_refund_amount": {
+                          "type": "object",
+                          "properties": {
+                            "currency": {
+                              "type": "string"
+                            },
+                            "refund_subtotal": {
+                              "type": "string"
+                            },
+                            "refund_shipping_fee": {
+                              "type": "string"
+                            },
+                            "refund_tax": {
+                              "type": "string"
+                            },
+                            "refund_total": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "request_type": {
+                    "type": "string",
+                    "description": "CANCEL | REFUND | RETURN_AND_REFUND"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/demo/identities": {
       "get": {
         "tags": [
