@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, HttpCode, Inject, NotFoundException, Param, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
 import { TiktokFault } from '../common/tiktok-fault';
-import { DOC_TYPES, DocType, FulfillmentService } from '../fulfillment/fulfillment.service';
+import { BusinessClock } from '../clock/clock';
+import { DELIVERY_OPTIONS, DOC_TYPES, DocType, FulfillmentService } from '../fulfillment/fulfillment.service';
 import { OrderRuleError } from '../orders/orders.service';
 import { SCOPE_FULFILLMENT_READ, SCOPE_FULFILLMENT_WRITE } from '../oauth/scopes';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +27,7 @@ export class FulfillmentController {
   constructor(
     @Inject(FulfillmentService) private readonly fulfillment: FulfillmentService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(BusinessClock) private readonly clock: BusinessClock,
   ) {}
 
   @Get('fulfillment/202309/orders/:orderId/tracking')
@@ -228,6 +230,103 @@ export class FulfillmentController {
       throw e;
     }
     return this.envelope(req, {});
+  }
+
+  /** GET .../packages/{id}/handover_time_slots: three pickup days (09:00-12:00 Vietnam time, UTC+7) after today on the BUSINESS clock. */
+  @Get('fulfillment/202309/packages/:packageId/handover_time_slots')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_READ)
+  async handoverSlots(@Req() req: TiktokRequest, @Param('packageId') packageId: string) {
+    const shop = req.tiktok!.shop;
+    const pkg = await this.guarded(() => this.fulfillment.packageOf(shop.id, packageId), 'package_not_found', 'package does not exist in this shop');
+    if (pkg.status === 'COMPLETED' || pkg.status === 'CANCELLED') throw new TiktokFault(400, 'invalid_input', `a ${pkg.status} package has no handover slots`);
+    const vn = new Date(this.clock.now().getTime() + 7 * 3600_000);
+    const day = (k: number) => Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate() + k);
+    const slots = [1, 2, 3].map((k) => ({ avaliable: true, start_time: (day(k) + 2 * 3600_000) / 1000, end_time: (day(k) + 5 * 3600_000) / 1000 }));
+    return this.envelope(req, { can_pickup: true, can_drop_off: true, can_van_collection: false, pickup_slots: slots });
+  }
+
+  /** POST .../packages/{id}/shipping_info/update */
+  @Post('fulfillment/202309/packages/:packageId/shipping_info/update')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_WRITE)
+  async updateShippingInfo(@Req() req: TiktokRequest, @Param('packageId') packageId: string) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body)) throw new TiktokFault(400, 'invalid_input', 'request body must be a JSON object');
+    for (const k of Object.keys(body)) if (k !== 'tracking_number' && k !== 'shipping_provider_id') throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
+    if (typeof body.tracking_number !== 'string' || !/^[A-Za-z0-9-]{1,50}$/.test(body.tracking_number)) throw new TiktokFault(400, 'invalid_input', 'tracking_number is required (1-50 letters, digits or dashes)');
+    if (typeof body.shipping_provider_id !== 'string' || body.shipping_provider_id.length === 0) throw new TiktokFault(400, 'invalid_input', 'shipping_provider_id is required');
+    await this.guarded(() => this.fulfillment.packageOf(shop.id, packageId), 'package_not_found', 'package does not exist in this shop');
+    try {
+      await this.fulfillment.updateShippingInfo(shop.id, packageId, body.tracking_number, body.shipping_provider_id, req.requestId);
+    } catch (e) {
+      if (e instanceof OrderRuleError) throw new TiktokFault(400, 'invalid_input', `${e.code}: ${e.message}`);
+      throw e;
+    }
+    return this.envelope(req, {});
+  }
+
+  /** POST /fulfillment/202309/packages/deliver: failures are listed per package and never block the others. */
+  @Post('fulfillment/202309/packages/deliver')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_WRITE)
+  async deliver(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { packages?: unknown };
+    if (!Array.isArray(body.packages) || body.packages.length === 0 || body.packages.length > 50) throw new TiktokFault(400, 'invalid_input', 'packages must be an array of 1-50 items');
+    for (const raw of body.packages as Array<Record<string, unknown>>) {
+      if (typeof raw?.id !== 'string' || raw.id.length === 0) throw new TiktokFault(400, 'invalid_input', 'every package needs an id');
+      if (raw.delivery_type !== 'DELIVERY_SUCCESS' && raw.delivery_type !== 'DELIVERY_FAILED') throw new TiktokFault(400, 'invalid_input', 'delivery_type must be DELIVERY_SUCCESS or DELIVERY_FAILED');
+      if (raw.file_type !== undefined && raw.file_type !== 'IMG' && raw.file_type !== 'PDF') throw new TiktokFault(400, 'invalid_input', 'file_type must be IMG or PDF');
+      if (raw.delivery_type === 'DELIVERY_FAILED' && (typeof raw.fail_delivery_reason !== 'string' || raw.fail_delivery_reason.length === 0)) throw new TiktokFault(400, 'invalid_input', 'fail_delivery_reason is required for DELIVERY_FAILED');
+    }
+    const errors: Array<{ code: number; message: string; detail: { package_id: string } }> = [];
+    for (const raw of body.packages as Array<Record<string, unknown>>) {
+      const id = raw.id as string;
+      try {
+        await this.fulfillment.reportDelivery(shop.id, id, raw.delivery_type as 'DELIVERY_SUCCESS' | 'DELIVERY_FAILED', raw.fail_delivery_reason as string | undefined, req.requestId);
+      } catch (e) {
+        const message = e instanceof NotFoundException ? 'package does not exist in this shop' : e instanceof OrderRuleError ? `${e.code}: ${e.message}` : null;
+        if (message === null) throw e;
+        errors.push({ code: -1, message, detail: { package_id: id } });
+      }
+    }
+    return this.envelope(req, { errors });
+  }
+
+  /** GET /logistics/202309/warehouses/{id}/delivery_options: static simulator options (DECISIONS DA-11). */
+  @Get('logistics/202309/warehouses/:warehouseId/delivery_options')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_READ)
+  async deliveryOptions(@Req() req: TiktokRequest, @Param('warehouseId') warehouseId: string) {
+    const shop = req.tiktok!.shop;
+    const q = parseRawQuery(req.originalUrl)!.query;
+    if (q.scope !== undefined && q.scope !== 'WAREHOUSE' && q.scope !== 'ALL') throw new TiktokFault(400, 'invalid_input', 'scope must be WAREHOUSE or ALL');
+    const wh = await this.prisma.warehouse.findUnique({ where: { shopId_externalId: { shopId: shop.id, externalId: warehouseId } } });
+    if (!wh) throw new TiktokFault(404, 'warehouse_not_found', 'warehouse does not exist in this shop');
+    return this.envelope(req, {
+      delivery_options: DELIVERY_OPTIONS.map((o) => ({
+        id: o.id,
+        name: o.name,
+        type: o.type,
+        description: o.description,
+        platform: ['TIKTOK_SHOP'],
+        weight_limit: { min_weight: 0, max_weight: 30000, unit: 'GRAM' },
+        dimension_limit: { max_length: 100, max_width: 100, max_height: 100, unit: 'CENTIMETER' },
+      })),
+    });
+  }
+
+  @Get('logistics/202309/delivery_options/:deliveryOptionId/shipping_providers')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_READ)
+  deliveryProviders(@Req() req: TiktokRequest, @Param('deliveryOptionId') deliveryOptionId: string) {
+    const option = DELIVERY_OPTIONS.find((o) => o.id === deliveryOptionId);
+    if (!option) throw new TiktokFault(404, 'delivery_option_not_found', 'delivery option does not exist');
+    return this.envelope(req, { shipping_providers: option.providers.map((p) => ({ id: p.id, name: p.name })) });
   }
 
   private async guarded<T>(fn: () => Promise<T>, kind: 'order_not_found' | 'package_not_found', message: string): Promise<T> {

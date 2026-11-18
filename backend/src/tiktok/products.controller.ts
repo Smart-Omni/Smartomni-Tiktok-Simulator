@@ -460,6 +460,23 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_WRITE)
   async editProduct(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    return this.applyEdit(req, productId);
+  }
+
+  /** POST /product/202509/products/{id}/partial_edit: Edit already merges onto the stored fields, so a partial edit shares it (DECISIONS DA-11). */
+  @Post('product/202509/products/:productId/partial_edit')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async partialEditProduct(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length === 0) throw new TiktokFault(400, 'invalid_input', 'send at least one field to edit');
+    const res = (await this.applyEdit(req, productId)) as { data: { product_id: string } };
+    const product = await this.prisma.product.findUniqueOrThrow({ where: { shopId_externalId: { shopId: req.tiktok!.shop.id, externalId: productId } }, select: { status: true } });
+    return this.envelope(req, { ...res.data, audit: { status: product.status === 'ACTIVATE' ? 'APPROVED' : 'NONE' } });
+  }
+
+  private async applyEdit(req: TiktokRequest, productId: string) {
     const shop = req.tiktok!.shop;
     const body = (req.body ?? {}) as Record<string, unknown>;
 

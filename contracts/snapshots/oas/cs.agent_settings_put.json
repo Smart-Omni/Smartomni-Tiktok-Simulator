@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/customer_service.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "27953e9ca552d7ebcd0dba36a2ea085e4e3214aae4f96187b4ca485402a87154",
+    "candidatesInBundle": [
+      {
+        "method": "PUT",
+        "path": "/customer_service/202309/agents/settings",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "PUT",
+  "path": "/customer_service/202309/agents/settings",
+  "operation": {
+    "tags": [
+      "customer_service_v202309"
+    ],
+    "summary": "UpdateAgentSettings",
+    "description": "Use this API to update agent status on behalf of the agent. Agents can set whether they can accept auto assigned chats. Before using API, we recommend setting can_accept_chat to true, in order to accept chats.  Note:  1. The current API version can only update settings on behalf of the shop, or the owner account holder on Seller Center. The owner in this case is acting as the customer service agent. In the future, we plan to make this API available to subaccount holders (who has customer service role) in Seller Center.  2. This API is to allow the agent to update their own setting.  See more information in API overview ",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "can_accept_chat": {
+                "description": "If true, the agent will receive auto-assigned chats. The agent can manually select chats to respond. \nIf false, the agent will receive manually assigned chats only.\nWhen using IM API, we recommend setting this field to true.",
+                "example": true,
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

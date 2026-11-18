@@ -1,0 +1,164 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/fulfillment.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "a87342b808134cafd6216e882eeabf5e74b39bb1b69566a73c7fba4b61363c98",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/fulfillment/202309/packages/deliver",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/fulfillment/202309/packages/deliver",
+  "operation": {
+    "tags": [
+      "fulfillment_v202309"
+    ],
+    "summary": "UpdatePackageDeliveryStatus",
+    "description": "Use this API to update the delivery status of the package from in transit status. Please note that only sellers utilizing the SOF( Seller Own Fleet) capability can use this API to update the package status to 'DELIVERED'. This API is only available for the SEA region.",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "packages": {
+                "description": "The return list of packages.",
+                "items": {
+                  "properties": {
+                    "delivery_type": {
+                      "description": "Delivery status of the package.\nPossible values:\n- `DELIVERY_SUCCESS`: Package has been successfully delivered.\n- `DELIVERY_FAILED`: Package delivery has been unsuccessful.\n- `UPDATE_POD`: For packages that have been delivered, but you would like to update an attachment.",
+                      "example": "DELIVERY_SUCCESS",
+                      "type": "string"
+                    },
+                    "fail_delivery_reason": {
+                      "description": "Delivery failure reasons.\n\nWhen `delivery_type = DELIVERY_FAILED`, this field is required. For other delivery types, this field is not required.\n\nPossible values:\n- `INVALID_ADDRESS`: The buyer shipping address is invalid.\n- `UNABLE_RECEIVE`: The buyer is currently unable to receive the delivery.\n- `UNABLE_CONTACT_BUYER`: Unable to contact the buyer.\n- `BUYER_REFUSED`: The buyer has refused to receive the product.\n- `DELAY_DELIVERY`: Delay in delivery.\n- `PACKAGE_LOST`: The package is lost.\n- `PACKAGE_DAMAGE`: The package is damaged.\n- `FORCE_MAJEURE`: An unforeseeable event of force majeure has occurred.\n- `OTHER`: Other reason.\n",
+                      "example": "INVALID_ADDRESS",
+                      "type": "string"
+                    },
+                    "file_type": {
+                      "description": "Attachment type:\n- `IMG`\n- `PDF`",
+                      "example": "IMG",
+                      "type": "string"
+                    },
+                    "file_url": {
+                      "description": "Attachment URL.\nThe seller can use the [Upload Delivery File](https://partner.tiktokshop.com/docv2/page/650aa6e04a0bb702c06dcd34?external_id=650aa6e04a0bb702c06dcd34#Back%20To%20Top) and [Upload Delivery Image](https://partner.tiktokshop.com/docv2/page/650aa70d0fcef602bf32772f?external_id=650aa70d0fcef602bf32772f) APIs to generate the URL. The attachment will be used by TikTok Shop to verify the package delivery.",
+                      "example": "https://tiktok.shopcenter.cn/file/CWvBsBZ9mhbMiHtmbZecKshon6f?table=tblTW",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "The package ID.",
+                      "example": "11529598723402",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "errors": {
+                      "description": "Specific return information (returns multiple errors and reasons).",
+                      "items": {
+                        "properties": {
+                          "code": {
+                            "description": "The failure reason code.",
+                            "example": 10007014,
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "detail": {
+                            "description": "Error detail.",
+                            "properties": {
+                              "package_id": {
+                                "description": "Package ID.",
+                                "example": "1231231231231",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "message": {
+                            "description": "Fulfillment failure reason.",
+                            "example": "order not in sof service",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

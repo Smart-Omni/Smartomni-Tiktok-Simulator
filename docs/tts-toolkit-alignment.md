@@ -1,6 +1,6 @@
 # Giải pháp đồng bộ simulator với `@tts-open-toolkit/cli@0.1.7`
 
-> Trạng thái: **đề xuất, chưa triển khai**. Tài liệu này không đổi trạng thái `unverified` của operation nào trong `contracts/manifest.json`.
+> Trạng thái: **đã triển khai (P0, P1, P2, sandbox §2)**, xem DECISIONS DA-1..DA-12. Tài liệu này không đổi trạng thái `unverified` của operation nào trong `contracts/manifest.json`.
 > Nguồn đối chiếu (chỉ đọc, không login, không gọi DevAPI):
 > - OAS đi kèm toolkit: `skills/tts-openapi-guide/references/oas/` (OpenAPI 3.0.0, 405 path, 25 module).
 > - Skill sandbox: `skills/tts-openapi-sandbox-materials/` (SKILL.md + `references/order-material-recipes.md`).

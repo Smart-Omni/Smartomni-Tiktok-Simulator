@@ -163,7 +163,8 @@ export const paths: PathsFragment = {
   '/test-admin/shops': {
     get: op({
       tag: T_DATA, summary: 'List shops with scenarios and counts', handler: 'TestAdminController.shops', security: SEC, errorShape: E,
-      description: 'All shops ordered by name, with their scenarios and row counts. Use `id` as `shopId` in other endpoints.',
+      description: 'All shops ordered by name, with their scenarios and row counts. Use `id` as `shopId` in other endpoints. The optional `region` query keeps only shops of that region code (like the toolkit `sandbox shop list --region-code`).',
+      query: [{ name: 'region', description: 'Region code filter, e.g. VN. Omitted = every shop.', example: 'VN' }],
       ok: {
         description: 'Shops.',
         schema: obj({ items: arr(obj({ id: str(), tiktokShopId: str(), name: str(), region: str(), currency: str(), status: { type: 'string', enum: ['ACTIVE', 'SUSPENDED'] }, activeScenarioId: nullable(str()), scenarios: arr(obj({ id: str(), key: str(), name: str(), description: str() })), counts: obj({ products: int(), buyers: int(), webhookJobs: int() }) })) }, ['items']),
@@ -250,11 +251,11 @@ export const paths: PathsFragment = {
     get: op({
       tag: T_DATA, summary: 'List orders', handler: 'TestAdminController.listOrders', security: SEC, errorShape: E,
       description: 'Newest first (by seq). `status` is used in the query unvalidated; an unknown value simply returns no rows.',
-      query: [shopIdQuery, { name: 'status', description: 'Order status filter', schema: { type: 'string', enum: orderStatuses }, example: 'ON_HOLD' }, limitQuery(50, 200)],
+      query: [shopIdQuery, { name: 'status', description: 'Order status filter', schema: { type: 'string', enum: orderStatuses }, example: 'ON_HOLD' }, limitQuery(50, 200), { name: 'pageSize', description: 'Toolkit-style page size, clamped to [1, 10]; when sent it wins over `limit`.', schema: int(undefined, { minimum: 1, maximum: 10 }), example: 10 }],
       ok: {
         description: 'Orders.',
-        schema: obj({ items: arr(obj({ id: str('Order external id'), rowId: str('Internal row id'), shopId: str(), shopName: str(), buyerName: str(), status: str(), units: int('Number of order lines (one per unit)'), createdAt: dt(), updatedAt: dt(), releaseAt: nullable(dt('When an ON_HOLD order is released')) })) }, ['items']),
-        example: { items: [{ id: '5800000000000001', rowId: 'a0b1c2d3-0000-4000-8000-000000000001', shopId: SHOP_ID, shopName: 'Shop A', buyerName: 'Nguyen Van A', status: 'ON_HOLD', units: 2, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:05.000Z', releaseAt: '2026-10-15T08:05:05.000Z' }] },
+        schema: obj({ items: arr(obj({ id: str('Order external id'), rowId: str('Internal row id'), shopId: str(), shopName: str(), buyerName: str(), status: str(), canonical_status: str('Toolkit canonical state: the status, or CANCEL_PENDING for AWAITING_SHIPMENT with a buyer cancel request'), units: int('Number of order lines (one per unit)'), createdAt: dt(), updatedAt: dt(), releaseAt: nullable(dt('When an ON_HOLD order is released')) })) }, ['items']),
+        example: { items: [{ id: '5800000000000001', rowId: 'a0b1c2d3-0000-4000-8000-000000000001', shopId: SHOP_ID, shopName: 'Shop A', buyerName: 'Nguyen Van A', status: 'ON_HOLD', canonical_status: 'ON_HOLD', units: 2, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:05.000Z', releaseAt: '2026-10-15T08:05:05.000Z' }] },
       },
       errors: { 401: E401 },
     }),
@@ -285,9 +286,27 @@ export const paths: PathsFragment = {
       tag: T_DATA, summary: 'Force an order status transition', handler: 'TestAdminController.transitionOrder', security: SEC, errorShape: E, status: 201,
       description: 'Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to ON_HOLD or CANCELLED; ON_HOLD to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.',
       pathParams: [{ name: 'ref', description: 'Order row id or external id', example: '5800000000000001' }],
-      body: { schema: obj({ to: { type: 'string', enum: orderStatuses }, shopId: str('Disambiguates the order ref across shops', { minLength: 1 }), note: str('Audit note (max 300); default `test console`', { maxLength: 300 }), cancelReason: str('Used when to=CANCELLED (max 300); falls back to note', { maxLength: 300 }) }, ['to']), example: { to: 'AWAITING_SHIPMENT', note: 'skip the hold' } },
-      ok: { description: 'Transition applied (201 Created).', schema: obj({ id: str(), from: str(), status: str(), updatedAt: dt() }, ['id', 'from', 'status', 'updatedAt']), example: { id: '5800000000000001', from: 'ON_HOLD', status: 'AWAITING_SHIPMENT', updatedAt: '2026-10-15T08:06:00.000Z' } },
+      body: { schema: obj({ to: { type: 'string', enum: orderStatuses, description: 'Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, ON_HOLD releases, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false.' }, shopId: str('Disambiguates the order ref across shops', { minLength: 1 }), note: str('Audit note (max 300); default `test console`', { maxLength: 300 }), cancelReason: str('Used when to=CANCELLED (max 300); falls back to note', { maxLength: 300 }) }), example: { to: 'AWAITING_SHIPMENT', note: 'skip the hold' } },
+      ok: { description: 'Transition applied (201 Created).', schema: obj({ id: str(), from: str(), status: str(), before_status: str('Canonical state before'), after_status: str('Canonical state after'), transitioned: bool('false when nothing changed (terminal order)'), updatedAt: dt() }, ['id', 'from', 'status', 'before_status', 'after_status', 'transitioned', 'updatedAt']), example: { id: '5800000000000001', from: 'ON_HOLD', status: 'AWAITING_SHIPMENT', before_status: 'ON_HOLD', after_status: 'AWAITING_SHIPMENT', transitioned: true, updatedAt: '2026-10-15T08:06:00.000Z' } },
       errors: { 400: `${E400V} Also order id ambiguous across shops, or ${ruleError400} Code \`invalid_transition\`, e.g. \`ON_HOLD -> AWAITING_COLLECTION is not allowed (an ON_HOLD order cannot be shipped)\`.`, 401: E401, 404: 'Unknown order.', 409: 'The order changed concurrently; retry.' },
+    }),
+  },
+  '/test-admin/sandbox/products': {
+    get: op({
+      tag: T_DATA, summary: 'Sandbox product list (toolkit shape)', handler: 'SandboxAdminController.products', security: SEC, errorShape: E,
+      description: 'Counterpart of `sandbox product list`: ACTIVATE products with NORMAL SKUs; `stock_count` is the stock summed over the warehouses. `limits` are the simulator caps for Create Sandbox Order.',
+      query: [{ ...shopIdQuery, required: true }],
+      ok: { description: 'Products.', schema: obj({ shop_id: str(), products: arr(obj({ product_id: str(), title: str(), sku_list: arr(obj({ id: str(), seller_sku: str(), price: int(), stock_count: int() })) })), limits: obj({ max_quantity_per_sku: int(), max_order_count: int() }) }, ['products', 'limits']), example: { shop_id: '7494000000000001', products: [{ product_id: '7500000000000001', title: 'Tote bag', sku_list: [{ id: '7510000000000001', seller_sku: 'BAG-NAT', price: 120000, stock_count: 40 }] }], limits: { max_quantity_per_sku: 20, max_order_count: 10 } } },
+      errors: { 400: E400V, 401: E401, 404: 'Unknown shop.' },
+    }),
+  },
+  '/test-admin/sandbox/orders': {
+    post: op({
+      tag: T_DATA, summary: 'Create sandbox orders (batch)', handler: 'SandboxAdminController.createOrders', security: SEC, errorShape: E, status: 201,
+      description: 'Counterpart of `sandbox order create`: places `order_count` orders through the real checkout (own checkoutKey each) and pays them unless `pay` is false. A batch can be partly created and partly failed; created orders are never rolled back. Uses the first buyer of the shop (or the first marketplace buyer).',
+      body: { schema: obj({ shopId: str('Internal shop id', { minLength: 1 }), items: arr(obj({ product_id: str('Optional, informational'), sku_id: str('SKU external id'), quantity: int(undefined, { minimum: 1, maximum: 20 }) })), order_count: int(undefined, { minimum: 1, maximum: 10, default: 1 }), logistics_service_id: str('Optional; one of the simulator delivery option ids'), payment_method: str('Optional label stored as the order payment method name'), pay: bool('Default true: pay after checkout (the order becomes ON_HOLD)') }, ['shopId', 'items']), example: { shopId: SHOP_ID, items: [{ sku_id: '7510000000000001', quantity: 1 }], order_count: 2 } },
+      ok: { description: 'Batch result (201 Created).', schema: obj({ created: arr(obj({ order_id: str(), status: str() })), failed: arr(obj({ index: int(), error: str() })), request_id: nullable(str()) }, ['created', 'failed']), example: { created: [{ order_id: '5800000000000001', status: 'ON_HOLD' }], failed: [], request_id: null } },
+      errors: { 400: E400V, 401: E401, 404: 'Unknown shop, or the shop has no buyer.' },
     }),
   },
   '/test-admin/catalog/bulk': {

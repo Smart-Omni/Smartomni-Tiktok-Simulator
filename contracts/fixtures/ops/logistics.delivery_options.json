@@ -1,0 +1,69 @@
+{
+  "operation": "logistics.delivery_options",
+  "schema": "schemas/ops/logistics.delivery_options.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "delivery_options": [
+            {
+              "description": "TEST_description",
+              "dimension_limit": {
+                "max_height": 100,
+                "max_length": 100,
+                "max_width": 100,
+                "unit": "TEST_unit"
+              },
+              "id": "TEST_id",
+              "name": "TEST_name",
+              "platform": [
+                "TEST_platform"
+              ],
+              "type": "TEST_type",
+              "weight_limit": {
+                "max_weight": 100,
+                "min_weight": 100,
+                "unit": "TEST_unit"
+              }
+            }
+          ]
+        },
+        "message": "Success",
+        "request_id": "TEST-logistics.delivery_options-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "delivery_options": []
+        },
+        "message": "Success",
+        "request_id": "TEST-logistics.delivery_options-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a malformed path parameter",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

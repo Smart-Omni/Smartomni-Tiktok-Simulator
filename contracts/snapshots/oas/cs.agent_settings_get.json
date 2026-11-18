@@ -1,0 +1,93 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/customer_service.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "8a7c07b5986acc56fd76072e3f10cb33f5e877cd14595ab2db501a41f0f88248",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/customer_service/202309/agents/settings",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/customer_service/202309/agents/settings",
+  "operation": {
+    "tags": [
+      "customer_service_v202309"
+    ],
+    "summary": "GetAgentSettings",
+    "description": "This API is used to get agent settings. This API allows the agent to see whether the agent can accept chats from buyers. This API is a read-only endpoint. There will be no side effects, and can be retried safely. Note:  1. The current API version can only get settings on behalf of the shop, or the owner account holder on Seller Center. The owner in this case is acting as the customer service agent. In the future, we plan to make this API available to subaccount holders (who has customer service role) in Seller Center.  2. This API is to allow the agent to get his/her own setting.  See more information in API overview ",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "can_accept_chat": {
+                      "description": "Whether the current agent can accept chat.\nIf true, the agent will receive auto-assigned chats. The agent can manually select chats to respond. \nIf false, the agent will receive manually assigned chats only.\n",
+                      "example": true,
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

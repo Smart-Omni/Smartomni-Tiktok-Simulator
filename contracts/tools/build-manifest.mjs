@@ -73,6 +73,16 @@ const OPS = [
   ["cancellation.seller_cancel", "Seller cancel order", 7, "Only candidate POST 202309 (CancelOrder).", "", "Partial cancellation is documented for the US and UK only."],
   ["cs.read_message", "Mark conversation messages as read", 8, "Only candidate POST 202309 (ReadMessage).", "", null],
   ["cs.create_conversation", "Create conversation", 8, "Only candidate POST 202309 (CreateConversation).", "", "buyer_user_id equals orders.user_id of Get Order Detail."],
+  ["fulfillment.handover_slots", "Package handover time slots", 7, "Only candidate GET 202309 (GetPackageHandoverTimeSlots).", "", "van collection is UK only."],
+  ["fulfillment.shipping_info_update", "Update package shipping info", 7, "Only candidate POST 202309 (UpdatePackageShippingInfo).", "", "Replaces tracking number and carrier."],
+  ["fulfillment.package_deliver", "Update package delivery status", 7, "Only candidate POST 202309 (UpdatePackageDeliveryStatus).", "", "OAS: only seller-shipped packages; the simulator accepts any in-transit package (DECISIONS DA-11)."],
+  ["logistics.delivery_options", "Warehouse delivery options", 7, "Only candidate GET 202309 (GetWarehouseDeliveryOptions).", "", "Simulator uses static options (DECISIONS DA-11)."],
+  ["logistics.shipping_providers", "Shipping providers of a delivery option", 7, "Only candidate GET 202309 (GetShippingProviders).", "", "Simulator uses static providers (DECISIONS DA-11)."],
+  ["order.price_detail", "Order price detail", 5, "Only candidate GET 202407 (GetPriceDetail).", "", "cod_fee and distance_fee are 0 for VN domestic orders (assumption)."],
+  ["cs.agent_settings_get", "Get agent settings", 8, "Only candidate GET 202309 (GetAgentSettings).", "", null],
+  ["cs.agent_settings_put", "Update agent settings", 8, "Only candidate PUT 202309 (UpdateAgentSettings).", "", null],
+  ["auth.deauthorize", "Deauthorize shop", 3, "Only candidate DELETE 202403 (DeauthorizeShop).", "", "Revokes every token of the calling app for the shop."],
+  ["product.partial_edit", "Partial edit product", 4, "Only candidate POST 202509 (PartialEditProduct).", "", "EU / Tokopedia body fields are ignored."],
 ];
 
 const operations = [];

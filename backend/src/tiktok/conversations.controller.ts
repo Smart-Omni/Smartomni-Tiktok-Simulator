@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   Post,
+  Put,
   Req,
   Res,
   UploadedFiles,
@@ -74,6 +75,31 @@ export class ConversationsController {
     @Inject(ChatService) private readonly chat: ChatService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /** GET /customer_service/202309/agents/settings: one simulated agent per shop (DECISIONS DA-11). */
+  @Get('customer_service/202309/agents/settings')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_READ)
+  async agentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const row = await this.prisma.shop.findUniqueOrThrow({ where: { id: shop.id }, select: { agentCanAcceptChat: true } });
+    return this.envelope(req, { can_accept_chat: row.agentCanAcceptChat });
+  }
+
+  /** PUT /customer_service/202309/agents/settings */
+  @Put('customer_service/202309/agents/settings')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async updateAgentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body)) throw new TiktokFault(400, 'invalid_input', 'request body must be a JSON object');
+    for (const k of Object.keys(body)) if (k !== 'can_accept_chat') throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
+    if (typeof body.can_accept_chat !== 'boolean') throw new TiktokFault(400, 'invalid_input', 'can_accept_chat must be a boolean');
+    await this.prisma.shop.update({ where: { id: shop.id }, data: { agentCanAcceptChat: body.can_accept_chat } });
+    return this.envelope(req, {});
+  }
 
   /** POST /customer_service/202309/conversations: Create Conversation (idempotent per buyer). */
   @Post('customer_service/202309/conversations')

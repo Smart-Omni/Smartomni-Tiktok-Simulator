@@ -1,0 +1,200 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/logistics.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "542c17b2eee2aa66d268ba52e2cb3d4efa7a6f25ebf89022bf64087a2974262f",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/logistics/202309/warehouses/{warehouse_id}/delivery_options",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/logistics/202309/warehouses/{warehouse_id}/delivery_options",
+  "operation": {
+    "tags": [
+      "logistics_v202309"
+    ],
+    "summary": "GetWarehouseDeliveryOptions",
+    "description": "This API is used to obtain a list of delivery options available through the seller's designated warehouse.",
+    "parameters": [
+      {
+        "name": "warehouse_id",
+        "in": "path",
+        "description": "The warehouse ID.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "6966568648651605766"
+      },
+      {
+        "name": "scope",
+        "in": "query",
+        "description": "Specify the scope of delivery options to retrieve.\n- `WAREHOUSE`: Returns all delivery options currently active for the warehouse. By default, orders will be shipped based on these options.\n- `PRODUCT`: Returns the delivery options that can be assigned directly to a product. Use this if you want to enable custom delivery options for a product, overriding the default warehouse options. Only `delivery_options.id` and `delivery_options.name` will be included in the response when this is specified.\nDefault: `WAREHOUSE`",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "PRODUCT"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "delivery_options": {
+                      "description": "List of deliver options available through the seller's warehouse, and the respective carriers and attribute restrictions depending on the commodity.",
+                      "items": {
+                        "properties": {
+                          "description": {
+                            "description": "Delivery option description.",
+                            "example": "LSV-TTS-STD  S",
+                            "type": "string"
+                          },
+                          "dimension_limit": {
+                            "description": "The length, width, and height restrictions of the delivery option.",
+                            "properties": {
+                              "max_height": {
+                                "description": "Maximum height limit.",
+                                "example": 100,
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              "max_length": {
+                                "description": "Maximum length limit.",
+                                "example": 100,
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              "max_width": {
+                                "description": "Maximum width limit.",
+                                "example": 100,
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              "unit": {
+                                "description": "The unit of measurement for the dimensions, with possible values:\n- CM\n- INCH",
+                                "example": "INCH",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "id": {
+                            "description": "Delivery option ID.",
+                            "example": "6955034615128000261",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Delivery option name.",
+                            "example": "LSV-TTS-STD",
+                            "type": "string"
+                          },
+                          "platform": {
+                            "description": "The platform on which the delivery option is available\nPossible values:\n- TIKTOK_SHOP\n- TOKOPEDIA",
+                            "example": [
+                              "TOKOPEDIA",
+                              "TIKTOK_SHOP"
+                            ],
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "type": {
+                            "description": "Delivery option type. This is an enumerated type with values:\n- STANDARD\n- EXPRESS\n- ECONOMY\n- SEND_BY_SELLER",
+                            "example": "STANDARD",
+                            "type": "string"
+                          },
+                          "weight_limit": {
+                            "description": "The weight restrictions of this delivery option.",
+                            "properties": {
+                              "max_weight": {
+                                "description": "Maximum weight limit.",
+                                "example": 100,
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              "min_weight": {
+                                "description": "Minimum weight limit.",
+                                "example": 100,
+                                "format": "int64",
+                                "type": "integer"
+                              },
+                              "unit": {
+                                "description": "The unit of measurement for the weight, with possible values:\n- GRAM\n- POUND",
+                                "example": "GRAM",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

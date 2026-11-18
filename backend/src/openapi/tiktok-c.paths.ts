@@ -187,3 +187,114 @@ Object.assign(paths, {
     }),
   },
 });
+
+// ---- P2 (docs/tts-toolkit-alignment.md): DECISIONS DA-11 ----
+const LO = 'TikTok Logistics';
+const errorsDeliver = errorsPkg;
+Object.assign(paths, {
+  '/fulfillment/202309/packages/{packageId}/handover_time_slots': {
+    get: sop({
+      tag: FU,
+      summary: 'Get Package Handover Time Slots (202309)',
+      description: 'Three pickup slots (09:00-12:00 Vietnam time) on the next three business-clock days; drop-off is always possible; van collection is UK only (false). A COMPLETED or CANCELLED package is 400.',
+      handler: 'FulfillmentController.handoverSlots',
+      scope: 'sim.fulfillment.read',
+      pathParams: [{ name: 'packageId' }],
+      data: obj({ can_pickup: { type: 'boolean' }, can_drop_off: { type: 'boolean' }, can_van_collection: { type: 'boolean' }, pickup_slots: { type: 'array', items: loose } }),
+    }),
+  },
+  '/fulfillment/202309/packages/{packageId}/shipping_info/update': {
+    post: sop({
+      tag: FU,
+      summary: 'Update Package Shipping Info (202309)',
+      description: 'Replaces tracking_number and carrier of an arranged package that is not COMPLETED/CANCELLED; cached shipping documents are dropped; PACKAGE_UPDATE is emitted. shipping_provider_id must be a simulator carrier (see Get Shipping Providers).',
+      handler: 'FulfillmentController.updateShippingInfo',
+      scope: 'sim.fulfillment.write',
+      pathParams: [{ name: 'packageId' }],
+      body: obj({ tracking_number: str(), shipping_provider_id: str() }),
+    }),
+  },
+  '/fulfillment/202309/packages/deliver': {
+    post: sop({
+      tag: FU,
+      summary: 'Update Package Delivery Status (202309)',
+      description: 'DELIVERY_SUCCESS moves an IN_TRANSIT order to DELIVERED (repeat = no-op); DELIVERY_FAILED (fail_delivery_reason required) only records a tracking event. Failures are listed per package.',
+      handler: 'FulfillmentController.deliver',
+      scope: 'sim.fulfillment.write',
+      body: obj({ packages: { type: 'array', items: loose } }),
+      data: errorsDeliver,
+    }),
+  },
+  '/logistics/202309/warehouses/{warehouseId}/delivery_options': {
+    get: sop({
+      tag: LO,
+      summary: 'Get Warehouse Delivery Options (202309)',
+      description: 'Static simulator options (STANDARD, EXPRESS). The warehouse id is the TikTok-style id from Get Warehouse List.',
+      handler: 'FulfillmentController.deliveryOptions',
+      scope: 'sim.fulfillment.read',
+      pathParams: [{ name: 'warehouseId' }],
+      query: [{ name: 'scope', description: 'WAREHOUSE or ALL; the result is the same.' }],
+      data: obj({ delivery_options: { type: 'array', items: loose } }),
+    }),
+  },
+  '/logistics/202309/delivery_options/{deliveryOptionId}/shipping_providers': {
+    get: sop({
+      tag: LO,
+      summary: 'Get Shipping Providers (202309)',
+      description: 'Carriers of a simulator delivery option; unknown option is 404 delivery_option_not_found.',
+      handler: 'FulfillmentController.deliveryProviders',
+      scope: 'sim.fulfillment.read',
+      pathParams: [{ name: 'deliveryOptionId' }],
+      data: obj({ shipping_providers: { type: 'array', items: loose } }),
+    }),
+  },
+  '/order/202407/orders/{orderId}/price_detail': {
+    get: sop({
+      tag: 'TikTok Orders',
+      summary: 'Get Price Detail (202407)',
+      description: 'Pure read of the order price columns, all amounts are VND strings. Shipping is shared over the lines; tax, COD and distance fees are "0".',
+      handler: 'OrdersController.priceDetail',
+      scope: 'sim.order.read',
+      pathParams: [{ name: 'orderId' }],
+      data: loose,
+    }),
+  },
+  '/customer_service/202309/agents/settings': {
+    get: sop({
+      tag: CS,
+      summary: 'Get Agent Settings (202309)',
+      description: 'One simulated agent per shop; the flag is stored on the shop.',
+      handler: 'ConversationsController.agentSettings',
+      scope: 'sim.conversation.read',
+      data: obj({ can_accept_chat: { type: 'boolean' } }),
+    }),
+    put: sop({
+      tag: CS,
+      summary: 'Update Agent Settings (202309)',
+      handler: 'ConversationsController.updateAgentSettings',
+      scope: 'sim.conversation.write',
+      body: obj({ can_accept_chat: { type: 'boolean' } }),
+    }),
+  },
+  '/authorization/202403/shops': {
+    delete: sop({
+      tag: 'TikTok Shops',
+      summary: 'Deauthorize Shop (202403)',
+      description: 'Revokes every active token of the calling app for this shop at once and queues SELLER_DEAUTHORIZATION in the same transaction. Later calls with those tokens fail with 401 authorization_revoked.',
+      handler: 'ShopsController.deauthorize',
+      scope: 'sim.authorized_shops.read',
+    }),
+  },
+  '/product/202509/products/{productId}/partial_edit': {
+    post: sop({
+      tag: PR,
+      summary: 'Partial Edit Product (202509)',
+      description: 'Same merge as Edit Product: only the fields sent change. An empty body is 400.',
+      handler: 'ProductsController.partialEditProduct',
+      scope: 'sim.product.write',
+      pathParams: [{ name: 'productId' }],
+      body: loose,
+      data: obj({ product_id: str(), audit: obj({ status: str() }) }),
+    }),
+  },
+});

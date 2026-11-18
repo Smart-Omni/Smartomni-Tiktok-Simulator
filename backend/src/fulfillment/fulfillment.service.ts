@@ -14,6 +14,12 @@ import { buildPdf, PdfPage } from './pdf';
 export const DOC_TYPES = ['SHIPPING_LABEL', 'PACKING_SLIP', 'SHIPPING_LABEL_AND_PACKING_SLIP'] as const;
 export type DocType = (typeof DOC_TYPES)[number];
 export const PROVIDER = { id: 'SIM-CARRIER-1', name: 'Simulator Express (fake carrier)' };
+export const PROVIDER_2 = { id: 'SIM-CARRIER-2', name: 'Simulator Saver (fake carrier)' };
+/** Static delivery options (DECISIONS DA-11): provider lists per option. Assumption, not TikTok data. */
+export const DELIVERY_OPTIONS = [
+  { id: 'SIM-DO-STANDARD', name: 'Standard', type: 'STANDARD', description: 'Standard door-to-door delivery (simulator).', providers: [PROVIDER, PROVIDER_2] },
+  { id: 'SIM-DO-EXPRESS', name: 'Express', type: 'EXPRESS', description: 'Express delivery (simulator).', providers: [PROVIDER] },
+];
 
 /** Package status when the seller has not arranged shipment yet (OAS line-item `package_status` value; no package-level equivalent exists). */
 export const PKG_TO_FULFILL = 'TO_FULFILL';
@@ -119,6 +125,44 @@ export class FulfillmentService implements OnModuleInit {
     if (!next) throw new OrderRuleError('nothing_to_advance', `an order in ${order.status} has no next carrier step`);
     await this.orders.transition(order.id, next, actor, { note: 'carrier step', requestId });
     return this.prisma.package.findUniqueOrThrow({ where: { orderId: order.id } });
+  }
+
+  /**
+   * Update Package Shipping Info: replaces tracking number / carrier of an arranged package that is not finished.
+   * Cached shipping documents are dropped so the next label request carries the new number. Emits PACKAGE_UPDATE.
+   */
+  async updateShippingInfo(shopId: string, packageExternalId: string, trackingNumber: string, providerId: string, requestId?: string): Promise<Package> {
+    const provider = DELIVERY_OPTIONS.flatMap((o) => o.providers).find((p) => p.id === providerId);
+    if (!provider) throw new OrderRuleError('unknown_shipping_provider', `shipping_provider_id ${providerId} is not a simulator carrier`);
+    const found = await this.packageOf(shopId, packageExternalId);
+    if (!found.trackingNumber) throw new OrderRuleError('package_not_arranged', 'the shipment has not been arranged yet');
+    if (found.status === 'COMPLETED' || found.status === 'CANCELLED') throw new OrderRuleError('package_finished', `a ${found.status} package cannot be changed`);
+    const shop = await this.prisma.shop.findUniqueOrThrow({ where: { id: shopId } });
+    const now = this.clock.now();
+    return this.prisma.$transaction(async (tx) => {
+      const pkg = await tx.package.update({ where: { id: found.id }, data: { trackingNumber, shippingProviderId: provider.id, shippingProviderName: provider.name, updatedAt: now } });
+      await tx.shippingDocument.deleteMany({ where: { packageId: pkg.id } });
+      await tx.trackingEvent.create({ data: { orderId: pkg.orderId, packageId: pkg.id, status: pkg.status, description: 'The seller updated the tracking information.', at: now } });
+      await this.emitter.emit(tx, shop, 'PACKAGE_UPDATE', { package_id: pkg.externalId, order_id: found.order.externalId, package_status: pkg.status, update_time: Math.floor(now.getTime() / 1000) }, requestId);
+      return pkg;
+    });
+  }
+
+  /**
+   * Update Package Delivery Status (seller-reported). DELIVERY_SUCCESS moves an in-transit order to DELIVERED (a repeat is a no-op);
+   * DELIVERY_FAILED only records a tracking event and leaves the order IN_TRANSIT.
+   */
+  async reportDelivery(shopId: string, packageExternalId: string, type: 'DELIVERY_SUCCESS' | 'DELIVERY_FAILED', failReason: string | undefined, requestId?: string): Promise<void> {
+    const pkg = await this.packageOf(shopId, packageExternalId);
+    const status = pkg.order.status;
+    if (type === 'DELIVERY_SUCCESS') {
+      if (status === 'DELIVERED' || status === 'COMPLETED') return;
+      if (status !== 'IN_TRANSIT') throw new OrderRuleError('package_not_in_transit', `an order in ${status} cannot be reported as delivered`);
+      await this.orders.transition(pkg.order.id, 'DELIVERED', 'SELLER', { note: 'seller reported delivery', requestId });
+      return;
+    }
+    if (status !== 'IN_TRANSIT') throw new OrderRuleError('package_not_in_transit', `an order in ${status} cannot be reported as a failed delivery`);
+    await this.prisma.trackingEvent.create({ data: { orderId: pkg.orderId, packageId: pkg.id, status: pkg.status, description: `Delivery attempt failed: ${failReason}`, at: this.clock.now() } });
   }
 
   // ---- reads -----------------------------------------------------------------------------------------------------

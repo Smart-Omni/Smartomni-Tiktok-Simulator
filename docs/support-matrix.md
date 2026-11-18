@@ -50,6 +50,16 @@ Generated from `contracts/manifest.json` (contract status) and the TikTok-router
 | cancellation.seller_cancel | POST | /return_refund/202309/cancellations | unverified | implemented |
 | cs.read_message | POST | /customer_service/202309/conversations/{conversation_id}/messages/read | unverified | implemented |
 | cs.create_conversation | POST | /customer_service/202309/conversations | unverified | implemented |
+| fulfillment.handover_slots | GET | /fulfillment/202309/packages/{package_id}/handover_time_slots | unverified | implemented |
+| fulfillment.shipping_info_update | POST | /fulfillment/202309/packages/{package_id}/shipping_info/update | unverified | implemented |
+| fulfillment.package_deliver | POST | /fulfillment/202309/packages/deliver | unverified | implemented |
+| logistics.delivery_options | GET | /logistics/202309/warehouses/{warehouse_id}/delivery_options | unverified | implemented |
+| logistics.shipping_providers | GET | /logistics/202309/delivery_options/{delivery_option_id}/shipping_providers | unverified | implemented |
+| order.price_detail | GET | /order/202407/orders/{order_id}/price_detail | unverified | implemented |
+| cs.agent_settings_get | GET | /customer_service/202309/agents/settings | unverified | implemented |
+| cs.agent_settings_put | PUT | /customer_service/202309/agents/settings | unverified | implemented |
+| auth.deauthorize | DELETE | /authorization/202403/shops | unverified | implemented |
+| product.partial_edit | POST | /product/202509/products/{product_id}/partial_edit | unverified | implemented |
 | auth.authorization_url | GET | (unknown) | unsupported | not implemented (unsupported/unknown contract) |
 | auth.token_get | GET | /api/v2/token/get | unverified | implemented |
 | auth.token_refresh | GET | /api/v2/token/refresh | unverified | implemented |

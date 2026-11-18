@@ -60,6 +60,16 @@ export const OPS = {
   "cancellation.seller_cancel": ["return_refund", "/return_refund/202309/cancellations", "post"],
   "cs.read_message": ["customer_service", "/customer_service/202309/conversations/{conversation_id}/messages/read", "post"],
   "cs.create_conversation": ["customer_service", "/customer_service/202309/conversations", "post"],
+  "fulfillment.handover_slots": ["fulfillment", "/fulfillment/202309/packages/{package_id}/handover_time_slots", "get"],
+  "fulfillment.shipping_info_update": ["fulfillment", "/fulfillment/202309/packages/{package_id}/shipping_info/update", "post"],
+  "fulfillment.package_deliver": ["fulfillment", "/fulfillment/202309/packages/deliver", "post"],
+  "logistics.delivery_options": ["logistics", "/logistics/202309/warehouses/{warehouse_id}/delivery_options", "get"],
+  "logistics.shipping_providers": ["logistics", "/logistics/202309/delivery_options/{delivery_option_id}/shipping_providers", "get"],
+  "order.price_detail": ["order", "/order/202407/orders/{order_id}/price_detail", "get"],
+  "cs.agent_settings_get": ["customer_service", "/customer_service/202309/agents/settings", "get"],
+  "cs.agent_settings_put": ["customer_service", "/customer_service/202309/agents/settings", "put"],
+  "auth.deauthorize": ["authorization", "/authorization/202403/shops", "delete"],
+  "product.partial_edit": ["product", "/product/202509/products/{product_id}/partial_edit", "post"],
 };
 
 const files = {};
