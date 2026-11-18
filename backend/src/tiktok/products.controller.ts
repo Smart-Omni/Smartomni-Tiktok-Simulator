@@ -86,30 +86,52 @@ function stringList(value: unknown, field: string): string[] | undefined {
 }
 
 const CATEGORIES_DATA = [
-  { id: '100001', name: 'Thời trang & Phụ kiện', parent_id: '0', is_leaf: false, level: 1 },
-  { id: '100002', name: 'Áo Nam', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '100003', name: 'Quần Nam', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '100004', name: 'Áo Nữ', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '200001', name: 'Điện tử & Phụ kiện', parent_id: '0', is_leaf: false, level: 1 },
-  { id: '200002', name: 'Phụ kiện điện thoại', parent_id: '200001', is_leaf: true, level: 2 },
-  { id: '300001', name: 'Sức khỏe & Sắc đẹp', parent_id: '0', is_leaf: true, level: 1 },
-  { id: '400001', name: 'Nhà cửa & Đời sống', parent_id: '0', is_leaf: true, level: 1 },
+  { id: '100001', parent_id: '0', local_name: 'Thời trang & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
+  { id: '100002', parent_id: '100001', local_name: 'Áo Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '100003', parent_id: '100001', local_name: 'Quần Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '100004', parent_id: '100001', local_name: 'Áo Nữ', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '200001', parent_id: '0', local_name: 'Điện tử & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
+  { id: '200002', parent_id: '200001', local_name: 'Phụ kiện điện thoại', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '300001', parent_id: '0', local_name: 'Sức khỏe & Sắc đẹp', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '400001', parent_id: '0', local_name: 'Nhà cửa & Đời sống', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '500001', parent_id: '0', local_name: 'Hàng hạn chế (demo)', is_leaf: true, permission_statuses: ['INVITE_ONLY'] },
 ];
 
+/** Attribute field names follow the OAS spelling, including `is_requried`. */
 const ATTRIBUTES_DATA = [
-  { id: 'attr_brand', name: 'Thương hiệu', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_color', name: 'Màu sắc', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_size', name: 'Kích cỡ', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_material', name: 'Chất liệu', type: 'TEXT', is_required: false },
+  { id: 'attr_brand', name: 'Thương hiệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: false, values: [{ id: 'brand_001', name: 'No Brand' }], requirement_conditions: [] },
+  { id: 'attr_color', name: 'Màu sắc', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'color_black', name: 'Đen' }, { id: 'color_white', name: 'Trắng' }], requirement_conditions: [] },
+  { id: 'attr_size', name: 'Kích cỡ', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'size_s', name: 'S' }, { id: 'size_m', name: 'M' }, { id: 'size_l', name: 'L' }], requirement_conditions: [] },
+  { id: 'attr_material', name: 'Chất liệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [], requirement_conditions: [] },
 ];
 
+/** `UNAUTHORIEZD` is the OAS spelling of the unauthorized value. */
 const BRANDS_DATA = [
-  { id: 'brand_001', name: 'No Brand', status: 'AVAILABLE' },
-  { id: 'brand_002', name: 'OEM', status: 'AVAILABLE' },
-  { id: 'brand_003', name: 'SmartOmni', status: 'AVAILABLE' },
-  { id: 'brand_004', name: 'Apple', status: 'AVAILABLE' },
-  { id: 'brand_005', name: 'Samsung', status: 'AVAILABLE' },
+  { id: 'brand_001', name: 'No Brand', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_002', name: 'OEM', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_003', name: 'SmartOmni', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_004', name: 'Apple', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
+  { id: 'brand_005', name: 'Samsung', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
 ];
+
+function leafCategory(categoryId: string): void {
+  const c = CATEGORIES_DATA.find((x) => x.id === categoryId);
+  if (!c || !c.is_leaf) throw new TiktokFault(400, 'invalid_input', 'category_id must be an existing leaf category');
+}
+
+/** BCP-47-ish locale check (e.g. vi-VN, en-US). Only the shape is validated. */
+function checkLocale(value: string | undefined): void {
+  if (value !== undefined && !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(value)) {
+    throw new TiktokFault(400, 'invalid_input', 'locale must be a BCP-47 language tag such as vi-VN');
+  }
+}
+
+function queryBool(value: string | undefined, field: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === 'true' || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  throw new TiktokFault(400, 'invalid_input', `${field} must be a boolean`);
+}
 
 /**
  * Product management & catalog API per TikTok Shop OpenAPI standard.
@@ -207,6 +229,11 @@ export class ProductsController {
   @RequireScope(SCOPE_PRODUCT_READ)
   async detail(@Req() req: TiktokRequest, @Param('productId') productId: string) {
     const shop = req.tiktok!.shop;
+    const query = parseRawQuery(req.originalUrl)!.query;
+    // The simulator keeps no draft / under-review versions: these are validated and ignored (DECISIONS DA-4).
+    queryBool(query.return_under_review_version, 'return_under_review_version');
+    queryBool(query.return_draft_version, 'return_draft_version');
+    checkLocale(query.locale);
     const product = await this.prisma.product.findUnique({
       where: { shopId_externalId: { shopId: shop.id, externalId: productId } },
       include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
@@ -491,15 +518,56 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
   async categories(@Req() req: TiktokRequest) {
-    return this.envelope(req, { categories: CATEGORIES_DATA });
+    const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query.locale);
+    const keyword = query.keyword?.trim().toLowerCase();
+    const includeProhibited = queryBool(query.include_prohibited_categories, 'include_prohibited_categories') ?? false;
+    const categories = CATEGORIES_DATA.filter((c) => {
+      if (keyword && !c.local_name.toLowerCase().includes(keyword)) return false;
+      if (!includeProhibited && c.permission_statuses.some((p) => p === 'INVITE_ONLY' || p === 'NON_MAIN_CATEGORY' || p === 'PROHIBITED')) return false;
+      return true;
+    });
+    return this.envelope(req, { categories });
   }
 
-  /** GET /product/202309/attributes */
-  @Get('product/202309/attributes')
+  /** GET /product/202309/categories/{category_id}/attributes */
+  @Get('product/202309/categories/:categoryId/attributes')
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
-  async attributes(@Req() req: TiktokRequest) {
+  async categoryAttributes(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
+    checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
+    leafCategory(categoryId);
     return this.envelope(req, { attributes: ATTRIBUTES_DATA });
+  }
+
+  /** GET /product/202309/categories/{category_id}/rules */
+  @Get('product/202309/categories/:categoryId/rules')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_READ)
+  async categoryRules(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
+    checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
+    leafCategory(categoryId);
+    return this.envelope(req, {
+      cod: { is_supported: true },
+      package_dimension: { is_required: false },
+      size_chart: { is_required: false, is_supported: ['100002', '100003', '100004'].includes(categoryId) },
+      product_certifications: [],
+      epr: { is_required: false },
+      fees: [],
+      allowed_special_product_types: [],
+    });
+  }
+
+  /** Old non-OAS path, answers 501 only (DECISIONS DA-3). */
+  @Get('product/202309/attributes')
+  attributesRemoved(): never {
+    throw new TiktokFault(501, 'unsupported_operation', 'GET /product/202309/attributes is not an official path; use /product/202309/categories/{category_id}/attributes');
+  }
+
+  /** Old non-OAS path, answers 501 only (DECISIONS DA-3). */
+  @Get('product/202309/rules')
+  rulesRemoved(): never {
+    throw new TiktokFault(501, 'unsupported_operation', 'GET /product/202309/rules is not an official path; use /product/202309/categories/{category_id}/rules');
   }
 
   /** GET /product/202309/brands */
@@ -507,21 +575,31 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
   async brands(@Req() req: TiktokRequest) {
-    return this.envelope(req, { brands: BRANDS_DATA, total_count: BRANDS_DATA.length });
-  }
-
-  /** GET /product/202309/rules */
-  @Get('product/202309/rules')
-  @UseGuards(TiktokApiGuard)
-  @RequireScope(SCOPE_PRODUCT_READ)
-  async rules(@Req() req: TiktokRequest) {
+    const query = parseRawQuery(req.originalUrl)!.query;
+    if (!/^\d{1,4}$/.test(query.page_size ?? '')) throw new TiktokFault(400, 'invalid_input', 'page_size is required and must be an integer in [1, 100]');
+    const pageSize = Number(query.page_size);
+    if (pageSize < 1 || pageSize > 100) throw new TiktokFault(400, 'invalid_input', 'page_size must be in [1, 100]');
+    const isAuthorized = queryBool(query.is_authorized, 'is_authorized');
+    const name = query.brand_name?.toLowerCase();
+    let offset = 0;
+    if (query.page_token) {
+      try {
+        const v = JSON.parse(Buffer.from(query.page_token, 'base64url').toString('utf8')) as { offset?: unknown };
+        if (typeof v.offset !== 'number' || !Number.isSafeInteger(v.offset) || v.offset < 0) throw new Error('bad token');
+        offset = v.offset;
+      } catch {
+        throw new TiktokFault(400, 'invalid_input', 'page_token is not a token issued by this API');
+      }
+    }
+    const categoryScoped = query.category_id !== undefined;
+    if (categoryScoped && !CATEGORIES_DATA.some((c) => c.id === query.category_id)) throw new TiktokFault(400, 'invalid_input', 'category_id does not exist');
+    const matched = BRANDS_DATA.filter((b) => (name === undefined || b.name.toLowerCase().startsWith(name)) && (isAuthorized === undefined || (b.authorized_status === 'AUTHORIZED') === isAuthorized));
+    const page = matched.slice(offset, offset + pageSize);
+    const hasMore = offset + pageSize < matched.length;
     return this.envelope(req, {
-      product_rules: {
-        title_rule: { max_length: 500, min_length: 1 },
-        description_rule: { max_length: 10000 },
-        image_rule: { max_count: 9, min_count: 1, max_size_mb: 5 },
-        sku_rule: { max_sku_count: 100, min_sku_count: 1 },
-      },
+      brands: page.map((b) => (categoryScoped && b.authorized_status === 'AUTHORIZED' ? { ...b, brand_status: 'AVAILABLE' } : b)),
+      next_page_token: hasMore ? Buffer.from(JSON.stringify({ offset: offset + pageSize }), 'utf8').toString('base64url') : '',
+      total_count: matched.length,
     });
   }
 

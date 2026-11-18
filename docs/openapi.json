@@ -23193,6 +23193,1144 @@
           }
         ]
       }
+    },
+    "/product/202309/categories/{categoryId}/attributes": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Attributes",
+        "description": "OAS: GET /product/202309/categories/{category_id}/attributes. category_id must be a leaf category.\n\nHandler: `ProductsController.categoryAttributes`.",
+        "operationId": "ProductsController_categoryAttributes",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attributes list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "attributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: category is not an existing leaf category, or locale is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "100002"
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/categories/{categoryId}/rules": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Category Rules",
+        "description": "OAS: GET /product/202309/categories/{category_id}/rules. category_id must be a leaf category.\n\nHandler: `ProductsController.categoryRules`.",
+        "operationId": "ProductsController_categoryRules",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cod": {
+                          "type": "object",
+                          "properties": {}
+                        },
+                        "package_dimension": {
+                          "type": "object",
+                          "properties": {}
+                        },
+                        "size_chart": {
+                          "type": "object",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: category is not an existing leaf category, or locale is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "100002"
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/attributes": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Product Attributes (removed)",
+        "description": "Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).\n\nHandler: `ProductsController.attributesRemoved`.",
+        "operationId": "ProductsController_attributesRemoved",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Never returned."
+          },
+          "501": {
+            "description": "unsupported_operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/rules": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Product Rules (removed)",
+        "description": "Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).\n\nHandler: `ProductsController.rulesRemoved`.",
+        "operationId": "ProductsController_rulesRemoved",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Never returned."
+          },
+          "501": {
+            "description": "unsupported_operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/brands": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Brands",
+        "description": "Handler: `ProductsController.brands`.",
+        "operationId": "ProductsController_brands",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brands page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "brands": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "next_page_token": {
+                          "type": "string"
+                        },
+                        "total_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: page_size missing or out of range, bad page_token, unknown category_id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": true,
+            "description": "Integer in [1, 100].",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "example": 20
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_authorized",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "brand_name",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive prefix filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/categories": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Categories",
+        "description": "Handler: `ProductsController.categories`.",
+        "operationId": "ProductsController_categories",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: malformed locale or boolean.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "description": "Substring filter on local_name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_prohibited_categories",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/products": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Create Product",
+        "description": "Handler: `ProductsController.createProduct`.",
+        "operationId": "ProductsController_createProduct",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202509/products/{productId}": {
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Edit Product",
+        "description": "Handler: `ProductsController.editProduct`.",
+        "operationId": "ProductsController_editProduct",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/products/activate": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Activate Products",
+        "description": "Handler: `ProductsController.activateProducts`.",
+        "operationId": "ProductsController_activateProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activated products result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/deactivate": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Deactivate Products",
+        "description": "Handler: `ProductsController.deactivateProducts`.",
+        "operationId": "ProductsController_deactivateProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deactivated products result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/listing_check": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Check Product Listing",
+        "description": "Handler: `ProductsController.listingCheck`.",
+        "operationId": "ProductsController_listingCheck",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "check_result": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/images/upload": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Upload Product Image",
+        "description": "Handler: `ProductsController.uploadImage`.",
+        "operationId": "ProductsController_uploadImage",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded image info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "uri": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/files/upload": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Upload Product File",
+        "description": "Handler: `ProductsController.uploadFile`.",
+        "operationId": "ProductsController_uploadFile",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded file info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202602/returns/search": {
+      "post": {
+        "tags": [
+          "Aftersale"
+        ],
+        "summary": "Search Returns 202602",
+        "description": "Handler: `AftersaleController.searchReturns202602`.",
+        "operationId": "AftersaleController_searchReturns202602",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns search list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "return_orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "returns": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202602/orders/{orderId}/aftersale_eligibility": {
+      "get": {
+        "tags": [
+          "Aftersale"
+        ],
+        "summary": "Get Aftersale Eligibility 202602",
+        "description": "Handler: `AftersaleController.eligibility202602`.",
+        "operationId": "AftersaleController_eligibility202602",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aftersale eligibility info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request_types": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/aftersale/{id}/dispute": {
+      "post": {
+        "tags": [
+          "Demo Aftersale"
+        ],
+        "summary": "Buyer Dispute Trigger",
+        "description": "Handler: `DemoAftersaleController.raiseDispute`.",
+        "operationId": "DemoAftersaleController_raiseDispute",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dispute raised result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/aftersale/{id}/arbitrate": {
+      "post": {
+        "tags": [
+          "Demo Aftersale"
+        ],
+        "summary": "Admin / Operator Arbitrate Trigger",
+        "description": "Handler: `DemoAftersaleController.arbitrate`.",
+        "operationId": "DemoAftersaleController_arbitrate",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arbitration result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/test-admin/aftersale/{ref}/arbitration": {
+      "post": {
+        "tags": [
+          "Test Admin Aftersale"
+        ],
+        "summary": "Test Admin Arbitrate",
+        "description": "Handler: `TestAdminController.arbitrateAftersale`.",
+        "operationId": "TestAdminController_arbitrateAftersale",
+        "security": [
+          {
+            "TestAdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arbitration adjudication result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "arbitration_status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale Request ID or external ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {

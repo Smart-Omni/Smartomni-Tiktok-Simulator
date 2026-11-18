@@ -339,13 +339,13 @@ describe('TikTok OpenAPI 202602 / 202309 / 202606 Upgrade & Dispute State Machin
       expect(catsRes.body.code).toBe(0);
       expect(catsRes.body.data.categories).toBeInstanceOf(Array);
 
-      const attrsRes = await t.call('GET', '/product/202309/attributes', a.accessToken).expect(200);
+      const attrsRes = await t.call('GET', '/product/202309/categories/100002/attributes', a.accessToken).expect(200);
       expect(attrsRes.body.code).toBe(0);
 
-      const brandsRes = await t.call('GET', '/product/202309/brands', a.accessToken).expect(200);
+      const brandsRes = await t.call('GET', '/product/202309/brands', a.accessToken, { query: { page_size: '20' } }).expect(200);
       expect(brandsRes.body.code).toBe(0);
 
-      const rulesRes = await t.call('GET', '/product/202309/rules', a.accessToken).expect(200);
+      const rulesRes = await t.call('GET', '/product/202309/categories/100002/rules', a.accessToken).expect(200);
       expect(rulesRes.body.code).toBe(0);
 
       // 7. Image and file upload

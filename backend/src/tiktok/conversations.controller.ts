@@ -55,6 +55,12 @@ function pageSize(query: Record<string, string>, max: number): number {
   if (n < 1 || n > max) throw new TiktokFault(400, 'invalid_input', `page_size must be in [1, ${max}]`);
   return n;
 }
+/** `locale` is accepted and validated for shape only; message content is not localised (DECISIONS DA-4). */
+function checkLocale(query: Record<string, string>): void {
+  if (query.locale !== undefined && !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(query.locale)) {
+    throw new TiktokFault(400, 'invalid_input', 'locale must be a BCP-47 language tag such as vi-VN');
+  }
+}
 
 /**
  * Customer-service API: Get Conversation List (202309), Get Conversation Messages (202309),
@@ -75,6 +81,7 @@ export class ConversationsController {
   async list(@Req() req: TiktokRequest) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 20);
     const after = query.page_token ? dec<ListCursor>(query.page_token, (c) => Number.isSafeInteger(c.s)).s : 0;
     const rows = await this.prisma.conversation.findMany({ where: { shopId: shop.id, seq: { gt: after } }, orderBy: { seq: 'asc' }, take: size + 1 });
@@ -93,6 +100,7 @@ export class ConversationsController {
   async messages(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 10);
     const sortField = (query.sort_field ?? 'create_time') as 'create_time' | 'index';
     if (sortField !== 'create_time' && sortField !== 'index') throw new TiktokFault(400, 'invalid_input', 'sort_field must be create_time or index');
