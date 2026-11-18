@@ -1,0 +1,184 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/return_refund.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "9d04920fe13875974ade58f925e3e19694ade2f84526280fa2d2191e3026f776",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/return_refund/202309/returns",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/return_refund/202309/returns",
+  "operation": {
+    "tags": [
+      "return_refund_v202309"
+    ],
+    "summary": "CreateReturn",
+    "description": "Use this API to initiate a return request on behalf of the buyer Sellers can reject the request, or accept and issue: -Return and Refund (buyer must send package back) -Returnless Refund (buyer can keep the item) -Partial Refund (Seller issues a partial refund, buyer can keep the item)",
+    "parameters": [
+      {
+        "name": "idempotency_key",
+        "in": "query",
+        "description": "Idempotency Key",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "1623812664"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "currency": {
+                "description": "Currency for refund which should be same as currency in TikTok Ship Order.",
+                "example": "USD",
+                "type": "string"
+              },
+              "handover_method": {
+                "description": "Which handover method buyer chooses to use when returning goods to seller by platform\n- DROP_OFF\n- PICKUP",
+                "example": "DROP_OFF",
+                "type": "string"
+              },
+              "order_id": {
+                "description": "Tiktok Shop order id",
+                "example": "576473917261320779",
+                "type": "string"
+              },
+              "order_line_item_ids": {
+                "description": "Order line ids seller wants to create return request, should use order line ids to create return request if had split parcel to multiple packages, default value is all order line ids in the order if not input order_line_ids and skus",
+                "example": [
+                  "455764739172614518516"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "refund_total": {
+                "description": "Total refund amount to the buyer. \nThe total refund amount can not exceed the refundable amount",
+                "example": "10.5",
+                "type": "string"
+              },
+              "return_reason": {
+                "description": "Seller's reason to create a return",
+                "example": "ecom_order_delivered_refund_reason_missing_product_seller",
+                "type": "string"
+              },
+              "return_type": {
+                "description": "Which type to create: \n- REFUND\n- RETURN_AND_REFUND",
+                "example": "REFUND",
+                "type": "string"
+              },
+              "shipment_type": {
+                "description": "How buyer ships items to seller when in a return request, could be:\n- PLATFORM\n- BUYER_ARRANGE",
+                "example": "PLATFORM",
+                "type": "string"
+              },
+              "skus": {
+                "description": "Skus",
+                "items": {
+                  "properties": {
+                    "quantity": {
+                      "description": "Quantity seller wants to create a return request",
+                      "example": 1,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "sku_id": {
+                      "description": "Sku id seller wants to create a return request",
+                      "example": "1729386416015578024",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "return_id": {
+                      "description": "The identifier of a specific return request.",
+                      "example": "4035319218955782461",
+                      "type": "string"
+                    },
+                    "return_status": {
+                      "description": "Return status, available values:\n- RETURN_OR_REFUND_REQUEST_PENDING: Request is pending, needs to be approved by seller or platform\n- REFUND_OR_RETURN_REQUEST_REJECT: Seller rejected the request\n- AWAITING_BUYER_SHIP: Waiting buyer to ship items to seller, if exceed the deadline, request will be closed by platform\n- BUYER_SHIPPED_ITEM: Buyer has shipped items to seller.\n- REJECT_RECEIVE_PACKAGE: Seller reject return package\n- RETURN_OR_REFUND_REQUEST_SUCCESS: The refund/return request is successful, buyer will be refunded.\n- RETURN_OR_REFUND_REQUEST_CANCEL: The request has been cancelled by buyer or system\n- RETURN_OR_REFUND_REQUEST_COMPLETE: The request is successful, and the amount has been refunded.",
+                      "example": "RETURN_OR_REFUND_REQUEST_PENDING",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

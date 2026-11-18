@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/product.category_attributes.response.json",
+  "title": "GET /product/202309/categories/{category_id}/attributes response",
+  "x-verification": "official OAS 0.1.7 (2026-10-14); OAS declares no per-field required flags, so only the envelope trio code/message/request_id is required here (envelope trio taken from every OAS response schema)",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "integer"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "is_customizable": {
+                "type": "boolean"
+              },
+              "is_multiple_selection": {
+                "type": "boolean"
+              },
+              "is_requried": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "requirement_conditions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "attribute_id": {
+                      "type": "string"
+                    },
+                    "attribute_value_id": {
+                      "type": "string"
+                    },
+                    "condition_type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "type": {
+                "type": "string"
+              },
+              "value_data_format": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "icon_url": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "request_id"
+  ]
+}

@@ -2684,6 +2684,962 @@
       "notes": "Succeeds whether or not the webhook existed (per OAS description). DELETE carries a JSON body {event_type}."
     },
     {
+      "id": "product.category_attributes",
+      "capability": "Category attributes",
+      "method": "GET",
+      "path": "/product/202309/categories/{category_id}/attributes",
+      "version": "202309",
+      "phase": 4,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/categories/{category_id}/attributes)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate GET 202309 (GetAttributes). Candidates in bundle: GET 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "n/a (no JSON body)",
+        "signing": "indirect: toolkit local-broker signer (query only); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.category_attributes.json",
+      "schemaRef": "schemas/ops/product.category_attributes.response.json",
+      "requestSchemaRef": null,
+      "request": {
+        "params": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "category_version",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.category_attributes.json",
+      "oasSha256": "4d12e6f72273521465a487d1249d936d2d013d062e45ba984f31098cc6621d51",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "category_id must be a leaf category. Field name is_requried is the OAS spelling."
+    },
+    {
+      "id": "product.category_rules",
+      "capability": "Category rules",
+      "method": "GET",
+      "path": "/product/202309/categories/{category_id}/rules",
+      "version": "202309",
+      "phase": 4,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/categories/{category_id}/rules)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate GET 202309 (GetCategoryRules). Candidates in bundle: GET 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "n/a (no JSON body)",
+        "signing": "indirect: toolkit local-broker signer (query only); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.category_rules.json",
+      "schemaRef": "schemas/ops/product.category_rules.response.json",
+      "requestSchemaRef": null,
+      "request": {
+        "params": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "category_version",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "locale",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.category_rules.json",
+      "oasSha256": "e0f32015f50576f9f6ded2ba0434f2e3835d4afe10f6b12f80f48eb04fefd946",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "cod / package_dimension / size_chart / certifications; manufacturer and responsible_person apply to the EU only."
+    },
+    {
+      "id": "product.update_price",
+      "capability": "Update price",
+      "method": "POST",
+      "path": "/product/202309/products/{product_id}/prices/update",
+      "version": "202309",
+      "phase": 4,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/products/{product_id}/prices/update)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (UpdatePrice). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.update_price.json",
+      "schemaRef": "schemas/ops/product.update_price.response.json",
+      "requestSchemaRef": "schemas/ops/product.update_price.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.update_price.json",
+      "oasSha256": "195593437b4182b76a58d6c05ed82c6737d4c54995cce35d74c48af1fed7677a",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "Product must be ACTIVATE and not in an ongoing campaign."
+    },
+    {
+      "id": "product.inventory_search",
+      "capability": "Inventory search",
+      "method": "POST",
+      "path": "/product/202309/inventory/search",
+      "version": "202309",
+      "phase": 6,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/inventory/search)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (InventorySearch). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.inventory_search.json",
+      "schemaRef": "schemas/ops/product.inventory_search.response.json",
+      "requestSchemaRef": "schemas/ops/product.inventory_search.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.inventory_search.json",
+      "oasSha256": "e05935ea57f92c30ecf0a7740991d0da24afad41e029ede3b1a002e5fece4b5a",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "product_ids max 100 or sku_ids max 600; sku_ids wins when both are sent."
+    },
+    {
+      "id": "product.delete",
+      "capability": "Delete products",
+      "method": "DELETE",
+      "path": "/product/202309/products",
+      "version": "202309",
+      "phase": 4,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/products)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate DELETE 202309 (DeleteProducts). Candidates in bundle: DELETE 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.delete.json",
+      "schemaRef": "schemas/ops/product.delete.response.json",
+      "requestSchemaRef": "schemas/ops/product.delete.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.delete.json",
+      "oasSha256": "fabe7ca0811586411edaec84d42042a86f5b517cf90c0179dd214afc12178798",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "Max 20 ids; FREEZE products cannot be deleted."
+    },
+    {
+      "id": "product.recover",
+      "capability": "Recover products",
+      "method": "POST",
+      "path": "/product/202309/products/recover",
+      "version": "202309",
+      "phase": 4,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/product/202309/products/recover)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (RecoverProducts). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/product.recover.json",
+      "schemaRef": "schemas/ops/product.recover.response.json",
+      "requestSchemaRef": "schemas/ops/product.recover.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/product.recover.json",
+      "oasSha256": "cc93d986544f23082c4e347c30897d9288f88a6240f681d4d59e50c8358ca188",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "DELETED -> SELLER_DEACTIVATED; max 20 ids."
+    },
+    {
+      "id": "fulfillment.package_search",
+      "capability": "Package search",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/search",
+      "version": "202309",
+      "phase": 7,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/fulfillment/202309/packages/search)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (SearchPackage). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/fulfillment.package_search.json",
+      "schemaRef": "schemas/ops/fulfillment.package_search.response.json",
+      "requestSchemaRef": "schemas/ops/fulfillment.package_search.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "in": "query",
+            "name": "sort_field",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "sort_order",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "page_token",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": {
+        "style": "cursor",
+        "requestParams": [
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": true,
+            "description": "The number of results to be returned per page. Valid range: [1-50]."
+          },
+          {
+            "in": "query",
+            "name": "page_token",
+            "required": false,
+            "description": "An opaque token used to retrieve the next page of a paginated result set. Retrieve this value from the result of the `next_page_token` from a previous response. It is not needed for the first page."
+          }
+        ],
+        "responseFields": [
+          "next_page_token",
+          "total_count"
+        ]
+      },
+      "fixtures": "fixtures/ops/fulfillment.package_search.json",
+      "oasSha256": "6d94edfdf79ed8bcacb20e53950e341a16c091095ccd3e3c5ffb4badd833314e",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "page_size required [1-50]."
+    },
+    {
+      "id": "fulfillment.package_batch_ship",
+      "capability": "Batch ship packages",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/ship",
+      "version": "202309",
+      "phase": 7,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/fulfillment/202309/packages/ship)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (BatchShipPackages). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/fulfillment.package_batch_ship.json",
+      "schemaRef": "schemas/ops/fulfillment.package_batch_ship.response.json",
+      "requestSchemaRef": "schemas/ops/fulfillment.package_batch_ship.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/fulfillment.package_batch_ship.json",
+      "oasSha256": "68777273e41489fb5aa6e8b9a248a0ff8261836d45554505b1eadf6c0b3e1472",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "Per-package errors in data.errors."
+    },
+    {
+      "id": "return.create",
+      "capability": "Create return on behalf of the buyer",
+      "method": "POST",
+      "path": "/return_refund/202309/returns",
+      "version": "202309",
+      "phase": 7,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/return_refund/202309/returns)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (CreateReturn). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/return.create.json",
+      "schemaRef": "schemas/ops/return.create.response.json",
+      "requestSchemaRef": "schemas/ops/return.create.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "idempotency_key",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/return.create.json",
+      "oasSha256": "9d04920fe13875974ade58f925e3e19694ade2f84526280fa2d2191e3026f776",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "idempotency_key is a query parameter."
+    },
+    {
+      "id": "return.refund_calculate",
+      "capability": "Calculate refund",
+      "method": "POST",
+      "path": "/return_refund/202309/refunds/calculate",
+      "version": "202309",
+      "phase": 7,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/return_refund/202309/refunds/calculate)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (CalculateRefund). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/return.refund_calculate.json",
+      "schemaRef": "schemas/ops/return.refund_calculate.response.json",
+      "requestSchemaRef": "schemas/ops/return.refund_calculate.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/return.refund_calculate.json",
+      "oasSha256": "c91d1b475750fd2ae866444aaa4c5d88ffe21fe27d67194d0e087b2897d2b341",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "retail_delivery_fee applies to the US only."
+    },
+    {
+      "id": "cancellation.seller_cancel",
+      "capability": "Seller cancel order",
+      "method": "POST",
+      "path": "/return_refund/202309/cancellations",
+      "version": "202309",
+      "phase": 7,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/return_refund/202309/cancellations)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (CancelOrder). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/cancellation.seller_cancel.json",
+      "schemaRef": "schemas/ops/cancellation.seller_cancel.response.json",
+      "requestSchemaRef": "schemas/ops/cancellation.seller_cancel.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/cancellation.seller_cancel.json",
+      "oasSha256": "0bc9d2e61dfbd6e55e960b4881a0c226336b3bc0355cbd2b48f2c581a37422b8",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "Partial cancellation is documented for the US and UK only."
+    },
+    {
+      "id": "cs.read_message",
+      "capability": "Mark conversation messages as read",
+      "method": "POST",
+      "path": "/customer_service/202309/conversations/{conversation_id}/messages/read",
+      "version": "202309",
+      "phase": 8,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/customer_service/202309/conversations/{conversation_id}/messages/read)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (ReadMessage). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "n/a (no JSON body)",
+        "signing": "indirect: toolkit local-broker signer (query only); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/cs.read_message.json",
+      "schemaRef": "schemas/ops/cs.read_message.response.json",
+      "requestSchemaRef": null,
+      "request": {
+        "params": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/cs.read_message.json",
+      "oasSha256": "a4cbf34443aab0362a5cc078457a8f2673824eac088c997b3aaf691e4d5ab3b6",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": null
+    },
+    {
+      "id": "cs.create_conversation",
+      "capability": "Create conversation",
+      "method": "POST",
+      "path": "/customer_service/202309/conversations",
+      "version": "202309",
+      "phase": 8,
+      "host": "openapi",
+      "kind": "real",
+      "source": [
+        "tts-openapi-guide bundled OAS, shipped with @tts-open-toolkit/cli 0.1.7 (/customer_service/202309/conversations)",
+        "docv2 page pattern https://partner.tiktokshop.com/docv2/page/{api-slug}-{version} (unreadable SPA)"
+      ],
+      "accessDate": "2026-10-14",
+      "scope": "not stated in the OAS (no x-scopes / scope text); official scope name unresolved",
+      "market": "VN domestic shop: applicability NOT verified. The OAS states no market restriction for this operation and does not list VN as a shop region value; no claim that a real VN shop is granted access.",
+      "versionChoice": "Only candidate POST 202309 (CreateConversation). Candidates in bundle: POST 202309.",
+      "oasVsDocv2": "docv2 not readable on 2026-10-14 (client-rendered SPA; unauthenticated API returns 'internal error'), so OAS-vs-docv2 differences and any docv2-only newer version are UNKNOWN",
+      "status": "unverified",
+      "evidence": "official-oas",
+      "verification": {
+        "schema": "official-oas (shape and field names/types); no per-field required flags, enums only in description text",
+        "requestParams": "official-oas (query/path/header with required flags)",
+        "bodyRequiredFields": "unknown (OAS declares none)",
+        "signing": "indirect: toolkit local-broker signer (raw JSON body appended); Common Parameters page unread",
+        "errorCodes": "undocumented in readable sources",
+        "scope": "unresolved",
+        "market": "unverified",
+        "docv2Diff": "not checked"
+      },
+      "snapshot": "snapshots/oas/cs.create_conversation.json",
+      "schemaRef": "schemas/ops/cs.create_conversation.response.json",
+      "requestSchemaRef": "schemas/ops/cs.create_conversation.request.json",
+      "request": {
+        "params": [
+          {
+            "in": "query",
+            "name": "shop_cipher",
+            "required": false,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "x-tts-access-token",
+            "required": true,
+            "type": "string",
+            "format": null
+          },
+          {
+            "in": "header",
+            "name": "Content-Type",
+            "required": true,
+            "type": "string",
+            "format": null
+          }
+        ],
+        "contentType": "application/json"
+      },
+      "pagination": "none documented in the operation schema",
+      "fixtures": "fixtures/ops/cs.create_conversation.json",
+      "oasSha256": "3c2d51da7ef194e8b6736a3cc3240ffa1d52aa395b02ce391393d855f21d5637",
+      "blocker": "Not promoted to supported: docv2 page unreadable, so freshness of the selected version and OAS-vs-docv2 differences are unchecked; OAS declares no per-field required flags for body/response and no structured enums, so 'required fields' cannot be fully verified; scope name is not in the OAS; error codes/messages for invalid input, expired token and missing scope are not documented in any readable official source; request signing rests only on indirect evidence (the toolkit's local proxy-broker signer mirrors it), not the Common Parameters page (server-side timestamp window, Content-Type and multipart rules unread); VN applicability not stated.",
+      "notes": "buyer_user_id equals orders.user_id of Get Order Detail."
+    },
+    {
       "id": "auth.authorization_url",
       "capability": "Seller authorization URL",
       "method": "GET",

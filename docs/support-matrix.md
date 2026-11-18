@@ -37,6 +37,19 @@ Generated from `contracts/manifest.json` (contract status) and the TikTok-router
 | event.webhooks_get | GET | /event/202309/webhooks | unverified | implemented |
 | event.webhooks_put | PUT | /event/202309/webhooks | unverified | implemented |
 | event.webhooks_delete | DELETE | /event/202309/webhooks | unverified | implemented |
+| product.category_attributes | GET | /product/202309/categories/{category_id}/attributes | unverified | implemented |
+| product.category_rules | GET | /product/202309/categories/{category_id}/rules | unverified | implemented |
+| product.update_price | POST | /product/202309/products/{product_id}/prices/update | unverified | implemented |
+| product.inventory_search | POST | /product/202309/inventory/search | unverified | implemented |
+| product.delete | DELETE | /product/202309/products | unverified | implemented |
+| product.recover | POST | /product/202309/products/recover | unverified | implemented |
+| fulfillment.package_search | POST | /fulfillment/202309/packages/search | unverified | implemented |
+| fulfillment.package_batch_ship | POST | /fulfillment/202309/packages/ship | unverified | implemented |
+| return.create | POST | /return_refund/202309/returns | unverified | implemented |
+| return.refund_calculate | POST | /return_refund/202309/refunds/calculate | unverified | implemented |
+| cancellation.seller_cancel | POST | /return_refund/202309/cancellations | unverified | implemented |
+| cs.read_message | POST | /customer_service/202309/conversations/{conversation_id}/messages/read | unverified | implemented |
+| cs.create_conversation | POST | /customer_service/202309/conversations | unverified | implemented |
 | auth.authorization_url | GET | (unknown) | unsupported | not implemented (unsupported/unknown contract) |
 | auth.token_get | GET | /api/v2/token/get | unverified | implemented |
 | auth.token_refresh | GET | /api/v2/token/refresh | unverified | implemented |

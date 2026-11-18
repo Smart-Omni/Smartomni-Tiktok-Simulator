@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/customer_service.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "a4cbf34443aab0362a5cc078457a8f2673824eac088c997b3aaf691e4d5ab3b6",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/customer_service/202309/conversations/{conversation_id}/messages/read",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/customer_service/202309/conversations/{conversation_id}/messages/read",
+  "operation": {
+    "tags": [
+      "customer_service_v202309"
+    ],
+    "summary": "ReadMessage",
+    "description": "Use this API to mark all messages sent by the buyer as read. You are suggested to call this API before replying to their messages.",
+    "parameters": [
+      {
+        "name": "conversation_id",
+        "in": "path",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

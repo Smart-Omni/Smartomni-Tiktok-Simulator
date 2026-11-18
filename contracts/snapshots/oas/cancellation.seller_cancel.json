@@ -1,0 +1,149 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/return_refund.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "0bc9d2e61dfbd6e55e960b4881a0c226336b3bc0355cbd2b48f2c581a37422b8",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/return_refund/202309/cancellations",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/return_refund/202309/cancellations",
+  "operation": {
+    "tags": [
+      "return_refund_v202309"
+    ],
+    "summary": "CancelOrder",
+    "description": "Use this API to cancel an order on behalf of a seller. In the US and UK markets, when an item is out of stock, partial cancellation on the single item level is supported by this API.",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cancel_reason": {
+                "description": "Reason to cancel the order \nPlease see \"Return API Overview\" for a list of reasons a seller can select to cancel the order. ",
+                "example": "ecom_order_delivered_refund_and_return_reason_wrong_product_seller",
+                "type": "string"
+              },
+              "order_id": {
+                "description": "TikTok Shop order id",
+                "example": "577087614418520388",
+                "type": "string"
+              },
+              "order_line_item_ids": {
+                "description": "List of order line item ids to cancel. In the US and UK markets, when an item is out of stock, partial cancellation on the single item level is supported. To initiate a partial cancellation, specify the item's order line id.",
+                "example": [
+                  "577087614418716996"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "skus": {
+                "description": "List of SKU to cancel",
+                "items": {
+                  "properties": {
+                    "quantity": {
+                      "description": "The quantity of SKU to cancel",
+                      "example": 1,
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "sku_id": {
+                      "description": "The SKU id to cancel",
+                      "example": "1729386416015578024",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "cancel_id": {
+                      "description": "The identifier of a specific order cancellation.",
+                      "example": "4035319218955782461",
+                      "type": "string"
+                    },
+                    "cancel_status": {
+                      "description": "The status of an order cancellation request. \nAvailable values:\n- CANCELLATION_REQUEST_PENDING\n- CANCELLATION_REQUEST_SUCCESS\n- CANCELLATION_REQUEST_CANCEL\n- CANCELLATION_REQUEST_COMPLETE",
+                      "example": "CANCELLATION_REQUEST_SUCCESS",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

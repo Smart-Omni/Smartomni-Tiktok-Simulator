@@ -9288,7 +9288,7 @@
                             "type": "object",
                             "properties": {
                               "code": {
-                                "type": "string",
+                                "type": "integer",
                                 "description": "-1 simulator sentinel"
                               },
                               "message": {
@@ -9499,7 +9499,7 @@
                             "type": "object",
                             "properties": {
                               "code": {
-                                "type": "string",
+                                "type": "integer",
                                 "description": "-1 simulator sentinel"
                               },
                               "message": {
@@ -9858,7 +9858,7 @@
                             "type": "object",
                             "properties": {
                               "code": {
-                                "type": "string",
+                                "type": "integer",
                                 "description": "-1 simulator sentinel"
                               },
                               "message": {

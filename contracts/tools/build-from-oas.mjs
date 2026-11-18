@@ -47,6 +47,19 @@ export const OPS = {
   "event.webhooks_get": ["event", "/event/202309/webhooks", "get"],
   "event.webhooks_put": ["event", "/event/202309/webhooks", "put"],
   "event.webhooks_delete": ["event", "/event/202309/webhooks", "delete"],
+  "product.category_attributes": ["product", "/product/202309/categories/{category_id}/attributes", "get"],
+  "product.category_rules": ["product", "/product/202309/categories/{category_id}/rules", "get"],
+  "product.update_price": ["product", "/product/202309/products/{product_id}/prices/update", "post"],
+  "product.inventory_search": ["product", "/product/202309/inventory/search", "post"],
+  "product.delete": ["product", "/product/202309/products", "delete"],
+  "product.recover": ["product", "/product/202309/products/recover", "post"],
+  "fulfillment.package_search": ["fulfillment", "/fulfillment/202309/packages/search", "post"],
+  "fulfillment.package_batch_ship": ["fulfillment", "/fulfillment/202309/packages/ship", "post"],
+  "return.create": ["return_refund", "/return_refund/202309/returns", "post"],
+  "return.refund_calculate": ["return_refund", "/return_refund/202309/refunds/calculate", "post"],
+  "cancellation.seller_cancel": ["return_refund", "/return_refund/202309/cancellations", "post"],
+  "cs.read_message": ["customer_service", "/customer_service/202309/conversations/{conversation_id}/messages/read", "post"],
+  "cs.create_conversation": ["customer_service", "/customer_service/202309/conversations", "post"],
 };
 
 const files = {};

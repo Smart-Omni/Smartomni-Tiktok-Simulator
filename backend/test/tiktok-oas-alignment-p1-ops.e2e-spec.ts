@@ -104,7 +104,11 @@ describe('OAS alignment P1: Search Packages, Batch Ship, Read Message, Create Co
       expect(wrongState.body.data.errors).toHaveLength(1);
     });
 
-    it('validates the array and the token', async () => {
+    it('validates the whole array before shipping anything, and the token', async () => {
+      const buyer = await t.buyerSession(0);
+      const good = await awaitingShipment(buyer, 'key-bs-valid1');
+      await ship([{ id: good.packageId }, {}]).expect(400);
+      expect((await prisma.order.findFirstOrThrow({ where: { externalId: good.orderId } })).status).toBe('AWAITING_SHIPMENT'); // nothing was shipped
       await ship([]).expect(400);
       await ship([{}]).expect(400);
       await t.call('POST', '/fulfillment/202309/packages/ship', 'bad-token', { body: { packages: [{ id: 'x' }] } }).expect((res) => {
@@ -136,10 +140,12 @@ describe('OAS alignment P1: Search Packages, Batch Ship, Read Message, Create Co
       const buyer = await t.buyerSession(0, 1);
       const row = await prisma.buyer.findUniqueOrThrow({ where: { id: buyer.buyerId } });
       await prisma.conversation.deleteMany({ where: { shopId: shopAId, buyerId: buyer.buyerId } });
+      await t.call('PUT', '/event/202309/webhooks', token, { body: { event_type: 'NEW_CONVERSATION', address: 'http://localhost:9/hook' } }).expect(200);
       const create = (id: string) => t.call('POST', '/customer_service/202309/conversations', token, { body: { buyer_user_id: id } });
       const a = await create(row.externalId).expect(200);
       expect(a.body.data.conversation_id).toEqual(expect.any(String));
-      const jobs = await prisma.webhookJob.count({ where: { topic: 'NEW_CONVERSATION' } });
+      expect(await prisma.webhookJob.count({ where: { topic: 'NEW_CONVERSATION' } })).toBe(1);
+      const jobs = 1;
       const b = await create(row.externalId).expect(200);
       expect(b.body.data.conversation_id).toBe(a.body.data.conversation_id);
       expect(await prisma.webhookJob.count({ where: { topic: 'NEW_CONVERSATION' } })).toBe(jobs);

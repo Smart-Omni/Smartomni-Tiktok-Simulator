@@ -180,11 +180,14 @@ export class FulfillmentController {
     const shop = req.tiktok!.shop;
     const body = (req.body ?? {}) as { packages?: unknown };
     if (!Array.isArray(body.packages) || body.packages.length === 0 || body.packages.length > 50) throw new TiktokFault(400, 'invalid_input', 'packages must be an array of 1-50 items');
+    // validate the whole array first: a 400 must never follow packages that were already shipped
+    for (const raw of body.packages as Array<Record<string, unknown>>) {
+      if (typeof raw?.id !== 'string' || raw.id.length === 0) throw new TiktokFault(400, 'invalid_input', 'every package needs an id');
+    }
     const errors: Array<{ code: number; message: string; detail: { package_id: string } }> = [];
     for (const raw of body.packages as Array<Record<string, unknown>>) {
-      const id = typeof raw?.id === 'string' ? raw.id : '';
+      const id = raw.id as string;
       const fail = (message: string) => errors.push({ code: -1, message, detail: { package_id: id } });
-      if (!id) throw new TiktokFault(400, 'invalid_input', 'every package needs an id');
       if (raw.handover_method !== undefined && (typeof raw.handover_method !== 'string' || !HANDOVER.has(raw.handover_method))) {
         fail('handover_method must be PICKUP or DROP_OFF');
         continue;

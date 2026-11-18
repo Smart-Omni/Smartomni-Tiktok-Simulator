@@ -94,7 +94,7 @@ export class AftersaleService implements OnModuleInit {
    * Seller Cancel Order (OAS CancelOrder). The order transition already runs the aftersale listener in the same
    * transaction, which writes the SELLER CANCEL record, restores stock once and emits both events (DECISIONS DA-7).
    */
-  async sellerCancel(shopId: string, orderExternalId: string, reason: string, lineIds: string[] | undefined, requestId?: string): Promise<AftersaleRow> {
+  async sellerCancel(shopId: string, orderExternalId: string, reason: string, lineIds: string[] | undefined, items: { skuId: string; quantity: number }[] | undefined, requestId?: string): Promise<AftersaleRow> {
     const order = await this.prisma.order.findFirst({ where: { shopId, externalId: orderExternalId }, include: { lines: true } });
     if (!order) throw new NotFoundException('Unknown order');
     const latest = () => this.prisma.aftersaleRequest.findFirst({ where: { orderId: order.id, kind: 'CANCELLATION' }, orderBy: { seq: 'desc' }, include: requestInclude });
@@ -106,6 +106,15 @@ export class AftersaleService implements OnModuleInit {
     if (!['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT'].includes(order.status)) throw new OrderRuleError('cancel_not_allowed', `a seller cannot cancel an order in ${order.status}`);
     if (lineIds && (lineIds.length !== order.lines.length || order.lines.some((l) => !lineIds.includes(l.externalId)))) {
       throw new OrderRuleError('partial_cancel_unsupported', 'partial cancellation is not supported for VN: pass every order line item id or none');
+    }
+    if (items) {
+      const perSku = new Map<string, number>();
+      for (const l of order.lines) perSku.set(l.skuExternalId, (perSku.get(l.skuExternalId) ?? 0) + 1);
+      const asked = new Map<string, number>();
+      for (const it of items) asked.set(it.skuId, (asked.get(it.skuId) ?? 0) + it.quantity);
+      if (asked.size !== perSku.size || [...perSku].some(([sku, n]) => asked.get(sku) !== n)) {
+        throw new OrderRuleError('partial_cancel_unsupported', 'partial cancellation is not supported for VN: skus must cover every unit of the order');
+      }
     }
     try {
       await this.orders.transition(order.id, 'CANCELLED', 'SELLER', { note: 'seller cancelled', cancelReason: reason, initiator: 'SELLER', forceRecord: true, requestId });

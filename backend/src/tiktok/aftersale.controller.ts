@@ -145,7 +145,7 @@ export class AftersaleController {
     const shop = req.tiktok!.shop;
     const body = this.body(req, CANCEL_ORDER_FIELDS);
     const units = this.units(body);
-    const row = await this.run(() => this.aftersale.sellerCancel(shop.id, this.requiredString(body.order_id, 'order_id'), this.requiredString(body.cancel_reason, 'cancel_reason'), units.lineIds, req.requestId));
+    const row = await this.run(() => this.aftersale.sellerCancel(shop.id, this.requiredString(body.order_id, 'order_id'), this.requiredString(body.cancel_reason, 'cancel_reason'), units.lineIds, units.items, req.requestId));
     return this.envelope(req, { cancel_id: row.externalId, cancel_status: row.status });
   }
 
@@ -410,6 +410,7 @@ export class AftersaleController {
     try {
       return await fn();
     } catch (e) {
+      if (e instanceof NotFoundException) throw new TiktokFault(404, 'order_not_found', 'the order does not exist in this shop');
       if (e instanceof OrderRuleError) {
         const kind = e.code === 'invalid_decision' ? 'invalid_decision' : 'invalid_input';
         throw new TiktokFault(400, kind, e.message);

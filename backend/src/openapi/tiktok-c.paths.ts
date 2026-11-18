@@ -86,7 +86,7 @@ export const paths: PathsFragment = {
 
 const PR = 'TikTok Product';
 const strArr = { type: 'array', items: str() };
-const errorsData = obj({ errors: { type: 'array', items: obj({ code: str('-1 simulator sentinel'), message: str(), detail: obj({ product_id: str() }) }) } });
+const errorsData = obj({ errors: { type: 'array', items: obj({ code: { type: 'integer', description: '-1 simulator sentinel' }, message: str(), detail: obj({ product_id: str() }) }) } });
 
 Object.assign(paths, {
   '/product/202309/products/{productId}/prices/update': {
@@ -135,7 +135,7 @@ paths['/product/202309/products/recover'] = {
 
 const FU = 'TikTok Fulfillment';
 const CS = 'TikTok Conversations';
-const errorsPkg = obj({ errors: { type: 'array', items: obj({ code: str('-1 simulator sentinel'), message: str(), detail: obj({ package_id: str() }) }) } });
+const errorsPkg = obj({ errors: { type: 'array', items: obj({ code: { type: 'integer', description: '-1 simulator sentinel' }, message: str(), detail: obj({ package_id: str() }) }) } });
 Object.assign(paths, {
   '/fulfillment/202309/packages/search': {
     post: sop({

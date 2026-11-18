@@ -1,0 +1,115 @@
+{
+  "operation": "product.category_rules",
+  "schema": "schemas/ops/product.category_rules.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "allowed_special_product_types": [
+            "TEST_allowed_special_product_types"
+          ],
+          "cod": {
+            "is_supported": false
+          },
+          "epr": {
+            "is_required": false
+          },
+          "fees": [
+            {
+              "is_required": false,
+              "type": "TEST_type"
+            }
+          ],
+          "manufacturer": {
+            "is_required": false
+          },
+          "package_dimension": {
+            "is_required": false
+          },
+          "product_certifications": [
+            {
+              "document_details": "TEST_document_details",
+              "expiration_date": {
+                "is_required": false
+              },
+              "id": "TEST_id",
+              "is_required": false,
+              "name": "TEST_name",
+              "requirement_conditions": [
+                {
+                  "attribute_id": "TEST_attribute_id",
+                  "attribute_value_id": "TEST_attribute_value_id",
+                  "condition_type": "TEST_condition_type"
+                }
+              ],
+              "sample_image_url": "TEST_sample_image_url"
+            }
+          ],
+          "responsible_person": {
+            "is_required": false
+          },
+          "size_chart": {
+            "is_required": false,
+            "is_supported": false
+          }
+        },
+        "message": "Success",
+        "request_id": "TEST-product.category_rules-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "allowed_special_product_types": [],
+          "cod": {
+            "is_supported": false
+          },
+          "epr": {
+            "is_required": false
+          },
+          "fees": [],
+          "manufacturer": {
+            "is_required": false
+          },
+          "package_dimension": {
+            "is_required": false
+          },
+          "product_certifications": [],
+          "responsible_person": {
+            "is_required": false
+          },
+          "size_chart": {
+            "is_required": false,
+            "is_supported": false
+          }
+        },
+        "message": "Success",
+        "request_id": "TEST-product.category_rules-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a malformed path parameter",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

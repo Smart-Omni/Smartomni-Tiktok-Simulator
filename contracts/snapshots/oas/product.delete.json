@@ -1,0 +1,141 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/product.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "fabe7ca0811586411edaec84d42042a86f5b517cf90c0179dd214afc12178798",
+    "candidatesInBundle": [
+      {
+        "method": "DELETE",
+        "path": "/product/202309/products",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "DELETE",
+  "path": "/product/202309/products",
+  "operation": {
+    "tags": [
+      "product_v202309"
+    ],
+    "summary": "DeleteProducts",
+    "description": "Delete non-frozen products that you no longer need.\n**For the Indonesia market**: You can only delete products that are not frozen on all listing platforms. If the product is frozen on any platform, it cannot be deleted.",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "product_ids": {
+                "description": "The product IDs to delete.\nMax number of IDs: 20.",
+                "example": [
+                  "1749456684124612452",
+                  "1742456684124612451"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "errors": {
+                      "description": "The list of errors that occurred.",
+                      "items": {
+                        "properties": {
+                          "code": {
+                            "description": "The error code.",
+                            "example": 12052048,
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "detail": {
+                            "description": "The details of the error.",
+                            "properties": {
+                              "product_id": {
+                                "description": "The ID of the product that could not be deleted.",
+                                "example": "1729382588639839583",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "message": {
+                            "description": "The error message.",
+                            "example": "You can't edit other sellers' products.",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

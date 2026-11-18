@@ -1,0 +1,281 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/fulfillment.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "6d94edfdf79ed8bcacb20e53950e341a16c091095ccd3e3c5ffb4badd833314e",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/fulfillment/202309/packages/search",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/fulfillment/202309/packages/search",
+  "operation": {
+    "tags": [
+      "fulfillment_v202309"
+    ],
+    "summary": "SearchPackage",
+    "description": "Retrieve package IDs based on specified conditions. Package creation time and information update time are the common querying conditions.",
+    "parameters": [
+      {
+        "name": "page_size",
+        "in": "query",
+        "description": "The number of results to be returned per page. Valid range: [1-50].",
+        "required": true,
+        "schema": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "example": 20
+      },
+      {
+        "name": "sort_field",
+        "in": "query",
+        "description": "The returned results will be sorted by the specified field. \nDefault: `create_time`\nPossible values:\n- `create_time`\n- `update_time`\n- `order_pay_time`\n\nSpecify the order for sorting the returned results by using the sort_order parameter.",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "order_pay_time"
+      },
+      {
+        "name": "sort_order",
+        "in": "query",
+        "description": "The sort order for the sort_field parameter. Default: `DESC`\nPossible values:\n- `ASC`: Ascending order\n- `DESC`: Descending order",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "ASC"
+      },
+      {
+        "name": "page_token",
+        "in": "query",
+        "description": "An opaque token used to retrieve the next page of a paginated result set. Retrieve this value from the result of the `next_page_token` from a previous response. It is not needed for the first page.",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "6AsPQsUMvH3RkchNUPPh22NROHkE0D8pmq/N5M1kHYcZmtRyv9aVrNv65W7Q6tFA"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. Get by API [Get Authorization Shop](https://partner.tiktokshop.com/docv2/page/6507ead7b99d5302be949ba9?external_id=6507ead7b99d5302be949ba9)",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "GCP_XF90igAAAABh00qsWgtvOiGFNqyubMt3"
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "create_time_ge": {
+                "description": "Filter the packages to show only those that are created after (or at) the specified date and time. Unix timestamp. ",
+                "example": 1623812664,
+                "format": "int64",
+                "type": "integer"
+              },
+              "create_time_lt": {
+                "description": "Filter the packages to show only those that are created before the specified date and time. Unix timestamp. ",
+                "example": 1623812664,
+                "format": "int64",
+                "type": "integer"
+              },
+              "package_status": {
+                "description": "Possible values:\n- `PROCESSING`: Package has been arranged by seller. Waiting for carrier to collect the parcel.\n- `FULFILLING`: Package has been collected by carrier and in transit.\n- `COMPLETED`: Package has been delivered.\n- `CANCELLED`: Package has been canceled. Normally, the package is canceled due to the package being lost or damaged.",
+                "example": "PROCESSING",
+                "type": "string"
+              },
+              "update_time_ge": {
+                "description": "Filter the packages to show only those that are updated after (or at) the specified date and time. Unix timestamp. ",
+                "example": 1623812664,
+                "format": "int64",
+                "type": "integer"
+              },
+              "update_time_lt": {
+                "description": "Filter the packages to show only those that are updated before the specified date and time. Unix timestamp. ",
+                "example": 1623812664,
+                "format": "int64",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "next_page_token": {
+                      "description": "An opaque token used to retrieve the next page of a paginated result set. Provide this value in the `page_token` parameter of your request if the current response does not return all the results.",
+                      "example": "6AsPQsUMvH3RkchNUPPh22NROHkE0D8pmq/N5M1kHYcZmtRyv9aVrNv65W7Q6tFA",
+                      "type": "string"
+                    },
+                    "packages": {
+                      "description": "The response list of packages.",
+                      "items": {
+                        "properties": {
+                          "create_time": {
+                            "description": "Package creation time. Unix timestamp.",
+                            "example": 1635338186,
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "id": {
+                            "description": "Package ID.",
+                            "example": "577828281214600000",
+                            "type": "string"
+                          },
+                          "order_line_item_ids": {
+                            "description": "The order line item ID contained in the package.\n",
+                            "example": [
+                              "1729382476852921560"
+                            ],
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "orders": {
+                            "description": "The response list of TikTok Shop orders. ",
+                            "items": {
+                              "properties": {
+                                "id": {
+                                  "description": "TikTok Shop order ID.",
+                                  "example": "577828281214600000",
+                                  "type": "string"
+                                },
+                                "skus": {
+                                  "description": "[Deprecated]The response list of SKUs.",
+                                  "items": {
+                                    "properties": {
+                                      "id": {
+                                        "description": "[Deprecated]The SKU ID.\n",
+                                        "example": "577828281214883345",
+                                        "type": "string"
+                                      },
+                                      "image_url": {
+                                        "description": "[Deprecated]The SKU image in order snapshot.\n",
+                                        "example": "https://p19-oec-sg.ibyteimg.com/tos-maliva-i-o3syd03w52-us/12345670",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "description": "[Deprecated]The SKU name.",
+                                        "example": "white,128g",
+                                        "type": "string"
+                                      },
+                                      "quantity": {
+                                        "description": "[Deprecated]The SKU quantity.",
+                                        "example": 5,
+                                        "format": "int64",
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "shipping_provider_id": {
+                            "description": "Package shipping provider ID.",
+                            "example": "6617675021119438849",
+                            "type": "string"
+                          },
+                          "shipping_provider_name": {
+                            "description": "Package shipping provider.",
+                            "example": "TT Virtual express",
+                            "type": "string"
+                          },
+                          "status": {
+                            "description": "Possible values:\n- `PROCESSING`: Package has been arranged by seller. Waiting for carrier to collect the parcel.\n- `FULFILLING`: Package has been collected by carrier and in transit.\n- `COMPLETED`: Package has been delivered.\n- `CANCELLED`: Package has been canceled. Normally, the package is canceled due to the package being lost or damaged.",
+                            "example": "PROCESSING",
+                            "type": "string"
+                          },
+                          "tracking_number": {
+                            "description": "Package tracking number.",
+                            "example": "6617675021119438849",
+                            "type": "string"
+                          },
+                          "update_time": {
+                            "description": "Package latest update time. Unix timestamp",
+                            "example": 1635338186,
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "total_count": {
+                      "description": "The number of packages that meet the query conditions.",
+                      "example": 221,
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

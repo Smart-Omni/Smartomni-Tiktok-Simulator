@@ -92,17 +92,29 @@ describe('OAS alignment P1: Seller Cancel Order, Create Return, Calculate Refund
       expect(await status(hold)).toBe('CANCELLED');
     });
 
-    it('refuses states after shipping, partial lines, unknown orders and a missing reason', async () => {
+    it('refuses states after shipping', async () => {
+      const buyer = await t.buyerSession(0);
+      const id = await paidOrder(buyer, 'key-sc-ship1', 1);
+      await transition(id, 'AWAITING_COLLECTION');
+      const r = await cancel({ order_id: id, cancel_reason: 'OTHER' }).expect(400);
+      expect(r.body.simulator_fault.kind).toBe('invalid_input');
+      expect(await status(id)).toBe('AWAITING_COLLECTION');
+    });
+
+    it('refuses partial lines or skus, unknown orders and a missing reason', async () => {
       const buyer = await t.buyerSession(0);
       const id = await paidOrder(buyer, 'key-sc-bad01', 2);
       const lines = await prisma.orderLine.findMany({ where: { order: { externalId: id } } });
       const partial = await cancel({ order_id: id, cancel_reason: 'OTHER', order_line_item_ids: [lines[0].externalId] }).expect(400);
       expect(partial.body.simulator_fault.kind).toBe('invalid_input');
       await cancel({ order_id: id }).expect(400);
-      await cancel({ order_id: '1', cancel_reason: 'OTHER' }).expect(404);
-      await transition(id, 'AWAITING_COLLECTION');
-      await cancel({ order_id: id, cancel_reason: 'OTHER' }).expect(400);
-      expect(await status(id)).toBe('AWAITING_COLLECTION');
+      const missing = await cancel({ order_id: '1', cancel_reason: 'OTHER' }).expect(404);
+      expect(missing.body.simulator_fault.kind).toBe('order_not_found');
+      const bySku = await cancel({ order_id: id, cancel_reason: 'OTHER', skus: [{ sku_id: BAG, quantity: 1 }] }).expect(400);
+      expect(bySku.body.simulator_fault.kind).toBe('invalid_input');
+      expect(await status(id)).toBe('AWAITING_SHIPMENT');
+      const whole = await cancel({ order_id: id, cancel_reason: 'OTHER', skus: [{ sku_id: BAG, quantity: 2 }] }).expect(200);
+      expect(whole.body.data.cancel_status).toBe('CANCELLATION_REQUEST_SUCCESS');
     });
 
     it('with every line id it succeeds; a pending buyer request is closed by it; a buyer-cancelled order is not re-claimed', async () => {

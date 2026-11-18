@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/fulfillment.package_search.request.json",
+  "title": "POST /fulfillment/202309/packages/search request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "create_time_ge": {
+      "type": "integer"
+    },
+    "create_time_lt": {
+      "type": "integer"
+    },
+    "package_status": {
+      "type": "string"
+    },
+    "update_time_ge": {
+      "type": "integer"
+    },
+    "update_time_lt": {
+      "type": "integer"
+    }
+  }
+}

@@ -60,6 +60,19 @@ const OPS = [
   ["event.webhooks_get", "Get webhook subscriptions", 5, "Only candidate GET 202309 (GetShopWebhooks).", "", "Lists configured topics (event_type) and addresses. Not paginated (total_count only)."],
   ["event.webhooks_put", "Set webhook address for a topic", 5, "Only candidate PUT 202309 (UpdateShopWebhook).", "", "Body address (max 255 chars) + event_type (one topic per call)."],
   ["event.webhooks_delete", "Delete webhook for a topic", 5, "Only candidate DELETE 202309 (DeleteShopWebhook).", "", "Succeeds whether or not the webhook existed (per OAS description). DELETE carries a JSON body {event_type}."],
+  ["product.category_attributes", "Category attributes", 4, "Only candidate GET 202309 (GetAttributes).", "", "category_id must be a leaf category. Field name is_requried is the OAS spelling."],
+  ["product.category_rules", "Category rules", 4, "Only candidate GET 202309 (GetCategoryRules).", "", "cod / package_dimension / size_chart / certifications; manufacturer and responsible_person apply to the EU only."],
+  ["product.update_price", "Update price", 4, "Only candidate POST 202309 (UpdatePrice).", "", "Product must be ACTIVATE and not in an ongoing campaign."],
+  ["product.inventory_search", "Inventory search", 6, "Only candidate POST 202309 (InventorySearch).", "", "product_ids max 100 or sku_ids max 600; sku_ids wins when both are sent."],
+  ["product.delete", "Delete products", 4, "Only candidate DELETE 202309 (DeleteProducts).", "", "Max 20 ids; FREEZE products cannot be deleted."],
+  ["product.recover", "Recover products", 4, "Only candidate POST 202309 (RecoverProducts).", "", "DELETED -> SELLER_DEACTIVATED; max 20 ids."],
+  ["fulfillment.package_search", "Package search", 7, "Only candidate POST 202309 (SearchPackage).", "", "page_size required [1-50]."],
+  ["fulfillment.package_batch_ship", "Batch ship packages", 7, "Only candidate POST 202309 (BatchShipPackages).", "", "Per-package errors in data.errors."],
+  ["return.create", "Create return on behalf of the buyer", 7, "Only candidate POST 202309 (CreateReturn).", "", "idempotency_key is a query parameter."],
+  ["return.refund_calculate", "Calculate refund", 7, "Only candidate POST 202309 (CalculateRefund).", "", "retail_delivery_fee applies to the US only."],
+  ["cancellation.seller_cancel", "Seller cancel order", 7, "Only candidate POST 202309 (CancelOrder).", "", "Partial cancellation is documented for the US and UK only."],
+  ["cs.read_message", "Mark conversation messages as read", 8, "Only candidate POST 202309 (ReadMessage).", "", null],
+  ["cs.create_conversation", "Create conversation", 8, "Only candidate POST 202309 (CreateConversation).", "", "buyer_user_id equals orders.user_id of Get Order Detail."],
 ];
 
 const operations = [];
