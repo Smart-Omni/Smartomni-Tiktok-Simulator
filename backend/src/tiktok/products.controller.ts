@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -616,6 +617,142 @@ export class ProductsController {
       check_result: failedReasons.length === 0 ? 'PASS' : 'FAILED',
       fail_reasons: failedReasons.map((message) => ({ code: -1, message })),
     });
+  }
+
+  /** POST /product/202309/products/{product_id}/prices/update */
+  @Post('product/202309/products/:productId/prices/update')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async updatePrice(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { skus?: unknown };
+    if (!Array.isArray(body.skus) || body.skus.length === 0 || body.skus.length > 100) throw new TiktokFault(400, 'invalid_input', 'skus must be an array of 1-100 items');
+    const product = await this.prisma.product.findUnique({ where: { shopId_externalId: { shopId: shop.id, externalId: productId } }, include: { skus: true } });
+    if (!product) throw new TiktokFault(404, 'product_not_found', 'product does not exist in this shop');
+    if (product.status !== 'ACTIVATE') throw new TiktokFault(400, 'invalid_input', 'prices can only be updated for a product in ACTIVATE status');
+    const updates: { id: string; priceVnd: number }[] = [];
+    for (const raw of body.skus as Array<Record<string, unknown>>) {
+      const sku = product.skus.find((s) => s.externalId === raw?.id);
+      if (!sku) throw new TiktokFault(400, 'invalid_input', `sku ${String(raw?.id)} does not belong to this product`);
+      const price = raw.price as { amount?: unknown; currency?: unknown } | undefined;
+      if (!price || price.currency !== 'VND') throw new TiktokFault(400, 'invalid_input', 'price.currency must be VND');
+      const amount = typeof price.amount === 'number' ? String(price.amount) : price.amount;
+      if (typeof amount !== 'string' || !/^[1-9][0-9]{0,11}$/.test(amount)) throw new TiktokFault(400, 'invalid_input', 'price.amount must be a positive integer (VND has no minor units)');
+      updates.push({ id: sku.id, priceVnd: Number(amount) });
+    }
+    const now = this.clock.now();
+    // one transaction for the whole batch: a bad SKU above rejected everything before any write; orders keep their snapshot prices
+    await this.prisma.$transaction(async (tx) => {
+      for (const u of updates) await tx.sku.update({ where: { id: u.id }, data: { priceVnd: u.priceVnd, updatedAt: now } });
+      await tx.product.update({ where: { id: product.id }, data: { updatedAt: now } });
+    });
+    return this.envelope(req, {});
+  }
+
+  /** POST /product/202309/inventory/search */
+  @Post('product/202309/inventory/search')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_READ)
+  async inventorySearch(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { product_ids?: unknown; sku_ids?: unknown };
+    const skuIds = body.sku_ids === undefined ? undefined : this.idList(body.sku_ids, 'sku_ids', 600);
+    const productIds = body.product_ids === undefined ? undefined : this.idList(body.product_ids, 'product_ids', 100);
+    if (!skuIds && !productIds) throw new TiktokFault(400, 'invalid_input', 'product_ids or sku_ids is required');
+    // OAS: when both are sent, sku_ids wins
+    const products = await this.prisma.product.findMany({
+      where: { shopId: shop.id, ...(skuIds ? { skus: { some: { externalId: { in: skuIds } } } } : { externalId: { in: productIds! } }) },
+      orderBy: { seq: 'asc' },
+      include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
+    });
+    const allSkus = products.flatMap((p) => p.skus.filter((s) => !skuIds || skuIds.includes(s.externalId)));
+    const open = await this.prisma.orderLine.findMany({
+      where: { skuId: { in: allSkus.map((s) => s.id) }, order: { status: { in: ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'] } } },
+      select: { skuId: true, order: { select: { warehouseId: true } } },
+    });
+    const committed = (skuId: string, warehouseId?: string) => open.filter((l) => l.skuId === skuId && (warehouseId === undefined || l.order.warehouseId === warehouseId)).length;
+    const inventory = products.map((p) => ({
+      product_id: p.externalId,
+      skus: p.skus
+        .filter((s) => !skuIds || skuIds.includes(s.externalId))
+        .map((s) => {
+          const available = s.inventory.reduce((n, i) => n + i.quantity, 0);
+          return {
+            id: s.externalId,
+            seller_sku: s.sellerSku,
+            total_available_quantity: available,
+            total_committed_quantity: committed(s.id),
+            total_available_inventory_distribution: { campaign_inventory: [], creator_inventory: [], in_shop_inventory: { quantity: available } },
+            warehouse_inventory: s.inventory.map((i) => ({ warehouse_id: i.warehouse.externalId, available_quantity: i.quantity, committed_quantity: committed(s.id, i.warehouseId) })),
+          };
+        }),
+    }));
+    return this.envelope(req, { inventory });
+  }
+
+  /** DELETE /product/202309/products: soft delete (status DELETED). Per-id errors, valid ids still processed. */
+  @Delete('product/202309/products')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async deleteProducts(@Req() req: TiktokRequest) {
+    return this.bulkStatus(req, 'delete');
+  }
+
+  /** POST /product/202309/products/recover: DELETED -> SELLER_DEACTIVATED. */
+  @Post('product/202309/products/recover')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async recoverProducts(@Req() req: TiktokRequest) {
+    return this.bulkStatus(req, 'recover');
+  }
+
+  private idList(value: unknown, field: string, max: number): string[] {
+    if (!Array.isArray(value) || value.length === 0 || value.length > max || value.some((v) => typeof v !== 'string' || v.length === 0 || v.length > 200)) {
+      throw new TiktokFault(400, 'invalid_input', `${field} must be an array of 1-${max} non-empty strings`);
+    }
+    return value as string[];
+  }
+
+  private async bulkStatus(req: TiktokRequest, mode: 'delete' | 'recover') {
+    const shop = req.tiktok!.shop;
+    const ids = [...new Set(this.idList(((req.body ?? {}) as { product_ids?: unknown }).product_ids, 'product_ids', 20))];
+    const now = this.clock.now();
+    const errors: Array<{ code: number; message: string; detail: { product_id: string } }> = [];
+    // OAS error codes are undocumented: -1 is a simulator sentinel (DECISIONS DA-9)
+    const fail = (id: string, message: string) => errors.push({ code: -1, message, detail: { product_id: id } });
+    await this.prisma.$transaction(async (tx) => {
+      for (const id of ids) {
+        const p = await tx.product.findUnique({ where: { shopId_externalId: { shopId: shop.id, externalId: id } }, include: { skus: { select: { id: true } } } });
+        if (!p) {
+          fail(id, 'product does not exist in this shop');
+          continue;
+        }
+        let next: string;
+        if (mode === 'delete') {
+          if (p.status === 'FREEZE') {
+            fail(id, 'a FREEZE product cannot be deleted');
+            continue;
+          }
+          if (p.status === 'DELETED') continue; // already deleted: nothing to do
+          next = 'DELETED';
+          await tx.cartItem.deleteMany({ where: { skuId: { in: p.skus.map((s) => s.id) } } });
+        } else {
+          if (p.status !== 'DELETED') {
+            fail(id, 'only a DELETED product can be recovered');
+            continue;
+          }
+          next = 'SELLER_DEACTIVATED';
+        }
+        await tx.product.update({ where: { id: p.id }, data: { status: next, updatedAt: now } });
+        const ev = buildProductStatusChangeData({ productId: id, status: next, auditStatus: 'NONE', updateTime: Math.floor(now.getTime() / 1000) });
+        await this.emitter.emit(tx, shop, 'PRODUCT_STATUS_CHANGE', ev, req.requestId);
+      }
+    });
+    return this.envelope(req, { errors });
   }
 
   /** GET /product/202309/categories */

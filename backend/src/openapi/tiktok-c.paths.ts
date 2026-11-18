@@ -83,3 +83,52 @@ export const paths: PathsFragment = {
     }),
   },
 };
+
+const PR = 'TikTok Product';
+const strArr = { type: 'array', items: str() };
+const errorsData = obj({ errors: { type: 'array', items: obj({ code: str('-1 simulator sentinel'), message: str(), detail: obj({ product_id: str() }) }) } });
+
+Object.assign(paths, {
+  '/product/202309/products/{productId}/prices/update': {
+    post: sop({
+      tag: PR,
+      summary: 'Update Price (202309)',
+      description: 'Updates SKU prices of an ACTIVATE product in one transaction (a bad SKU rejects the whole batch). VND integer amounts; existing orders keep their snapshot prices.',
+      handler: 'ProductsController.updatePrice',
+      scope: 'sim.product.write',
+      pathParams: [{ name: 'productId' }],
+      body: obj({ skus: { type: 'array', items: loose } }),
+    }),
+  },
+  '/product/202309/inventory/search': {
+    post: sop({
+      tag: PR,
+      summary: 'Inventory Search (202309)',
+      description: 'Inventory by product_ids (max 100) or sku_ids (max 600; wins when both are sent). Ids of other shops are ignored. total_committed_quantity counts units of open orders (UNPAID to AWAITING_COLLECTION).',
+      handler: 'ProductsController.inventorySearch',
+      scope: 'sim.product.read',
+      body: obj({ product_ids: strArr, sku_ids: strArr }),
+      data: obj({ inventory: { type: 'array', items: loose } }),
+    }),
+  },
+});
+(paths['/product/202309/products'] ??= {}).delete = sop({
+  tag: PR,
+  summary: 'Delete Products (202309)',
+  description: 'Soft delete (status DELETED, still visible to Search Products with that status). FREEZE and unknown ids are returned in errors; valid ids are still processed. Carts of the deleted SKUs are emptied.',
+  handler: 'ProductsController.deleteProducts',
+  scope: 'sim.product.write',
+  body: obj({ product_ids: strArr }),
+  data: errorsData,
+});
+paths['/product/202309/products/recover'] = {
+  post: sop({
+    tag: PR,
+    summary: 'Recover Products (202309)',
+    description: 'DELETED -> SELLER_DEACTIVATED. Other states are returned in errors.',
+    handler: 'ProductsController.recoverProducts',
+    scope: 'sim.product.write',
+    body: obj({ product_ids: strArr }),
+    data: errorsData,
+  }),
+};
