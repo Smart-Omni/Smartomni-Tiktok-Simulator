@@ -593,6 +593,8 @@ model Conversation {
   createdAt          DateTime
   updatedAt          DateTime
   nextIndex          Int           @default(1)
+  // Highest ChatMessage.seq the seller has marked as read (Read Message). Unread = buyer messages after max(last seller reply, this).
+  sellerReadSeq      Int           @default(0)
   messages           ChatMessage[]
 
   @@unique([shopId, externalId])

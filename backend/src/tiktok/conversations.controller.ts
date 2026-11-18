@@ -75,6 +75,33 @@ export class ConversationsController {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
+  /** POST /customer_service/202309/conversations: Create Conversation (idempotent per buyer). */
+  @Post('customer_service/202309/conversations')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async create(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body.buyer_user_id !== 'string' || body.buyer_user_id.length === 0 || body.buyer_user_id.length > 200) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id is required');
+    const res = await this.chat.createForBuyerUser(shop.id, body.buyer_user_id, req.requestId);
+    if (!res) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id does not belong to a buyer of this shop');
+    return this.envelope(req, { conversation_id: res.conversation.externalId });
+  }
+
+  /** POST /customer_service/202309/conversations/{conversation_id}/messages/read */
+  @Post('customer_service/202309/conversations/:conversationId/messages/read')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async read(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
+    const { shop } = req.tiktok!;
+    const conversation = await this.chat.ownedByShop(shop.id, conversationId);
+    if (!conversation) throw new TiktokFault(404, 'conversation_not_found', 'conversation does not exist in this shop');
+    await this.chat.markRead(conversation.id);
+    return this.envelope(req, {});
+  }
+
   @Get('customer_service/202309/conversations')
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_CONVERSATION_READ)

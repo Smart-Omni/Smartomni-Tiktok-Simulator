@@ -132,3 +132,58 @@ paths['/product/202309/products/recover'] = {
     data: errorsData,
   }),
 };
+
+const FU = 'TikTok Fulfillment';
+const CS = 'TikTok Conversations';
+const errorsPkg = obj({ errors: { type: 'array', items: obj({ code: str('-1 simulator sentinel'), message: str(), detail: obj({ package_id: str() }) }) } });
+Object.assign(paths, {
+  '/fulfillment/202309/packages/search': {
+    post: sop({
+      tag: FU,
+      summary: 'Search Package (202309)',
+      description: 'Keyset pagination on (create or update time, id). page_size [1, 50] is required. Status values are the package statuses the simulator stores (TO_FULFILL before shipment is arranged, then PROCESSING, FULFILLING, COMPLETED, CANCELLED).',
+      handler: 'FulfillmentController.search',
+      scope: 'sim.fulfillment.read',
+      query: [
+        { name: 'page_size', required: true, schema: { type: 'integer', minimum: 1, maximum: 50 }, example: 20 },
+        { name: 'page_token' },
+        { name: 'sort_field', description: 'create_time (default) or update_time.' },
+        { name: 'sort_order', description: 'DESC (default) or ASC.' },
+      ],
+      body: obj({ create_time_ge: { type: 'integer' }, create_time_lt: { type: 'integer' }, update_time_ge: { type: 'integer' }, update_time_lt: { type: 'integer' }, package_status: str() }),
+      data: obj({ packages: { type: 'array', items: loose }, next_page_token: str(), total_count: { type: 'integer' } }),
+    }),
+  },
+  '/fulfillment/202309/packages/ship': {
+    post: sop({
+      tag: FU,
+      summary: 'Batch Ship Packages (202309)',
+      description: 'Arranges each package like Ship Package, one transaction per package. Failures (unknown package, wrong state, self_shipment) are listed in errors and never block the other packages.',
+      handler: 'FulfillmentController.batchShip',
+      scope: 'sim.fulfillment.write',
+      body: obj({ packages: { type: 'array', items: loose } }),
+      data: errorsPkg,
+    }),
+  },
+  '/customer_service/202309/conversations': {
+    post: sop({
+      tag: CS,
+      summary: 'Create Conversation (202309)',
+      description: 'Returns the buyer\'s conversation with the shop, creating it when missing. NEW_CONVERSATION is emitted only on creation.',
+      handler: 'ConversationsController.create',
+      scope: 'sim.conversation.write',
+      body: obj({ buyer_user_id: str() }),
+      data: obj({ conversation_id: str() }),
+    }),
+  },
+  '/customer_service/202309/conversations/{conversationId}/messages/read': {
+    post: sop({
+      tag: CS,
+      summary: 'Read Message (202309)',
+      description: 'Marks every buyer message as read; unread_count becomes 0 until the buyer writes again.',
+      handler: 'ConversationsController.read',
+      scope: 'sim.conversation.write',
+      pathParams: [{ name: 'conversationId' }],
+    }),
+  },
+});

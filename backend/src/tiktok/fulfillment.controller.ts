@@ -9,6 +9,8 @@ import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard'
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 
 const SHIP_BODY_FIELDS = new Set(['handover_method', 'pickup_slot', 'self_shipment']);
+const SEARCH_BODY_FIELDS = new Set(['create_time_ge', 'create_time_lt', 'update_time_ge', 'update_time_lt', 'package_status']);
+const PACKAGE_STATUSES = new Set(['TO_FULFILL', 'PROCESSING', 'FULFILLING', 'COMPLETED', 'CANCELLED']);
 const HANDOVER = new Set(['PICKUP', 'DROP_OFF']);
 const sec = (d: Date): number => Math.floor(d.getTime() / 1000);
 
@@ -93,6 +95,114 @@ export class FulfillmentController {
       },
       sender_address: warehouse ? { name: warehouse.name, full_address: `${warehouse.name}, ${warehouse.city}`, address_detail: warehouse.city, region_code: 'VN' } : undefined,
     });
+  }
+
+  /** POST /fulfillment/202309/packages/search: keyset pagination on (time, id). */
+  @Post('fulfillment/202309/packages/search')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_READ)
+  async search(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const q = parseRawQuery(req.originalUrl)!.query;
+    if (!/^[0-9]{1,3}$/.test(q.page_size ?? '') || Number(q.page_size) < 1 || Number(q.page_size) > 50) throw new TiktokFault(400, 'invalid_input', 'page_size is required and must be an integer in [1, 50]');
+    const pageSize = Number(q.page_size);
+    const sortField = q.sort_field ?? 'create_time';
+    const sortOrder = q.sort_order ?? 'DESC';
+    if (sortField !== 'create_time' && sortField !== 'update_time') throw new TiktokFault(400, 'invalid_input', 'sort_field must be create_time or update_time');
+    if (sortOrder !== 'ASC' && sortOrder !== 'DESC') throw new TiktokFault(400, 'invalid_input', 'sort_order must be ASC or DESC');
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body)) throw new TiktokFault(400, 'invalid_input', 'request body must be a JSON object');
+    for (const k of Object.keys(body)) if (!SEARCH_BODY_FIELDS.has(k)) throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
+    const time = (v: unknown, f: string): Date | undefined => {
+      if (v === undefined || v === null) return undefined;
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) throw new TiktokFault(400, 'invalid_input', `${f} must be a Unix timestamp (integer seconds)`);
+      return new Date(v * 1000);
+    };
+    if (body.package_status !== undefined && (typeof body.package_status !== 'string' || !PACKAGE_STATUSES.has(body.package_status))) throw new TiktokFault(400, 'invalid_input', 'package_status is not a package status');
+    const key = sortField === 'create_time' ? 'createdAt' : 'updatedAt';
+    const cGe = time(body.create_time_ge, 'create_time_ge');
+    const cLt = time(body.create_time_lt, 'create_time_lt');
+    const uGe = time(body.update_time_ge, 'update_time_ge');
+    const uLt = time(body.update_time_lt, 'update_time_lt');
+    const where = {
+      shopId: shop.id,
+      ...(body.package_status ? { status: body.package_status as string } : {}),
+      ...(cGe || cLt ? { createdAt: { ...(cGe && { gte: cGe }), ...(cLt && { lt: cLt }) } } : {}),
+      ...(uGe || uLt ? { updatedAt: { ...(uGe && { gte: uGe }), ...(uLt && { lt: uLt }) } } : {}),
+    };
+    let cursor: { k: number; i: string; f: string; o: string } | null = null;
+    if (q.page_token) {
+      try {
+        const c = JSON.parse(Buffer.from(q.page_token, 'base64url').toString('utf8'));
+        if (Number.isSafeInteger(c.k) && typeof c.i === 'string' && c.f === sortField && c.o === sortOrder) cursor = c;
+      } catch {
+        /* fall through */
+      }
+      if (!cursor) throw new TiktokFault(400, 'invalid_input', 'page_token is not a token issued by this API for this sort');
+    }
+    const cmp = sortOrder === 'ASC' ? 'gt' : 'lt';
+    const dir = sortOrder === 'ASC' ? 'asc' : 'desc';
+    const pageWhere = cursor ? { AND: [where, { OR: [{ [key]: { [cmp]: new Date(cursor.k) } }, { [key]: new Date(cursor.k), id: { [cmp]: cursor.i } }] }] } : where;
+    const [total, rows] = await Promise.all([
+      this.prisma.package.count({ where }),
+      this.prisma.package.findMany({ where: pageWhere, orderBy: [{ [key]: dir }, { id: dir }], take: pageSize + 1, include: { lines: true, order: { select: { externalId: true, lines: { select: { id: true, externalId: true } } } } } }),
+    ]);
+    const page = rows.slice(0, pageSize);
+    const last = page[page.length - 1];
+    const next = rows.length > pageSize && last ? Buffer.from(JSON.stringify({ k: last[key].getTime(), i: last.id, f: sortField, o: sortOrder }), 'utf8').toString('base64url') : '';
+    return this.envelope(req, {
+      next_page_token: next,
+      total_count: total,
+      packages: page.map((pkg) => {
+        const lineIds = new Map(pkg.order.lines.map((l) => [l.id, l.externalId]));
+        return {
+          id: pkg.externalId,
+          status: pkg.status,
+          tracking_number: pkg.trackingNumber ?? undefined,
+          shipping_provider_id: pkg.shippingProviderId,
+          shipping_provider_name: pkg.shippingProviderName,
+          create_time: sec(pkg.createdAt),
+          update_time: sec(pkg.updatedAt),
+          order_line_item_ids: pkg.lines.map((l) => lineIds.get(l.orderLineId)).filter((id): id is string => !!id),
+          orders: [{ id: pkg.order.externalId }],
+        };
+      }),
+    });
+  }
+
+  /** POST /fulfillment/202309/packages/ship: one transaction per package, failures are listed and never block the others. */
+  @Post('fulfillment/202309/packages/ship')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_FULFILLMENT_WRITE)
+  async batchShip(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { packages?: unknown };
+    if (!Array.isArray(body.packages) || body.packages.length === 0 || body.packages.length > 50) throw new TiktokFault(400, 'invalid_input', 'packages must be an array of 1-50 items');
+    const errors: Array<{ code: number; message: string; detail: { package_id: string } }> = [];
+    for (const raw of body.packages as Array<Record<string, unknown>>) {
+      const id = typeof raw?.id === 'string' ? raw.id : '';
+      const fail = (message: string) => errors.push({ code: -1, message, detail: { package_id: id } });
+      if (!id) throw new TiktokFault(400, 'invalid_input', 'every package needs an id');
+      if (raw.handover_method !== undefined && (typeof raw.handover_method !== 'string' || !HANDOVER.has(raw.handover_method))) {
+        fail('handover_method must be PICKUP or DROP_OFF');
+        continue;
+      }
+      if (raw.self_shipment !== undefined) {
+        fail('self_shipment is not supported: the simulator only models platform (TIKTOK) shipping');
+        continue;
+      }
+      try {
+        const pkg = await this.fulfillment.packageOf(shop.id, id);
+        await this.fulfillment.arrangeShipment(shop.id, pkg.order.externalId, 'SELLER', req.requestId, raw.handover_method as string | undefined);
+      } catch (e) {
+        if (e instanceof NotFoundException) fail('package does not exist in this shop');
+        else if (e instanceof OrderRuleError) fail(`${e.code}: ${e.message}`);
+        else throw e;
+      }
+    }
+    return this.envelope(req, { errors });
   }
 
   /** Ship package. Only an arranged-able package of an order in AWAITING_SHIPMENT; a repeat on an already arranged package succeeds without a second package. */
