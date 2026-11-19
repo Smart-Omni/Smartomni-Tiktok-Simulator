@@ -3,9 +3,8 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import request from 'supertest';
 import { AuthClock } from '../src/clock/clock';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { TiktokModule } from '../src/tiktok/tiktok.module';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 
 const admin = { 'x-test-admin-token': ADMIN_TOKEN };
 
@@ -23,8 +22,7 @@ describe('router separation, demo isolation, clocks, request log', () => {
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   describe('router separation', () => {

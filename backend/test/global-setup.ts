@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Integration/e2e tests need a real PostgreSQL (FOR UPDATE SKIP LOCKED cannot be faked).
@@ -25,6 +26,13 @@ export default async function globalSetup(): Promise<void> {
     }
     process.env.TEST_DATABASE_URL = url;
     execSync('npx prisma migrate deploy', { cwd: join(__dirname, '..'), env: { ...process.env, DATABASE_URL: url }, stdio: 'inherit' });
+    // resetToSeed (test/helpers.ts) snapshots the seeded rows into this schema; a snapshot of an earlier run must never be reused.
+    const prisma = new PrismaClient({ datasources: { db: { url } } });
+    try {
+      await prisma.$executeRawUnsafe('DROP SCHEMA IF EXISTS seed_snapshot CASCADE');
+    } finally {
+      await prisma.$disconnect();
+    }
   } catch (err: any) {
     console.error('GLOBAL SETUP FAILED:', err);
     if (err?.errors) {

@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 
 describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
   let app: INestApplication;
@@ -20,8 +19,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
   });
 
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   describe('Session Management (scope & shopId)', () => {

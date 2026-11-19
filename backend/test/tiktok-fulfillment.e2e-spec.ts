@@ -4,9 +4,8 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { conformErrors } from './contract';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const admin = { 'x-test-admin-token': ADMIN_TOKEN };
@@ -33,8 +32,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
   });
 

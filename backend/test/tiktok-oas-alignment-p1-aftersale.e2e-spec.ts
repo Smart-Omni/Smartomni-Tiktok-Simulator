@@ -3,8 +3,7 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const admin = { 'x-test-admin-token': ADMIN_TOKEN };
@@ -30,8 +29,7 @@ describe('OAS alignment P1: Seller Cancel Order, Create Return, Calculate Refund
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
     shopAId = (await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Mộc Lan' } } })).id;
     token = (await t.connect(0)).accessToken;
