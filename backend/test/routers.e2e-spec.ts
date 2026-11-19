@@ -72,7 +72,7 @@ describe('router separation, demo isolation, clocks, request log', () => {
   describe('demo sessions: two shops cannot read or modify each other', () => {
     it('a seller or buyer session only reaches its own shop', async () => {
       const ids = (await http.get('/demo/identities')).body;
-      expect(ids.sellers).toHaveLength(2);
+      expect(ids.sellers).toHaveLength(5);
       const [sa, sb] = ids.sellers;
       const sessA = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sa.id }).expect(201)).body;
       const sessB = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sb.id }).expect(201)).body;

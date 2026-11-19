@@ -13,7 +13,7 @@ export class TiktokTestClient {
 
   async sellerSession(index: 0 | 1) {
     const ids = (await this.http.get('/demo/identities')).body;
-    const seller = index === 0 ? ids.sellers.find(this.isShopA) : ids.sellers.find((x: any) => !this.isShopA(x));
+    const seller = index === 0 ? ids.sellers.find(this.isShopA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
     const sess = (await this.http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }

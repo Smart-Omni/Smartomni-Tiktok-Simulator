@@ -34,7 +34,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
   async function sellerSession(index: 0 | 1) {
     const ids = (await http.get('/demo/identities')).body;
     const isA = (x: any) => x.shops.some((sh: any) => sh.name.includes('Mộc Lan'));
-    const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => !isA(x));
+    const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
     const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }

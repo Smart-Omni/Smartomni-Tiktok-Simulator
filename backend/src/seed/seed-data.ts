@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import fashionCatalog from './fashion-catalog.json';
 
 /** Deterministic UUID-shaped id derived from a stable name, so reset + reseed yields the same ids. */
 export function detId(name: string): string {
@@ -27,6 +28,16 @@ export interface SeedProduct {
   code: string;
   title: string;
   description: string;
+  /** Listing fields (same meaning as the Create Product body). Written only when the product row is first created. */
+  listing?: {
+    categoryId?: string;
+    brandId?: string;
+    mainImages?: { uri: string }[];
+    packageWeight?: { value: string; unit: string };
+    productAttributes?: unknown[];
+    isCodAllowed?: boolean;
+    externalProductId?: string;
+  };
   skus: SeedSku[];
 }
 export interface SeedBuyer {
@@ -170,6 +181,54 @@ export const SEED_SHOPS: SeedShop[] = [
     ],
   },
 ];
+
+// Fashion catalog: the three Shopee-simulator shops re-created as TikTok shops (same names). Products come from
+// fashion-catalog.json; ids derive from the Shopee item id, so seeding is idempotent (upsert, never duplicates).
+const FASHION_SHOPS = [
+  { tiktokShopId: '7494000000000000003', cipher: 'GCP_SIM_SHOP_C_FAKE_CIPHER', seller: 'Phạm Gia Huy', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho TP.HCM', 'Hồ Chí Minh']] },
+  { tiktokShopId: '7494000000000000004', cipher: 'GCP_SIM_SHOP_D_FAKE_CIPHER', seller: 'Ngô Thanh Tùng', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho Đà Nẵng', 'Đà Nẵng']] },
+  { tiktokShopId: '7494000000000000005', cipher: 'GCP_SIM_SHOP_E_FAKE_CIPHER', seller: 'Bùi Ngọc Anh', warehouses: [['Kho TP.HCM', 'Hồ Chí Minh'], ['Kho Cần Thơ', 'Cần Thơ']] },
+];
+
+export const FASHION_SHOPS_SEED: SeedShop[] = fashionCatalog.shops.map((src, idx): SeedShop => {
+  const f = FASHION_SHOPS[idx];
+  const key = src.key;
+  return {
+    key,
+    tiktokShopId: f.tiktokShopId,
+    shopCipher: f.cipher,
+    name: src.name,
+    seller: { openId: `sim-seller-open-id-${key}`, name: f.seller, email: `seller.${key}@simulator.local` },
+    warehouses: f.warehouses.map(([name, city], i) => ({ code: i === 0 ? 'WH-1' : 'WH-2', name, city, isDefault: i === 0 })),
+    buyers: [
+      { code: `${key}-1`, name: 'Nguyễn Minh Khôi', phone: `09${idx}0000001`, addressLine: '21 Lý Thường Kiệt', district: 'Quận 10', city: 'Hồ Chí Minh' },
+      { code: `${key}-2`, name: 'Trịnh Bảo Ngọc', phone: `09${idx}0000002`, addressLine: '9 Hàng Bài', district: 'Hoàn Kiếm', city: 'Hà Nội' },
+    ],
+    products: src.products.map((p): SeedProduct => ({
+      code: `fashion-${p.sourceItemId}`,
+      externalId: numericId('7500', `fashion:${key}:${p.sourceItemId}`),
+      title: p.title,
+      description: p.description,
+      listing: {
+        categoryId: p.categoryId,
+        brandId: p.brandId,
+        mainImages: p.mainImages,
+        packageWeight: p.packageWeight,
+        productAttributes: p.productAttributes,
+        isCodAllowed: p.isCodAllowed,
+        externalProductId: p.externalProductId,
+      },
+      skus: p.skus.map((k): SeedSku => ({
+        code: k.code,
+        externalId: numericId('7510', `fashion-sku:${key}:${k.code}`),
+        name: k.name,
+        priceVnd: k.priceVnd,
+        stock: [k.stock[0], k.stock[1]],
+      })),
+    })),
+  };
+});
+SEED_SHOPS.push(...FASHION_SHOPS_SEED);
 
 export const SEED_SCENARIOS = [
   { key: 'default', name: 'Default (no faults)', description: 'Baseline behaviour, no injected failures.', config: {} },
