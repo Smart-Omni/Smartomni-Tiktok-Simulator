@@ -7,6 +7,8 @@ server {
     # Same-origin proxy to the API. The test-admin token is injected here (server side),
     # so it never appears in the JavaScript bundle. Keep the UI port bound to localhost.
     location /demo/ {
+        # product image uploads go up to 5 MB (nginx default is 1 MB)
+        client_max_body_size 6m;
         proxy_pass http://api:8090;
         proxy_set_header Host $host;
         proxy_set_header X-Request-Id $request_id;

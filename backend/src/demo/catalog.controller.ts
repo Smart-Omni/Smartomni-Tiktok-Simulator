@@ -560,16 +560,22 @@ export class CatalogDemoController {
 
     let mainImages: Prisma.InputJsonValue[] | undefined;
     if (body.images !== undefined) {
-      const ids = body.images.map((u) => mediaIdFromUri(u));
-      if (ids.some((id) => !id)) reasons.push('images must be uri values returned by the image upload');
-      else if (new Set(ids).size !== ids.length) reasons.push('images must not repeat');
+      // An image already on the product (e.g. a seeded external URL) is kept as stored; a new one must be uploaded by this shop.
+      const stored = new Map<string, Prisma.InputJsonValue>();
+      if (Array.isArray(existing?.mainImages)) for (const i of existing.mainImages) if (isObj(i) && typeof i.uri === 'string') stored.set(i.uri, i as Prisma.InputJsonValue);
+      const fresh = body.images.filter((u) => !stored.has(u));
+      const ids = fresh.map((u) => mediaIdFromUri(u));
+      if (new Set(body.images).size !== body.images.length) reasons.push('images must not repeat');
+      else if (ids.some((id) => !id)) reasons.push('images must be uri values returned by the image upload');
       else {
-        const assets = await this.prisma.mediaAsset.findMany({ where: { id: { in: ids as string[] }, shopId }, select: { id: true, width: true, height: true } });
+        const assets = ids.length ? await this.prisma.mediaAsset.findMany({ where: { id: { in: ids as string[] }, shopId }, select: { id: true, width: true, height: true } }) : [];
         const byId = new Map(assets.map((a) => [a.id, a]));
         if (ids.some((id) => !byId.has(id!))) reasons.push('every image must be uploaded by this shop');
         else
-          mainImages = ids.map((id) => {
-            const a = byId.get(id!)!;
+          mainImages = body.images.map((u) => {
+            const kept = stored.get(u);
+            if (kept !== undefined) return kept;
+            const a = byId.get(mediaIdFromUri(u)!)!;
             const url = mediaUrl(this.config.publicApiBaseUrl, a.id);
             return { uri: `${MEDIA_URI_PREFIX}${a.id}`, urls: [url], thumb_urls: [url], width: a.width, height: a.height };
           });

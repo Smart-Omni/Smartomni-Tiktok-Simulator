@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { attributesFor } from '../src/catalog-meta';
+import fashion from '../src/seed/fashion-catalog.json';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { createApp, resetToSeed } from './helpers';
 import { pngBytes } from './images';
@@ -116,6 +117,35 @@ describe('Seller Center product listing fields (/demo catalog with images, categ
     expect((await post({ categoryId: '400001', productAttributes: [{ id: 'nope', values: [{ name: 'x' }] }] }).expect(400)).body.message).toContain('does not belong');
     await post({ images: [] }).expect(400);
     await post({ images: Array(10).fill(mine.uri) }).expect(400);
+  });
+
+  it('saves a seeded product unchanged the way the product page sends it (stored external images are kept)', async () => {
+    const ids = (await http.get('/demo/identities').expect(200)).body;
+    const seller = ids.sellers.find((s: any) => s.shops.some((sh: any) => sh.name === fashion.shops[0].name));
+    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
+    const auth = { 'x-demo-session': sess.sessionToken };
+    const list = (await http.get(`/demo/shops/${sess.shopId}/catalog`).set(auth).expect(200)).body.items;
+    const p = list.find((x: any) => x.images.length > 0 && x.categoryId);
+    expect(p.images[0].uri).toMatch(/^https?:\/\//);
+    const body = {
+      title: p.title,
+      description: p.description,
+      categoryId: p.categoryId,
+      brandId: p.brandId ?? null,
+      images: p.images.map((i: any) => i.uri),
+      productAttributes: p.productAttributes.map((a: any) => ({ id: a.id, values: a.values.map((v: any) => (v.id ? { id: v.id, name: v.name } : { name: v.name })) })),
+      packageWeight: p.packageWeight ? { value: p.packageWeight.value, unit: 'KILOGRAM' } : null,
+      packageDimensions: null,
+    };
+    const saved = (await http.patch(`/demo/shops/${sess.shopId}/catalog/products/${p.id}`).set(auth).send(body).expect(200)).body;
+    expect(saved.images).toEqual(p.images);
+    expect(saved.packageWeight).toEqual(p.packageWeight);
+    expect(saved.productAttributes.map((a: any) => a.id)).toEqual(p.productAttributes.map((a: any) => a.id));
+
+    // a new upload can be added in front of the stored image
+    const img = (await http.post(`/demo/shops/${sess.shopId}/media/images`).set(auth).attach('file', pngBytes(300, 300), 'n.png').expect(201)).body;
+    const more = (await http.patch(`/demo/shops/${sess.shopId}/catalog/products/${p.id}`).set(auth).send({ images: [img.uri, ...body.images] }).expect(200)).body;
+    expect(more.images.map((i: any) => i.uri)).toEqual([img.uri, ...body.images]);
   });
 
   it('edits listing fields; a new category drops the old attributes and title-only edits skip the listing checks', async () => {
