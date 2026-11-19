@@ -2,8 +2,12 @@ import { api } from './api';
 import type {
   AftersaleList,
   Aftersale,
+  Brand,
   Cart,
   Catalog,
+  CategoryAttribute,
+  CategoryNode,
+  CategoryRules,
   ChatMessage,
   CheckoutRequest,
   Conversation,
@@ -24,6 +28,7 @@ import type {
   Shop,
   SignInIdentity,
   StorefrontProduct,
+  UploadedImage,
 } from './types';
 
 /** One function per /demo endpoint used by the Tiptop Shop screens. Shop-scoped calls take the signed-in session. */
@@ -120,6 +125,18 @@ export const addSku = (s: DemoSession, productRowId: string, body: Body) =>
   api(shop(s, `/catalog/products/${id(productRowId)}/skus`), { method: 'POST', body, ...auth(s) });
 /** `skuRowId` is CatalogSku.id; body is one of { priceVnd } | { stock: { [warehouseExternalId]: n } } | { status }. */
 export const patchSku = (s: DemoSession, skuRowId: string, body: Body) => api(shop(s, `/catalog/skus/${id(skuRowId)}`), { method: 'PATCH', body, ...auth(s) });
+// Product page: category data and image upload
+export const getCategories = (s: DemoSession) => api<{ categories: CategoryNode[] }>(shop(s, '/catalog/categories'), auth(s));
+export const getCategoryAttributes = (s: DemoSession, categoryId: string) =>
+  api<{ attributes: CategoryAttribute[] }>(shop(s, `/catalog/categories/${id(categoryId)}/attributes`), auth(s));
+export const getCategoryRules = (s: DemoSession, categoryId: string) => api<CategoryRules>(shop(s, `/catalog/categories/${id(categoryId)}/rules`), auth(s));
+export const getBrands = (s: DemoSession) => api<{ brands: Brand[] }>(shop(s, '/catalog/brands'), auth(s));
+/** Multipart upload (field `file`); the returned `uri` goes into the product `images`. */
+export const uploadProductImage = (s: DemoSession, file: File) => {
+  const body = new FormData();
+  body.append('file', file);
+  return api<UploadedImage>(shop(s, '/media/images'), { method: 'POST', body, ...auth(s) });
+};
 export const getInventoryHistory = (s: DemoSession) => api<InventoryHistory>(shop(s, '/inventory/history'), auth(s));
 
 export const approveAftersale = (s: DemoSession, requestId: string) => api(shop(s, `/aftersale/${id(requestId)}/approve`), { method: 'POST', body: {}, ...auth(s) });

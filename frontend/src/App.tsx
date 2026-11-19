@@ -24,6 +24,7 @@ const SellerOrders = named(() => import('./pages/seller-center/SellerOrders'), '
 const SellerOrderDetail = named(() => import('./pages/seller-center/SellerOrderDetail'), 'SellerOrderDetail');
 const SellerReturns = named(() => import('./pages/seller-center/SellerReturns'), 'SellerReturns');
 const SellerProducts = named(() => import('./pages/seller-center/SellerProducts'), 'SellerProducts');
+const SellerProductForm = named(() => import('./pages/seller-center/SellerProductForm'), 'SellerProductForm');
 const SellerVouchers = named(() => import('./pages/seller-center/SellerVouchers'), 'SellerVouchers');
 const SellerMessages = named(() => import('./pages/seller-center/SellerMessages'), 'SellerMessages');
 const ConsolePage = named(() => import('./pages/ConsolePage'), 'ConsolePage');
@@ -73,6 +74,8 @@ export function App() {
             <Route path="orders/:id" element={page(SellerOrderDetail)} />
             <Route path="returns" element={page(SellerReturns)} />
             <Route path="products" element={page(SellerProducts)} />
+            <Route path="products/new" element={page(SellerProductForm)} />
+            <Route path="products/:id/edit" element={page(SellerProductForm)} />
             <Route path="vouchers" element={page(SellerVouchers)} />
             <Route path="messages" element={page(SellerMessages)} />
             <Route path="shop" element={<ComingSoon title="Shop" />} />

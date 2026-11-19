@@ -171,27 +171,17 @@ describe('Seller Center products', () => {
     await waitFor(() => expect(writes()).toContainEqual({ url: `${base}/catalog/products/row-p1/skus`, method: 'POST', body: { sellerSku: 'TEE-L', name: 'L', priceVnd: 139000 } }));
   });
 
-  it('creates a product and deletes one only after confirming', async () => {
+  it('links to the product page for new products and details, and deletes one only after confirming', async () => {
     renderAt('/seller-center/products');
     await screen.findByRole('region', { name: 'Product P1' });
-    fireEvent.click(screen.getByRole('button', { name: 'New product' }));
-    const dialog = await screen.findByRole('dialog', { name: 'New product' });
-    const create = within(dialog).getByRole('button', { name: 'Create product' }) as HTMLButtonElement;
-    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Linen hat' } });
-    fireEvent.change(within(dialog).getByLabelText('Seller SKU'), { target: { value: 'HAT-1' } });
-    fireEvent.change(within(dialog).getByLabelText('First variant'), { target: { value: 'Beige' } });
-    fireEvent.change(within(dialog).getByLabelText('Price (VND)'), { target: { value: '12.5' } });
-    expect(create.disabled).toBe(true);
-    fireEvent.change(within(dialog).getByLabelText('Price (VND)'), { target: { value: '159000' } });
-    fireEvent.click(create);
-    await waitFor(() =>
-      expect(writes()).toEqual([{ url: `${base}/catalog/products`, method: 'POST', body: { title: 'Linen hat', description: '', skus: [{ sellerSku: 'HAT-1', name: 'Beige', priceVnd: 159000 }] } }]),
-    );
+    expect(screen.getByRole('link', { name: 'New product' }).getAttribute('href')).toBe('/seller-center/products/new');
+    expect(within(card('P1')).getByRole('link', { name: 'Edit details' }).getAttribute('href')).toBe('/seller-center/products/row-p1/edit');
+    expect(within(card('P1')).getByLabelText('No image')).toBeTruthy();
 
     fireEvent.click(within(card('P2')).getByRole('button', { name: 'Delete' }));
-    expect(writes()).toHaveLength(1);
+    expect(writes()).toHaveLength(0);
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Delete product?' })).getByRole('button', { name: 'Delete product' }));
-    await waitFor(() => expect(writes()[1]).toEqual({ url: `${base}/catalog/products/row-p2`, method: 'DELETE', body: undefined }));
+    await waitFor(() => expect(writes()[0]).toEqual({ url: `${base}/catalog/products/row-p2`, method: 'DELETE', body: undefined }));
   });
 
   it('shows only low-stock products with ?filter=low-stock', async () => {

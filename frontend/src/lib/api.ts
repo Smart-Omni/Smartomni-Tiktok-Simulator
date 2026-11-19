@@ -24,11 +24,13 @@ export interface RequestOptions {
  */
 export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
-  if (opts.body !== undefined) headers['content-type'] = 'application/json';
+  // FormData (file upload) is sent as is, so the browser sets the multipart boundary itself.
+  const form = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  if (opts.body !== undefined && !form) headers['content-type'] = 'application/json';
   if (opts.demoSession) headers['x-demo-session'] = opts.demoSession;
   let res: Response;
   try {
-    res = await fetch(path, { method: opts.method ?? 'GET', headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) });
+    res = await fetch(path, { method: opts.method ?? 'GET', headers, body: opts.body === undefined ? undefined : form ? (opts.body as FormData) : JSON.stringify(opts.body) });
   } catch {
     throw new ApiError('Cannot reach the simulator API (is it running?)', 0);
   }
