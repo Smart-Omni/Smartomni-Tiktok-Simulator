@@ -12,6 +12,7 @@ const future = new Date(Date.now() + 3600_000).toISOString();
 const buyer: DemoSession = { sessionToken: 'tok-b', role: 'BUYER', shopId: 'shop-1', buyerId: 'buyer_1', expiresAt: future };
 
 const real = (id: string, title: string): StorefrontProduct => ({
+  shop: { id: 'shop-2', name: 'Pottery Shop' },
   id,
   title,
   description: '',
@@ -50,7 +51,7 @@ describe('HomePage', () => {
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         urls.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
-        return json({ currency: 'VND', items: storefront });
+        return json({ currency: 'VND', items: storefront, nextCursor: null });
       }),
     );
   });
@@ -76,13 +77,16 @@ describe('HomePage', () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderHome();
     await screen.findByRole('region', { name: 'Best sellers' });
-    expect(urls).toEqual([{ url: '/demo/shops/shop-1/storefront/products', headers: { 'x-demo-session': 'tok-b' } }]);
+    expect(urls.map((u) => u.url)).toEqual(['/demo/catalog?limit=100']);
     expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(10);
     fireEvent.click(screen.getByRole('button', { name: 'See more' }));
     expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(12);
     // the seeded title gets its mock sold count (1300 -> "1.3K sold")
     const bottle = within(region('Best sellers')).getByRole('link', { name: /Bình giữ nhiệt 500ml/ });
     expect(bottle.textContent).toContain('1.3K sold');
+    // every card names its shop and links to the product page of that shop, not of the buyer's own shop
+    expect(bottle.textContent).toContain('Pottery Shop');
+    expect(bottle.getAttribute('href')).toBe('/product/shop-2/750001');
     expect(screen.queryByRole('button', { name: 'See more' })).toBeNull();
   });
 

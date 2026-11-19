@@ -13,11 +13,13 @@ import type {
   Fulfillment,
   Identities,
   InventoryHistory,
+  MarketplaceCart,
   Me,
   Order,
   OrderHistoryEntry,
   ReturnRequest,
   ShippingDocument,
+  ShopRef,
   ShippingDocumentType,
   Shop,
   SignInIdentity,
@@ -29,6 +31,12 @@ import type {
 const shop = (s: DemoSession, path = '') => `/demo/shops/${encodeURIComponent(s.shopId)}${path}`;
 const id = encodeURIComponent;
 const auth = (s: DemoSession) => ({ demoSession: s.sessionToken });
+
+/**
+ * A buyer session works in every shop: the shop is taken from the URL. Use this to point a shop-scoped call
+ * at a shop other than the session's default one, e.g. `getCart(inShop(buyer, product.shop.id))`.
+ */
+export const inShop = (s: DemoSession, shopId: string): DemoSession => ({ ...s, shopId });
 
 // Sessions
 export const getIdentities = () => api<Identities>('/demo/identities');
@@ -47,6 +55,26 @@ export const listStorefrontProducts = (s: DemoSession) =>
   api<{ currency: string; items: StorefrontProduct[] }>(shop(s, '/storefront/products'), auth(s));
 export const getStorefrontProduct = (s: DemoSession, productId: string) =>
   api<{ currency: string; product: StorefrontProduct }>(shop(s, `/storefront/products/${id(productId)}`), auth(s));
+
+// Marketplace (buyer): products, cart and orders of every shop
+const PAGE = 100;
+const MAX_PAGES = 20;
+/** Every on-sale product of every active shop (GET /demo/catalog, public), following the cursor. */
+export async function listMarketplaceProducts(): Promise<StorefrontProduct[]> {
+  const items: StorefrontProduct[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${cursor ? `&cursor=${id(cursor)}` : ''}`);
+    items.push(...r.items);
+    if (!r.nextCursor) break;
+    cursor = r.nextCursor;
+  }
+  return items;
+}
+export const getMarketplaceProduct = (shopId: string, productId: string) =>
+  api<{ currency: string; shop: ShopRef; product: StorefrontProduct }>(`/demo/catalog/${id(shopId)}/${id(productId)}`);
+export const getMarketplaceCart = (s: DemoSession) => api<MarketplaceCart>('/demo/cart', auth(s));
+export const listBuyerOrders = (s: DemoSession) => api<{ items: Order[] }>('/demo/buyer/orders', auth(s));
 
 // Cart and checkout (buyer)
 export const getCart = (s: DemoSession) => api<Cart>(shop(s, '/cart'), auth(s));

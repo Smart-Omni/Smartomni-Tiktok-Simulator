@@ -50,6 +50,7 @@ export function App() {
           {/* Tiptop Shop (buyer) */}
           <Route element={<ShopLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="product/:shopId/:id" element={<ProductPage />} />
             <Route path="product/:id" element={<ProductPage />} />
             <Route element={<RequireRole role="BUYER" />}>
               <Route path="cart" element={<CartPage />} />

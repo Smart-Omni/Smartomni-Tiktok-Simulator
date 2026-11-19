@@ -46,7 +46,14 @@ export interface Sku {
   stock: number;
 }
 
+export interface ShopRef {
+  id: string;
+  name: string;
+}
+
 export interface StorefrontProduct {
+  /** Set by the marketplace catalog (GET /demo/catalog); absent on the per-shop storefront. */
+  shop?: ShopRef;
   id: string;
   title: string;
   description: string;
@@ -114,6 +121,20 @@ export interface Cart {
   totalVnd: number;
 }
 
+/** One shop's part of the marketplace cart (GET /demo/cart). */
+export interface CartShopGroup {
+  shop: ShopRef;
+  items: CartItem[];
+  shopTotalVnd: number;
+}
+
+export interface MarketplaceCart {
+  currency: string;
+  shops: CartShopGroup[];
+  totalVnd: number;
+  itemCount: number;
+}
+
 export type OrderStatus =
   | 'UNPAID'
   | 'ON_HOLD'
@@ -157,6 +178,9 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  /** Shop that sold the order. Present on every /demo order response. */
+  shopId?: string;
+  shop?: ShopRef;
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;

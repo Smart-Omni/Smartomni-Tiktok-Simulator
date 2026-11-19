@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/lib/auth';
-import type { Cart, CartItem, DemoSession, StorefrontProduct } from '@/lib/types';
+import type { Cart, CartItem, DemoSession, MarketplaceCart, StorefrontProduct } from '@/lib/types';
 import { CartPage } from '@/pages/shop/CartPage';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -13,8 +13,9 @@ const buyer: DemoSession = { sessionToken: 'tok-b', role: 'BUYER', shopId: 'shop
 const line = (skuId: string, productId: string, productTitle: string, skuName: string, unitPriceVnd: number, quantity: number, available = true): CartItem => ({
   skuId, productId, productTitle, skuName, sellerSku: skuId, quantity, unitPriceVnd, lineTotalVnd: unitPriceVnd * quantity, available,
 });
-const product = (id: string, title: string, skus: { id: string; stock: number }[]): StorefrontProduct => ({
-  id, title, description: '', imageUrl: `/img/${id}.svg`, minPriceVnd: 1, maxPriceVnd: 1,
+const SHOP_NAMES: Record<string, string> = { 'shop-1': 'Mộc Lan Shop', 'shop-2': 'Pottery Shop' };
+const product = (id: string, title: string, skus: { id: string; stock: number }[], shop = 'shop-1'): StorefrontProduct => ({
+  shop: { id: shop, name: SHOP_NAMES[shop] }, id, title, description: '', imageUrl: `/img/${id}.svg`, minPriceVnd: 1, maxPriceVnd: 1,
   skus: skus.map((s) => ({ id: s.id, name: s.id, attributeName: 'V', priceVnd: 1, available: true, stock: s.stock })),
 });
 
@@ -22,8 +23,17 @@ const TEE = 'Áo thun cotton basic (Trắng / M)';
 const MUG = 'Cốc sứ vẽ tay (Họa tiết xanh)';
 const CASE = 'Ốp lưng cũ (Đen)';
 
-let cartItems: CartItem[];
+/** The lines of both shops; the mug is sold by shop-2, the rest by shop-1. */
+let cartItems: (CartItem & { shop: string })[];
 const cartOf = (items: CartItem[]): Cart => ({ currency: 'VND', items, totalVnd: items.reduce((n, l) => n + l.lineTotalVnd, 0) });
+const inShopCart = (id: string) => cartOf(cartItems.filter((l) => l.shop === id));
+const marketCart = (): MarketplaceCart => {
+  const shops = Object.keys(SHOP_NAMES).flatMap((id) => {
+    const items = cartItems.filter((l) => l.shop === id);
+    return items.length ? [{ shop: { id, name: SHOP_NAMES[id] }, items, shopTotalVnd: items.reduce((n, l) => n + l.lineTotalVnd, 0) }] : [];
+  });
+  return { currency: 'VND', shops, totalVnd: shops.reduce((n, g) => n + g.shopTotalVnd, 0), itemCount: cartItems.reduce((n, l) => n + l.quantity, 0) };
+};
 
 function Location() {
   const l = useLocation();
@@ -62,26 +72,30 @@ describe('CartPage', () => {
     sessionStorage.clear();
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     cartItems = [
-      line('sku-a', 'p-tee', 'Áo thun cotton basic', 'Trắng / M', 129000, 1),
-      line('sku-b', 'p-mug', 'Cốc sứ vẽ tay', 'Họa tiết xanh', 89000, 2),
-      line('sku-c', 'p-case', 'Ốp lưng cũ', 'Đen', 79000, 1, false),
+      { ...line('sku-a', 'p-tee', 'Áo thun cotton basic', 'Trắng / M', 129000, 1), shop: 'shop-1' },
+      { ...line('sku-b', 'p-mug', 'Cốc sứ vẽ tay', 'Họa tiết xanh', 89000, 2), shop: 'shop-2' },
+      { ...line('sku-c', 'p-case', 'Ốp lưng cũ', 'Đen', 79000, 1, false), shop: 'shop-1' },
     ];
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         const method = init?.method ?? 'GET';
-        if (url === '/demo/shops/shop-1/cart') return json(cartOf(cartItems));
-        if (url === '/demo/shops/shop-1/storefront/products') {
-          return json({ currency: 'VND', items: [product('p-tee', 'Áo thun cotton basic', [{ id: 'sku-a', stock: 3 }]), product('p-mug', 'Cốc sứ vẽ tay', [{ id: 'sku-b', stock: 5 }])] });
+        if (url === '/demo/cart') return json(marketCart());
+        if (url === '/demo/catalog?limit=100') {
+          return json({
+            currency: 'VND',
+            items: [product('p-tee', 'Áo thun cotton basic', [{ id: 'sku-a', stock: 3 }]), product('p-mug', 'Cốc sứ vẽ tay', [{ id: 'sku-b', stock: 5 }], 'shop-2')],
+            nextCursor: null,
+          });
         }
-        if (url === '/demo/me') return json({ role: 'BUYER', shop: { id: 'shop-1', name: 'Mộc Lan Shop' }, buyer: null });
-        if (url === '/demo/shops/shop-1/cart/items' && method === 'PUT') {
+        const put = /^\/demo\/shops\/(shop-\d)\/cart\/items$/.exec(url);
+        if (put && method === 'PUT') {
           const body = JSON.parse(String(init?.body)) as { skuId: string; quantity: number };
-          puts.push(body);
+          puts.push({ shop: put[1], ...body });
           if (putGate) await putGate;
           if (putFails) return json({ message: 'Not enough stock' }, 400);
           cartItems = cartItems.flatMap((l) => (l.skuId !== body.skuId ? [l] : body.quantity === 0 ? [] : [{ ...l, quantity: body.quantity, lineTotalVnd: l.unitPriceVnd * body.quantity }]));
-          return json(cartOf(cartItems));
+          return json(inShopCart(put[1]));
         }
         return json({}, 404);
       }),
@@ -130,7 +144,39 @@ describe('CartPage', () => {
       fireEvent.click(await screen.findByRole('checkbox', { name: `Select ${TEE}` }));
       fireEvent.click(checkoutButton());
       expect(screen.getByTestId('location').textContent).toBe('/checkout');
-      expect(lastState).toEqual({ items: [{ skuId: 'sku-b', quantity: 2 }] });
+      expect(lastState).toEqual({ items: [{ shopId: 'shop-2', skuId: 'sku-b', quantity: 2 }] });
+    });
+  });
+
+  describe('shops', () => {
+    it('groups the lines by shop, each with its own select all', async () => {
+      renderCart();
+      await screen.findByRole('heading', { name: 'Cart (3)' });
+      expect(within(screen.getByRole('region', { name: 'Mộc Lan Shop' })).getAllByRole('listitem')).toHaveLength(2);
+      expect(within(screen.getByRole('region', { name: 'Pottery Shop' })).getAllByRole('listitem')).toHaveLength(1);
+      expect(screen.getByText('Items from different shops are placed as separate orders.')).toBeTruthy();
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select all from Pottery Shop' }));
+      expect(checkoutButton().textContent).toBe('Check out (1)');
+      expect(screen.queryByText('Items from different shops are placed as separate orders.')).toBeNull();
+    });
+
+    it('links each line to the product page of its own shop', async () => {
+      renderCart();
+      await screen.findByRole('heading', { name: 'Cart (3)' });
+      const links = within(lineEl(MUG)).getAllByRole('link');
+      expect(links.map((a) => a.getAttribute('href'))).toEqual(['/product/shop-2/p-mug', '/product/shop-2/p-mug']);
+    });
+
+    it('checks out the lines of both shops together', async () => {
+      renderCart();
+      await screen.findByRole('heading', { name: 'Cart (3)' });
+      fireEvent.click(checkoutButton());
+      expect(lastState).toEqual({
+        items: [
+          { shopId: 'shop-1', skuId: 'sku-a', quantity: 1 },
+          { shopId: 'shop-2', skuId: 'sku-b', quantity: 2 },
+        ],
+      });
     });
   });
 
@@ -143,7 +189,7 @@ describe('CartPage', () => {
       fireEvent.click(within(lineEl(TEE)).getByRole('button', { name: 'Increase quantity' }));
       expect(qty(TEE)).toBe('2'); // before the server answered
       expect(screen.getByTestId('total').textContent).toBe('₫436.000');
-      expect(puts).toEqual([{ skuId: 'sku-a', quantity: 2 }]);
+      expect(puts).toEqual([{ shop: 'shop-1', skuId: 'sku-a', quantity: 2 }]);
       await act(async () => open());
       await waitFor(() => expect((within(lineEl(TEE)).getByRole('button', { name: 'Increase quantity' }) as HTMLButtonElement).disabled).toBe(false));
       expect(qty(TEE)).toBe('2');
@@ -175,7 +221,7 @@ describe('CartPage', () => {
       await screen.findByRole('heading', { name: 'Cart (3)' });
       fireEvent.click(screen.getByRole('button', { name: `Remove ${MUG}` }));
       expect(screen.queryByRole('listitem', { name: MUG })).toBeNull();
-      expect(puts).toEqual([{ skuId: 'sku-b', quantity: 0 }]);
+      expect(puts).toEqual([{ shop: 'shop-2', skuId: 'sku-b', quantity: 0 }]);
       expect(await screen.findByRole('heading', { name: 'Cart (2)' })).toBeTruthy();
     });
   });
