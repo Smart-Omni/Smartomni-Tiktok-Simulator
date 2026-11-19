@@ -12815,6 +12815,139 @@
                           "isNotForSale": {
                             "type": "boolean"
                           },
+                          "images": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "uri": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string",
+                                  "description": "Absolute image URL"
+                                },
+                                "width": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "height": {
+                                  "type": "integer",
+                                  "nullable": true
+                                }
+                              }
+                            }
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "categoryPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "brandId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "productAttributes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Attribute id"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Attribute name (filled in from the category data)"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "description": "Value name (required for a custom value)"
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "values"
+                              ]
+                            }
+                          },
+                          "packageWeight": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "unit": {
+                                "type": "string",
+                                "description": "default KILOGRAM",
+                                "enum": [
+                                  "KILOGRAM",
+                                  "POUND"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "value"
+                            ],
+                            "nullable": true
+                          },
+                          "packageDimensions": {
+                            "type": "object",
+                            "properties": {
+                              "length": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "width": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "height": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "unit": {
+                                "type": "string",
+                                "description": "default CENTIMETER",
+                                "enum": [
+                                  "CENTIMETER",
+                                  "INCH"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "length",
+                              "width",
+                              "height"
+                            ],
+                            "nullable": true
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -12902,6 +13035,42 @@
                       "description": "Cotton 100%",
                       "status": "ACTIVATE",
                       "isNotForSale": false,
+                      "images": [
+                        {
+                          "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                          "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                          "width": 800,
+                          "height": 800
+                        }
+                      ],
+                      "categoryId": "100002",
+                      "categoryPath": [
+                        {
+                          "id": "100001",
+                          "name": "Thời trang & Phụ kiện"
+                        },
+                        {
+                          "id": "100002",
+                          "name": "Áo Nam"
+                        }
+                      ],
+                      "brandId": "brand_001",
+                      "productAttributes": [
+                        {
+                          "id": "attr_material",
+                          "name": "Chất liệu",
+                          "values": [
+                            {
+                              "name": "Cotton"
+                            }
+                          ]
+                        }
+                      ],
+                      "packageWeight": {
+                        "value": 0.3,
+                        "unit": "KILOGRAM"
+                      },
+                      "packageDimensions": null,
                       "createdAt": "2026-10-15T08:00:00.000Z",
                       "updatedAt": "2026-10-15T08:00:00.000Z",
                       "skus": [
@@ -12941,6 +13110,440 @@
           },
           "403": {
             "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session. (`Only a seller session can change the catalog`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/catalog/categories": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Category tree for the product page",
+        "description": "Own shop, SELLER only. The categories of the TikTok router (GET /product/202309/categories, same data in `backend/src/catalog-meta`) with permission AVAILABLE, as a tree from the roots.\n\nHandler: `CatalogDemoController.categories`.",
+        "operationId": "CatalogDemoController_categories",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tree.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "isLeaf": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "description": "Same shape (recursive)"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "categories": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện",
+                      "isLeaf": false,
+                      "children": [
+                        {
+                          "id": "100002",
+                          "name": "Áo Nam",
+                          "isLeaf": true,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/catalog/categories/{categoryId}/attributes": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Product attributes of a leaf category",
+        "description": "Own shop, SELLER only. PRODUCT_PROPERTY attributes of the category (same data as the TikTok Get Attributes), camelCase.\n\nHandler: `CatalogDemoController.categoryAttributes`.",
+        "operationId": "CatalogDemoController_categoryAttributes",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attributes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "attributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "isRequired": {
+                            "type": "boolean"
+                          },
+                          "isMultipleSelection": {
+                            "type": "boolean"
+                          },
+                          "isCustomizable": {
+                            "type": "boolean"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "attributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "isRequired": true,
+                      "isMultipleSelection": false,
+                      "isCustomizable": true,
+                      "values": []
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a leaf category, or not AVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown category (`Unknown category`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "100002"
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/catalog/categories/{categoryId}/rules": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Listing rules of a leaf category",
+        "description": "Own shop, SELLER only. From the TikTok Get Category Rules data.\n\nHandler: `CatalogDemoController.categoryRules`.",
+        "operationId": "CatalogDemoController_categoryRules",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rules.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "packageDimensionsRequired": {
+                      "type": "boolean"
+                    },
+                    "sizeChartSupported": {
+                      "type": "boolean"
+                    },
+                    "codSupported": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "packageDimensionsRequired": true,
+                  "sizeChartSupported": false,
+                  "codSupported": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a leaf category, or not AVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown category.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "200002"
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/catalog/brands": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Brands for the product page",
+        "description": "Own shop, SELLER only. The TikTok Get Brands data; `authorized` is `authorized_status === AUTHORIZED`.\n\nHandler: `CatalogDemoController.brands`.",
+        "operationId": "CatalogDemoController_brands",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brands.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brands": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "authorized": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "brands": [
+                    {
+                      "id": "brand_001",
+                      "name": "No Brand",
+                      "authorized": true
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13012,6 +13615,139 @@
                     },
                     "isNotForSale": {
                       "type": "boolean"
+                    },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "Absolute image URL"
+                          },
+                          "width": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "height": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "categoryPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "brandId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "productAttributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attribute id"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Attribute name (filled in from the category data)"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Value name (required for a custom value)"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "values"
+                        ]
+                      }
+                    },
+                    "packageWeight": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default KILOGRAM",
+                          "enum": [
+                            "KILOGRAM",
+                            "POUND"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ],
+                      "nullable": true
+                    },
+                    "packageDimensions": {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default CENTIMETER",
+                          "enum": [
+                            "CENTIMETER",
+                            "INCH"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "height"
+                      ],
+                      "nullable": true
                     },
                     "createdAt": {
                       "type": "string",
@@ -13086,6 +13822,42 @@
                   "description": "Cotton 100%",
                   "status": "ACTIVATE",
                   "isNotForSale": false,
+                  "images": [
+                    {
+                      "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "width": 800,
+                      "height": 800
+                    }
+                  ],
+                  "categoryId": "100002",
+                  "categoryPath": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện"
+                    },
+                    {
+                      "id": "100002",
+                      "name": "Áo Nam"
+                    }
+                  ],
+                  "brandId": "brand_001",
+                  "productAttributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "values": [
+                        {
+                          "name": "Cotton"
+                        }
+                      ]
+                    }
+                  ],
+                  "packageWeight": {
+                    "value": 0.3,
+                    "unit": "KILOGRAM"
+                  },
+                  "packageDimensions": null,
                   "createdAt": "2026-10-15T08:00:00.000Z",
                   "updatedAt": "2026-10-15T08:00:00.000Z",
                   "skus": [
@@ -13112,7 +13884,7 @@
             }
           },
           "400": {
-            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: unknown warehouse in `stock`.",
+            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: unknown warehouse in `stock`. Also: listing rules (one `message` joining every reason): unknown or non-leaf category, unknown brand, image not uploaded by this shop, missing required attribute, attribute or value not of the category, missing package dimensions.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13223,6 +13995,112 @@
                     },
                     "minItems": 1,
                     "maxItems": 100
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "description": "Leaf category id from GET .../catalog/categories (AVAILABLE only)"
+                  },
+                  "brandId": {
+                    "type": "string",
+                    "description": "Brand id from GET .../catalog/brands; null clears it",
+                    "nullable": true
+                  },
+                  "images": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 9,
+                    "items": {
+                      "type": "string",
+                      "description": "`uri` returned by POST /demo/shops/{shopId}/media/images (this shop only); the first one is the main image"
+                    }
+                  },
+                  "productAttributes": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "description": "Attributes of the category only. Every attribute the category marks required needs a value; a single-selection attribute takes one value; a value without `id` is allowed only for customizable attributes. Changing the category without sending attributes clears them.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "values": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Value id from the category attribute `values` (omit for a custom value)"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Value name (required for a custom value)"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "values"
+                      ]
+                    }
+                  },
+                  "packageWeight": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "description": "default KILOGRAM",
+                        "enum": [
+                          "KILOGRAM",
+                          "POUND"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "value"
+                    ],
+                    "nullable": true
+                  },
+                  "packageDimensions": {
+                    "type": "object",
+                    "properties": {
+                      "length": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "description": "default CENTIMETER",
+                        "enum": [
+                          "CENTIMETER",
+                          "INCH"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "length",
+                      "width",
+                      "height"
+                    ],
+                    "nullable": true,
+                    "description": "Required when the category rules say `packageDimensionsRequired`. null clears it."
                   }
                 },
                 "required": [
@@ -13300,6 +14178,139 @@
                     "isNotForSale": {
                       "type": "boolean"
                     },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "Absolute image URL"
+                          },
+                          "width": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "height": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "categoryPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "brandId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "productAttributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attribute id"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Attribute name (filled in from the category data)"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Value name (required for a custom value)"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "values"
+                        ]
+                      }
+                    },
+                    "packageWeight": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default KILOGRAM",
+                          "enum": [
+                            "KILOGRAM",
+                            "POUND"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ],
+                      "nullable": true
+                    },
+                    "packageDimensions": {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default CENTIMETER",
+                          "enum": [
+                            "CENTIMETER",
+                            "INCH"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "height"
+                      ],
+                      "nullable": true
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
@@ -13373,6 +14384,42 @@
                   "description": "Cotton 100%",
                   "status": "SELLER_DEACTIVATED",
                   "isNotForSale": false,
+                  "images": [
+                    {
+                      "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "width": 800,
+                      "height": 800
+                    }
+                  ],
+                  "categoryId": "100002",
+                  "categoryPath": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện"
+                    },
+                    {
+                      "id": "100002",
+                      "name": "Áo Nam"
+                    }
+                  ],
+                  "brandId": "brand_001",
+                  "productAttributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "values": [
+                        {
+                          "name": "Cotton"
+                        }
+                      ]
+                    }
+                  ],
+                  "packageWeight": {
+                    "value": 0.3,
+                    "unit": "KILOGRAM"
+                  },
+                  "packageDimensions": null,
                   "createdAt": "2026-10-15T08:00:00.000Z",
                   "updatedAt": "2026-10-15T08:00:00.000Z",
                   "skus": [
@@ -13399,7 +14446,7 @@
             }
           },
           "400": {
-            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: the product is DELETED.",
+            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: the product is DELETED. Also: listing rules (one `message` joining every reason): unknown or non-leaf category, unknown brand, image not uploaded by this shop, missing required attribute, attribute or value not of the category, missing package dimensions. The listing rules run only when a listing field is sent; stored values stand in for the ones not sent.",
             "content": {
               "application/json": {
                 "schema": {
@@ -13487,6 +14534,112 @@
                   },
                   "isNotForSale": {
                     "type": "boolean"
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "description": "Leaf category id from GET .../catalog/categories (AVAILABLE only)"
+                  },
+                  "brandId": {
+                    "type": "string",
+                    "description": "Brand id from GET .../catalog/brands; null clears it",
+                    "nullable": true
+                  },
+                  "images": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 9,
+                    "items": {
+                      "type": "string",
+                      "description": "`uri` returned by POST /demo/shops/{shopId}/media/images (this shop only); the first one is the main image"
+                    }
+                  },
+                  "productAttributes": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "description": "Attributes of the category only. Every attribute the category marks required needs a value; a single-selection attribute takes one value; a value without `id` is allowed only for customizable attributes. Changing the category without sending attributes clears them.",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "values": {
+                          "type": "array",
+                          "minItems": 1,
+                          "maxItems": 50,
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Value id from the category attribute `values` (omit for a custom value)"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Value name (required for a custom value)"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "values"
+                      ]
+                    }
+                  },
+                  "packageWeight": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "description": "default KILOGRAM",
+                        "enum": [
+                          "KILOGRAM",
+                          "POUND"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "value"
+                    ],
+                    "nullable": true
+                  },
+                  "packageDimensions": {
+                    "type": "object",
+                    "properties": {
+                      "length": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "width": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "height": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "unit": {
+                        "type": "string",
+                        "description": "default CENTIMETER",
+                        "enum": [
+                          "CENTIMETER",
+                          "INCH"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "length",
+                      "width",
+                      "height"
+                    ],
+                    "nullable": true,
+                    "description": "Required when the category rules say `packageDimensionsRequired`. null clears it."
                   }
                 },
                 "minProperties": 1
@@ -13545,6 +14698,139 @@
                     },
                     "isNotForSale": {
                       "type": "boolean"
+                    },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "Absolute image URL"
+                          },
+                          "width": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "height": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "categoryPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "brandId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "productAttributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attribute id"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Attribute name (filled in from the category data)"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Value name (required for a custom value)"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "values"
+                        ]
+                      }
+                    },
+                    "packageWeight": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default KILOGRAM",
+                          "enum": [
+                            "KILOGRAM",
+                            "POUND"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ],
+                      "nullable": true
+                    },
+                    "packageDimensions": {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default CENTIMETER",
+                          "enum": [
+                            "CENTIMETER",
+                            "INCH"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "height"
+                      ],
+                      "nullable": true
                     },
                     "createdAt": {
                       "type": "string",
@@ -13619,6 +14905,42 @@
                   "description": "Cotton 100%",
                   "status": "DELETED",
                   "isNotForSale": false,
+                  "images": [
+                    {
+                      "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "width": 800,
+                      "height": 800
+                    }
+                  ],
+                  "categoryId": "100002",
+                  "categoryPath": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện"
+                    },
+                    {
+                      "id": "100002",
+                      "name": "Áo Nam"
+                    }
+                  ],
+                  "brandId": "brand_001",
+                  "productAttributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "values": [
+                        {
+                          "name": "Cotton"
+                        }
+                      ]
+                    }
+                  ],
+                  "packageWeight": {
+                    "value": 0.3,
+                    "unit": "KILOGRAM"
+                  },
+                  "packageDimensions": null,
                   "createdAt": "2026-10-15T08:00:00.000Z",
                   "updatedAt": "2026-10-15T08:00:00.000Z",
                   "skus": [
@@ -13748,6 +15070,139 @@
                     "isNotForSale": {
                       "type": "boolean"
                     },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "Absolute image URL"
+                          },
+                          "width": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "height": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "categoryPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "brandId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "productAttributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attribute id"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Attribute name (filled in from the category data)"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Value name (required for a custom value)"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "values"
+                        ]
+                      }
+                    },
+                    "packageWeight": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default KILOGRAM",
+                          "enum": [
+                            "KILOGRAM",
+                            "POUND"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ],
+                      "nullable": true
+                    },
+                    "packageDimensions": {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default CENTIMETER",
+                          "enum": [
+                            "CENTIMETER",
+                            "INCH"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "height"
+                      ],
+                      "nullable": true
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
@@ -13821,6 +15276,42 @@
                   "description": "Cotton 100%",
                   "status": "ACTIVATE",
                   "isNotForSale": false,
+                  "images": [
+                    {
+                      "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "width": 800,
+                      "height": 800
+                    }
+                  ],
+                  "categoryId": "100002",
+                  "categoryPath": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện"
+                    },
+                    {
+                      "id": "100002",
+                      "name": "Áo Nam"
+                    }
+                  ],
+                  "brandId": "brand_001",
+                  "productAttributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "values": [
+                        {
+                          "name": "Cotton"
+                        }
+                      ]
+                    }
+                  ],
+                  "packageWeight": {
+                    "value": 0.3,
+                    "unit": "KILOGRAM"
+                  },
+                  "packageDimensions": null,
                   "createdAt": "2026-10-15T08:00:00.000Z",
                   "updatedAt": "2026-10-15T08:00:00.000Z",
                   "skus": [
@@ -14015,6 +15506,139 @@
                     "isNotForSale": {
                       "type": "boolean"
                     },
+                    "images": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "uri": {
+                            "type": "string"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "Absolute image URL"
+                          },
+                          "width": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "height": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "categoryPath": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "brandId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "productAttributes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Attribute id"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Attribute name (filled in from the category data)"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Value id from the category attribute `values` (omit for a custom value)"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Value name (required for a custom value)"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "values"
+                        ]
+                      }
+                    },
+                    "packageWeight": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default KILOGRAM",
+                          "enum": [
+                            "KILOGRAM",
+                            "POUND"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "value"
+                      ],
+                      "nullable": true
+                    },
+                    "packageDimensions": {
+                      "type": "object",
+                      "properties": {
+                        "length": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "width": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "height": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "unit": {
+                          "type": "string",
+                          "description": "default CENTIMETER",
+                          "enum": [
+                            "CENTIMETER",
+                            "INCH"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "length",
+                        "width",
+                        "height"
+                      ],
+                      "nullable": true
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time"
@@ -14088,6 +15712,42 @@
                   "description": "Cotton 100%",
                   "status": "ACTIVATE",
                   "isNotForSale": false,
+                  "images": [
+                    {
+                      "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                      "width": 800,
+                      "height": 800
+                    }
+                  ],
+                  "categoryId": "100002",
+                  "categoryPath": [
+                    {
+                      "id": "100001",
+                      "name": "Thời trang & Phụ kiện"
+                    },
+                    {
+                      "id": "100002",
+                      "name": "Áo Nam"
+                    }
+                  ],
+                  "brandId": "brand_001",
+                  "productAttributes": [
+                    {
+                      "id": "attr_material",
+                      "name": "Chất liệu",
+                      "values": [
+                        {
+                          "name": "Cotton"
+                        }
+                      ]
+                    }
+                  ],
+                  "packageWeight": {
+                    "value": 0.3,
+                    "unit": "KILOGRAM"
+                  },
+                  "packageDimensions": null,
                   "createdAt": "2026-10-15T08:00:00.000Z",
                   "updatedAt": "2026-10-15T08:00:00.000Z",
                   "skus": [
