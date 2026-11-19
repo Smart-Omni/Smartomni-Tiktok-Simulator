@@ -14542,6 +14542,195 @@
         ]
       }
     },
+    "/demo/shops/{shopId}/media/images": {
+      "post": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Upload a product image",
+        "description": "Own shop, SELLER only. multipart/form-data with one part `file`. The format is read from the bytes (magic numbers), never from the declared type or file name: only JPEG, PNG and WebP are accepted, at most 5 MB. Width and height are read from the image header. The picture is stored in PostgreSQL (`MediaAsset`, belongs to the shop). Use the returned `uri` in `images` of the create/edit product endpoints.\n\nHandler: `MediaDemoController.upload`.",
+        "operationId": "MediaDemoController_upload",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Stored image.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "uri": {
+                      "type": "string",
+                      "description": "`sim-media/{id}`; reference it in product `images`"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "Absolute public URL (PUBLIC_API_BASE_URL) of GET /demo/media/images/{id}"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "height": {
+                      "type": "integer"
+                    },
+                    "mimeType": {
+                      "type": "string",
+                      "enum": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp"
+                      ]
+                    },
+                    "sizeBytes": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "uri",
+                    "url",
+                    "width",
+                    "height",
+                    "mimeType",
+                    "sizeBytes"
+                  ]
+                },
+                "example": {
+                  "uri": "sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                  "url": "http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70",
+                  "width": 800,
+                  "height": 800,
+                  "mimeType": "image/png",
+                  "sizeBytes": 48213
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No `file` part, or the bytes are not a JPEG, PNG or WebP image.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The file is larger than 5 MB (multer limit).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "JPEG, PNG or WebP, max 5 MB",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/media/images/{id}": {
+      "get": {
+        "tags": [
+          "Demo Catalog"
+        ],
+        "summary": "Uploaded product image",
+        "description": "Public (an <img> cannot send the session header). Serves the stored bytes with their `Content-Type` and `Cache-Control: public, max-age=31536000, immutable` (an id never changes content).\n\nHandler: `MediaDemoController.image`.",
+        "operationId": "MediaDemoController_image",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The image bytes.",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "description": "Image bytes",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Malformed or unknown id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "MediaAsset id (UUID), the part after `sim-media/` in the uri.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70"
+          }
+        ]
+      }
+    },
     "/demo/media/products/{file}": {
       "get": {
         "tags": [
@@ -27515,7 +27704,7 @@
           "Product"
         ],
         "summary": "Upload Product Image",
-        "description": "Handler: `ProductsController.uploadImage`.",
+        "description": "A multipart JPEG/PNG/WebP (any part, max 5 MB, recognised by its bytes) is stored like a Seller Center upload (MediaAsset of the token shop) and the answer carries its real `uri` (`sim-media/{id}`), `url`, `width` and `height` (DECISIONS DA-14). Any other request gets the old placeholder answer; nothing is written to disk.\n\nHandler: `ProductsController.uploadImage`.",
         "operationId": "ProductsController_uploadImage",
         "security": [
           {

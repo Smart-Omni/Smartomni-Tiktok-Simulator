@@ -33,6 +33,7 @@ import { ChatDemoController } from './chat.controller';
 import { CouponsDemoController } from './coupons.controller';
 import { FulfillmentDemoController } from './fulfillment.controller';
 import { InventoryDemoController } from './inventory.controller';
+import { MediaDemoController } from './media.controller';
 import { OrdersDemoController } from './orders.controller';
 import {
   assertSellerShop,
@@ -192,5 +193,5 @@ export class DemoController {
   }
 }
 
-@Module({ imports: [OAuthModule, OrdersModule, ChatModule, FulfillmentModule, AftersaleModule], controllers: [DemoController, CatalogDemoController, OrdersDemoController, InventoryDemoController, ChatDemoController, FulfillmentDemoController, CouponsDemoController, AftersaleDemoController], providers: [DemoSessionGuard] })
+@Module({ imports: [OAuthModule, OrdersModule, ChatModule, FulfillmentModule, AftersaleModule], controllers: [DemoController, CatalogDemoController, OrdersDemoController, InventoryDemoController, ChatDemoController, FulfillmentDemoController, CouponsDemoController, AftersaleDemoController, MediaDemoController], providers: [DemoSessionGuard] })
 export class DemoModule {}

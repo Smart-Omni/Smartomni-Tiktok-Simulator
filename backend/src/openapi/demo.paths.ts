@@ -654,6 +654,52 @@ export const paths: PathsFragment = {
       errorShape: 'nest',
     }),
   },
+  '/demo/shops/{shopId}/media/images': {
+    post: op({
+      tag: 'Demo Catalog',
+      summary: 'Upload a product image',
+      description:
+        'Own shop, SELLER only. multipart/form-data with one part `file`. The format is read from the bytes (magic numbers), never from the declared type or file name: only JPEG, PNG and WebP are accepted, at most 5 MB. Width and height are read from the image header. The picture is stored in PostgreSQL (`MediaAsset`, belongs to the shop). Use the returned `uri` in `images` of the create/edit product endpoints.',
+      handler: 'MediaDemoController.upload',
+      security: SESSION,
+      pathParams: [shopId],
+      body: {
+        contentType: 'multipart/form-data',
+        schema: obj({ file: str('JPEG, PNG or WebP, max 5 MB', { format: 'binary' }) }, ['file']),
+      },
+      ok: {
+        description: 'Stored image.',
+        schema: obj(
+          {
+            uri: str('`sim-media/{id}`; reference it in product `images`'),
+            url: str('Absolute public URL (PUBLIC_API_BASE_URL) of GET /demo/media/images/{id}'),
+            width: int(),
+            height: int(),
+            mimeType: str(undefined, { enum: ['image/jpeg', 'image/png', 'image/webp'] }),
+            sizeBytes: int(),
+          },
+          ['uri', 'url', 'width', 'height', 'mimeType', 'sizeBytes'],
+        ),
+        example: { uri: 'sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', url: 'http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', width: 800, height: 800, mimeType: 'image/png', sizeBytes: 48213 },
+      },
+      status: 201,
+      errors: { 400: 'No `file` part, or the bytes are not a JPEG, PNG or WebP image.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 413: 'The file is larger than 5 MB (multer limit).' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/media/images/{id}': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Uploaded product image',
+      description: 'Public (an <img> cannot send the session header). Serves the stored bytes with their `Content-Type` and `Cache-Control: public, max-age=31536000, immutable` (an id never changes content).',
+      handler: 'MediaDemoController.image',
+      security: [],
+      pathParams: [{ name: 'id', description: 'MediaAsset id (UUID), the part after `sim-media/` in the uri.', example: '0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70' }],
+      ok: { description: 'The image bytes.', contentType: 'image/*', schema: str('Image bytes', { format: 'binary' }) },
+      errors: { 404: 'Malformed or unknown id.' },
+      errorShape: 'nest',
+    }),
+  },
   '/demo/media/products/{file}': {
     get: op({
       tag: 'Demo Catalog',

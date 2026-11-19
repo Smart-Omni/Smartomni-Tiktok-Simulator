@@ -309,6 +309,7 @@ export const paths: PathsFragment = {
     post: op({
       tag: 'Product',
       summary: 'Upload Product Image',
+      description: 'A multipart JPEG/PNG/WebP (any part, max 5 MB, recognised by its bytes) is stored like a Seller Center upload (MediaAsset of the token shop) and the answer carries its real `uri` (`sim-media/{id}`), `url`, `width` and `height` (DECISIONS DA-14). Any other request gets the old placeholder answer; nothing is written to disk.',
       handler: 'ProductsController.uploadImage',
       security: ['TiktokSignedApi'],
       errorShape: 'tiktok',

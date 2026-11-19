@@ -27,6 +27,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { numericId } from '../seed/seed-data';
 import { buildProductStatusChangeData, WebhookEmitter } from '../webhooks/webhook-emitter.service';
 import { productDetail, productSummary, warehouseItem, ProductWithSkus } from './product.mapper';
+import { imageInfo } from '../media/image-info';
+import { MAX_IMAGE_BYTES, storeImage } from '../media/media-store';
 import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard';
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 import { FaultService } from '../faults/fault.service';
@@ -748,19 +750,18 @@ export class ProductsController {
     @UploadedFiles() files?: Array<any>,
   ) {
     const file = files && files.length > 0 ? files[0] : undefined;
-    const fileName = file?.originalname || 'product_image.jpg';
-    if (file?.buffer) {
-      try {
-        await fs.mkdir(this.config.mediaDir, { recursive: true });
-        await fs.writeFile(join(this.config.mediaDir, fileName), file.buffer);
-      } catch {
-        /* Ignore disk write errors in restricted test environment */
+    // A real JPEG/PNG/WebP is stored like a Seller Center upload (MediaAsset), so its url serves the picture (DECISIONS DA-14).
+    if (file?.buffer && file.buffer.length <= MAX_IMAGE_BYTES && imageInfo(file.buffer)) {
+      const stored = await storeImage(this.prisma, req.tiktok!.shop.id, file.buffer, this.config.publicApiBaseUrl, this.clock.now());
+      if (typeof stored !== 'string') {
+        const useCase = typeof req.body?.use_case === 'string' ? req.body.use_case : 'MAIN_IMAGE';
+        return this.envelope(req, { uri: stored.uri, url: stored.url, width: stored.width, height: stored.height, use_case: useCase });
       }
     }
-
+    // Anything else keeps the old placeholder answer; nothing is written to disk.
     return this.envelope(req, {
       uri: `tos-maliva-i-o3syd03w52-us/${randomUUID().slice(0, 12)}`,
-      url: `https://simulator.smartomni.local/uploads/${fileName}`,
+      url: `https://simulator.smartomni.local/uploads/${randomUUID().slice(0, 12)}.jpg`,
       width: 800,
       height: 800,
       use_case: 'MAIN_IMAGE',
