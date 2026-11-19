@@ -52,4 +52,22 @@ describe('AuthorizePage', () => {
     render(<MemoryRouter initialEntries={['/seller/authorize']}><AuthorizePage navigate={navigate} /></MemoryRouter>);
     expect(screen.getByRole('alert').textContent).toMatch(/Missing app_key/);
   });
+
+  it.each([
+    ['Authorize', 'accept', 'smartomni://oauth/tiktok?code=C&state=st'],
+    ['Deny', 'deny', 'smartomni://oauth/tiktok?error=access_denied&state=st'],
+  ])('sends the mobile redirect and navigates to the API URL on %s', async (button, decision, redirectUrl) => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      const body = init?.method === 'POST' ? { decision, redirectUrl } : { ...consent, redirectUri: 'smartomni://oauth/tiktok' };
+      return new Response(JSON.stringify(body), { status: init?.method === 'POST' ? 201 : 200, headers: { 'content-type': 'application/json' } });
+    }));
+    const navigate = vi.fn();
+    render(<MemoryRouter initialEntries={['/seller/authorize?app_key=k&state=st&redirect_uri=smartomni%3A%2F%2Foauth%2Ftiktok']}><AuthorizePage navigate={navigate} /></MemoryRouter>);
+    expect(await screen.findByText('smartomni://oauth/tiktok')).toBeTruthy();
+    fireEvent.click(screen.getByText(button));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(redirectUrl));
+    expect(calls[0].url).toContain('redirect_uri=smartomni%3A%2F%2Foauth%2Ftiktok');
+    expect(JSON.parse(calls.find((c) => c.init?.method === 'POST')!.init!.body as string)).toMatchObject({ redirect_uri: 'smartomni://oauth/tiktok', decision });
+  });
 });

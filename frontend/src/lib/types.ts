@@ -51,6 +51,8 @@ export interface StorefrontProduct {
   title: string;
   description: string;
   imageUrl: string;
+  /** All real image URLs (or the single placeholder). Optional for older API responses. */
+  images?: string[];
   minPriceVnd: number;
   maxPriceVnd: number;
   skus: Sku[];

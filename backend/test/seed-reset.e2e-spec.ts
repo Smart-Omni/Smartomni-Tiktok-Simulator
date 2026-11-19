@@ -22,18 +22,22 @@ describe('seed and reset', () => {
     await cleanDb(prisma);
   });
 
-  it('seeds two VN shops with separate buyers, products/SKUs and warehouses', async () => {
+  it('seeds five VN shops (two demo, three fashion) with separate buyers, products/SKUs and warehouses', async () => {
     const summary = await app.get(SeedService).seedAll();
-    expect(summary.shops).toBe(2);
-    expect(summary.sellers).toBe(2);
-    expect(summary.warehouses).toBe(4);
-    expect(summary.buyers).toBe(5);
+    expect(summary.shops).toBe(5);
+    expect(summary.sellers).toBe(5);
+    expect(summary.warehouses).toBe(10);
+    expect(summary.buyers).toBe(11);
     expect(summary.skus).toBeGreaterThanOrEqual(8);
+    // Fashion catalog: 150 products, each on a seeded leaf category with the 3 required attributes, no duplicates.
+    const fashion = await prisma.product.findMany({ where: { externalProductId: { startsWith: 'shopee:' } } });
+    expect(fashion).toHaveLength(150);
+    expect(fashion.every((p) => p.categoryId && (p.productAttributes as unknown[]).length === 3)).toBe(true);
     const shops = await prisma.shop.findMany({ include: { buyers: true } });
     expect(shops.every((s) => s.region === 'VN' && s.currency === 'VND')).toBe(true);
     const buyerIds = shops.map((s) => s.buyers.map((b) => b.id));
     expect(buyerIds[0].some((id) => buyerIds[1].includes(id))).toBe(false);
-    expect(new Set(shops.map((s) => s.tiktokShopId)).size).toBe(2);
+    expect(new Set(shops.map((s) => s.tiktokShopId)).size).toBe(5);
   });
 
   it('is idempotent: repeated seeding keeps identical rows and ids and does not undo business changes', async () => {
@@ -56,9 +60,9 @@ describe('seed and reset', () => {
     const results = await Promise.allSettled([seed.seedAll(), seed.seedAll(), seed.seedAll()]);
     expect(results.some((r) => r.status === 'fulfilled')).toBe(true);
     const summary = await seed.seedAll();
-    expect(summary.shops).toBe(2);
+    expect(summary.shops).toBe(5);
     expect(summary.skus).toBe(await prisma.sku.count());
-    expect(summary.buyers).toBe(5);
+    expect(summary.buyers).toBe(11);
   });
 
   it('reset requires a prepared, scope-bound confirmation token', async () => {
@@ -71,9 +75,9 @@ describe('seed and reset', () => {
     expect(logsPlan.description).toMatch(/request logs/i);
     // a token minted for LOGS must not authorise ALL
     await http.post('/test-admin/reset').set(admin()).send({ scope: 'ALL', confirmationToken: logsPlan.confirmationToken }).expect(403);
-    expect(await prisma.shop.count()).toBe(2);
+    expect(await prisma.shop.count()).toBe(5);
     await http.post('/test-admin/reset').set(admin()).send({ scope: 'LOGS', confirmationToken: logsPlan.confirmationToken }).expect(201);
-    expect(await prisma.shop.count()).toBe(2);
+    expect(await prisma.shop.count()).toBe(5);
   });
 
   it('SHOP reset only touches that shop and restores its baseline; ALL reseeds', async () => {
@@ -101,7 +105,7 @@ describe('seed and reset', () => {
     const all = (await http.post('/test-admin/reset/prepare').set(admin()).send({ scope: 'ALL' }).expect(201)).body;
     await http.post('/test-admin/reset').set(admin()).send({ scope: 'ALL', confirmationToken: all.confirmationToken }).expect(201);
     expect(await prisma.webhookJob.count()).toBe(0);
-    expect((await app.get(SeedService).summary()).shops).toBe(2);
+    expect((await app.get(SeedService).summary()).shops).toBe(5);
   });
 
   it('refuses to reset a database whose name does not look like the simulator DB', async () => {

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/fulfillment.package_batch_ship.request.json",
+  "title": "POST /fulfillment/202309/packages/ship request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "handover_method": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "pickup_slot": {
+            "type": "object",
+            "properties": {
+              "end_time": {
+                "type": "integer"
+              },
+              "start_time": {
+                "type": "integer"
+              }
+            }
+          },
+          "self_shipment": {
+            "type": "object",
+            "properties": {
+              "shipping_provider_id": {
+                "type": "string"
+              },
+              "tracking_number": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

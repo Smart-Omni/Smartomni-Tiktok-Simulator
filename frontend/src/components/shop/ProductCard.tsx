@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingBag, Star } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -6,10 +7,12 @@ import { cn } from '@/lib/utils';
 import type { EnrichedProduct } from '@/mocks';
 
 export function ProductImage({ product, className }: { product: EnrichedProduct; className?: string }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const failed = failedUrl === product.imageUrl;
   return (
     <div className={cn('relative aspect-square overflow-hidden rounded-lg', className)} style={{ backgroundColor: product.imageBg }}>
-      {product.imageUrl ? (
-        <img src={product.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
+      {product.imageUrl && !failed ? (
+        <img src={product.imageUrl} alt={product.title ?? ''} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailedUrl(product.imageUrl)} className="size-full object-cover" />
       ) : (
         <div className="flex size-full items-center justify-center">
           <ShoppingBag className="size-1/3 text-ink/25" strokeWidth={1.25} />

@@ -1773,6 +1773,1051 @@
       "candidates": [
         "DELETE 202309"
       ]
+    },
+    {
+      "id": "product.category_attributes",
+      "method": "GET",
+      "path": "/product/202309/categories/{category_id}/attributes",
+      "sha": "4d12e6f72273521465a487d1249d936d2d013d062e45ba984f31098cc6621d51",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "category_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The ID of the category of this product. It must be a leaf category."
+        },
+        {
+          "in": "query",
+          "name": "locale",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The BCP-47 locale codes for displaying the attribute information. Default: The default locale of your shop. Possible values: - `de-DE` - `en-GB` - `en-IE` - `en-US` - `es-ES` - `es-MX` - `fr-FR` - `id-ID` - `it-IT` - `ja-JP` - `ms-MY` - `pt-BR` - `th-TH` - `vi-VN` - `zh-CN`"
+        },
+        {
+          "in": "query",
+          "name": "category_version",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The category tree version that corresponds to the specified `category_id`. Possible values based on region: - US: `v2`, represents the 7-level category tree. **Important**: For US shops, you must pass `v2` when using this API. - Other regions: `v1`, represents the 3-level category tree. Default: `v1`"
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "product.category_rules",
+      "method": "GET",
+      "path": "/product/202309/categories/{category_id}/rules",
+      "sha": "e0f32015f50576f9f6ded2ba0434f2e3835d4afe10f6b12f80f48eb04fefd946",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "category_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The ID of the category. It must be a leaf category."
+        },
+        {
+          "in": "query",
+          "name": "category_version",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The category tree version that corresponds to the specified `category_id`. Possible values based on region: - US: `v2`, represents the 7-level category tree. **Important**: For US shops, you must pass `v2` when using this API. - Other regions: `v1`, represents the 3-level category tree. Default: `v1`"
+        },
+        {
+          "in": "query",
+          "name": "locale",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The BCP-47 locale codes for displaying category information. Default: en-US Possible values: - de-DE - en-GB - en-IE - en-US - es-ES - es-MX - fr-FR - id-ID - it-IT - ja-JP - ms-MY - pt-BR - th-TH - vi-VN - zh-CN"
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "product.update_price",
+      "method": "POST",
+      "path": "/product/202309/products/{product_id}/prices/update",
+      "sha": "195593437b4182b76a58d6c05ed82c6737d4c54995cce35d74c48af1fed7677a",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "path",
+          "name": "product_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The product ID generated by TikTok Shop."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "product.inventory_search",
+      "method": "POST",
+      "path": "/product/202309/inventory/search",
+      "sha": "e05935ea57f92c30ecf0a7740991d0da24afad41e029ede3b1a002e5fece4b5a",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "product.delete",
+      "method": "DELETE",
+      "path": "/product/202309/products",
+      "sha": "fabe7ca0811586411edaec84d42042a86f5b517cf90c0179dd214afc12178798",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "DELETE 202309"
+      ]
+    },
+    {
+      "id": "product.recover",
+      "method": "POST",
+      "path": "/product/202309/products/recover",
+      "sha": "cc93d986544f23082c4e347c30897d9288f88a6240f681d4d59e50c8358ca188",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "fulfillment.package_search",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/search",
+      "sha": "6d94edfdf79ed8bcacb20e53950e341a16c091095ccd3e3c5ffb4badd833314e",
+      "pagination": {
+        "requestParams": [
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": true,
+            "description": "The number of results to be returned per page. Valid range: [1-50]."
+          },
+          {
+            "in": "query",
+            "name": "page_token",
+            "required": false,
+            "description": "An opaque token used to retrieve the next page of a paginated result set. Retrieve this value from the result of the `next_page_token` from a previous response. It is not needed for the first page."
+          }
+        ],
+        "responseFields": [
+          "next_page_token",
+          "total_count"
+        ]
+      },
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "page_size",
+          "required": true,
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of results to be returned per page. Valid range: [1-50]."
+        },
+        {
+          "in": "query",
+          "name": "sort_field",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The returned results will be sorted by the specified field. Default: `create_time` Possible values: - `create_time` - `update_time` - `order_pay_time` Specify the order for sorting the returned results by using the sort_order parameter."
+        },
+        {
+          "in": "query",
+          "name": "sort_order",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "The sort order for the sort_field parameter. Default: `DESC` Possible values: - `ASC`: Ascending order - `DESC`: Descending order"
+        },
+        {
+          "in": "query",
+          "name": "page_token",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "An opaque token used to retrieve the next page of a paginated result set. Retrieve this value from the result of the `next_page_token` from a previous response. It is not needed for the first page."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. Get by API [Get Authorization Shop](https://partner.tiktokshop.com/docv2/page/6507ead7b99d5302be949ba9?external_id=6507ead7b99d5302be949ba9)"
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "fulfillment.package_batch_ship",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/ship",
+      "sha": "68777273e41489fb5aa6e8b9a248a0ff8261836d45554505b1eadf6c0b3e1472",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "return.create",
+      "method": "POST",
+      "path": "/return_refund/202309/returns",
+      "sha": "9d04920fe13875974ade58f925e3e19694ade2f84526280fa2d2191e3026f776",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "idempotency_key",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Idempotency Key"
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "return.refund_calculate",
+      "method": "POST",
+      "path": "/return_refund/202309/refunds/calculate",
+      "sha": "c91d1b475750fd2ae866444aaa4c5d88ffe21fe27d67194d0e087b2897d2b341",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "cancellation.seller_cancel",
+      "method": "POST",
+      "path": "/return_refund/202309/cancellations",
+      "sha": "0bc9d2e61dfbd6e55e960b4881a0c226336b3bc0355cbd2b48f2c581a37422b8",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "cs.read_message",
+      "method": "POST",
+      "path": "/customer_service/202309/conversations/{conversation_id}/messages/read",
+      "sha": "a4cbf34443aab0362a5cc078457a8f2673824eac088c997b3aaf691e4d5ab3b6",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "conversation_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "cs.create_conversation",
+      "method": "POST",
+      "path": "/customer_service/202309/conversations",
+      "sha": "3c2d51da7ef194e8b6736a3cc3240ffa1d52aa395b02ce391393d855f21d5637",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "fulfillment.handover_slots",
+      "method": "GET",
+      "path": "/fulfillment/202309/packages/{package_id}/handover_time_slots",
+      "sha": "ddf0a9001074ae1db28cad13d3b0705d6ede06246cb985ef3100b4cf09d80403",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "package_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "TikTok Shop package ID."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "fulfillment.shipping_info_update",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/{package_id}/shipping_info/update",
+      "sha": "2a92d17e75902677e84ea5023dc528326d42fc243f483f1ac778c4e1db1b3709",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "path",
+          "name": "package_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "TikTok Shop package ID."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "fulfillment.package_deliver",
+      "method": "POST",
+      "path": "/fulfillment/202309/packages/deliver",
+      "sha": "a87342b808134cafd6216e882eeabf5e74b39bb1b69566a73c7fba4b61363c98",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309"
+      ]
+    },
+    {
+      "id": "logistics.delivery_options",
+      "method": "GET",
+      "path": "/logistics/202309/warehouses/{warehouse_id}/delivery_options",
+      "sha": "542c17b2eee2aa66d268ba52e2cb3d4efa7a6f25ebf89022bf64087a2974262f",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "warehouse_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The warehouse ID."
+        },
+        {
+          "in": "query",
+          "name": "scope",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Specify the scope of delivery options to retrieve. - `WAREHOUSE`: Returns all delivery options currently active for the warehouse. By default, orders will be shipped based on these options. - `PRODUCT`: Returns the delivery options that can be assigned directly to a product. Use this if you want to enable custom delivery options for a product, overriding the default warehouse options. Only `delivery_options.id` and `delivery_options.name` will be included in the response when this is specified. Default: `WAREHOUSE`"
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "logistics.shipping_providers",
+      "method": "GET",
+      "path": "/logistics/202309/delivery_options/{delivery_option_id}/shipping_providers",
+      "sha": "ac54907db1a70846662cd8314563e091feaec9e2d83499f8131941a6ab018700",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "delivery_option_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The specific delivery option identifier for getting the shipping provider list."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "order.price_detail",
+      "method": "GET",
+      "path": "/order/202407/orders/{order_id}/price_detail",
+      "sha": "709e727f71bc84c90f24dcb09d07c5fb8ed700ac6447a68fbc7b360d59404df3",
+      "pagination": null,
+      "params": [
+        {
+          "in": "path",
+          "name": "order_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Order ID"
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202407"
+      ]
+    },
+    {
+      "id": "cs.agent_settings_get",
+      "method": "GET",
+      "path": "/customer_service/202309/agents/settings",
+      "sha": "8a7c07b5986acc56fd76072e3f10cb33f5e877cd14595ab2db501a41f0f88248",
+      "pagination": null,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "GET 202309"
+      ]
+    },
+    {
+      "id": "cs.agent_settings_put",
+      "method": "PUT",
+      "path": "/customer_service/202309/agents/settings",
+      "sha": "27953e9ca552d7ebcd0dba36a2ea085e4e3214aae4f96187b4ca485402a87154",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "PUT 202309"
+      ]
+    },
+    {
+      "id": "auth.deauthorize",
+      "method": "DELETE",
+      "path": "/authorization/202403/shops",
+      "sha": "05fdedb6019987983a29b68e702ee7e6c6b1b52d3ad8382f323e7ecd6db07531",
+      "pagination": null,
+      "params": [
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. Get by API [Get Authorization Shop](https://partner.tiktokshop.com/docv2/page/6507ead7b99d5302be949ba9?external_id=6507ead7b99d5302be949ba9)"
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": false,
+      "candidates": [
+        "DELETE 202403"
+      ]
+    },
+    {
+      "id": "product.partial_edit",
+      "method": "POST",
+      "path": "/product/202509/products/{product_id}/partial_edit",
+      "sha": "8e0ba835b50416a2fcd3ca01cb4874c7e344e23a6bcb5108fe67bb49a6dac314",
+      "pagination": null,
+      "multipart": false,
+      "params": [
+        {
+          "in": "path",
+          "name": "product_id",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "The product ID in TikTok Shop."
+        },
+        {
+          "in": "query",
+          "name": "shop_cipher",
+          "required": false,
+          "type": "string",
+          "format": null,
+          "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response."
+        },
+        {
+          "in": "header",
+          "name": "x-tts-access-token",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": ""
+        },
+        {
+          "in": "header",
+          "name": "Content-Type",
+          "required": true,
+          "type": "string",
+          "format": null,
+          "description": "Allowed type: application/json"
+        }
+      ],
+      "hasBody": true,
+      "candidates": [
+        "POST 202309",
+        "POST 202509"
+      ]
     }
   ]
 }

@@ -31,6 +31,9 @@ import { ChatModule } from '../chat/chat.module';
 import { ChatAdminController, ChatAdminGuard } from './chat-admin.controller';
 import { AdminTokenGuard, LoyaltyAdminController } from './loyalty-admin.controller';
 import { AftersaleModule } from '../aftersale/aftersale.module';
+import { FulfillmentModule } from '../fulfillment/fulfillment.module';
+import { FulfillmentService } from '../fulfillment/fulfillment.service';
+import { SandboxAdminController, MAX_SANDBOX_PAGE_SIZE, advanceOneStep, canonicalStatus } from './sandbox-admin.controller';
 import { AftersaleService } from '../aftersale/aftersale.service';
 import { OrdersModule } from '../orders/orders.module';
 import { OrdersService } from '../orders/orders.service';
@@ -81,9 +84,16 @@ const WebhookEnqueue = z.object({
   maxAttempts: z.number().int().min(1).max(20).optional(),
 });
 
+const AftersaleArbitrate = z.object({
+  arbitration_status: z.enum(['IN_ARBITRATION', 'ARBITRATION_WIN', 'ARBITRATION_LOSS']).optional(),
+  decision: z.enum(['WIN', 'LOSS', 'ARBITRATION_WIN', 'ARBITRATION_LOSS', 'IN_ARBITRATION']).optional(),
+  shopId: z.string().min(1).optional(),
+  note: z.string().max(300).optional(),
+}).refine((b) => b.arbitration_status || b.decision, { message: 'Either arbitration_status or decision is required' });
+
 const CatalogBulk = z.object({ shopId: z.string().min(1), count: z.number().int().min(1).max(500), skusPerProduct: z.number().int().min(1).max(5).default(2) });
 
-const OrderTransition = z.object({ to: z.enum(ORDER_STATUSES), shopId: z.string().min(1).optional(), note: z.string().max(300).optional(), cancelReason: z.string().max(300).optional() });
+const OrderTransition = z.object({ to: z.enum(ORDER_STATUSES).optional(), shopId: z.string().min(1).optional(), note: z.string().max(300).optional(), cancelReason: z.string().max(300).optional() });
 
 type Rq = Request & { requestId?: string };
 
@@ -103,6 +113,7 @@ export class TestAdminController {
     @Inject(BusinessClock) private readonly businessClock: BusinessClock,
     @Inject(OrdersService) private readonly orders: OrdersService,
     @Inject(AftersaleService) private readonly aftersale: AftersaleService,
+    @Inject(FulfillmentService) private readonly fulfillment: FulfillmentService,
   ) {}
 
   @Get('status')
@@ -156,8 +167,9 @@ export class TestAdminController {
   }
 
   @Get('shops')
-  async shops() {
+  async shops(@Query('region') region?: string) {
     const shops = await this.prisma.shop.findMany({
+      where: region ? { region } : {},
       orderBy: { name: 'asc' },
       include: { scenarios: { select: { id: true, key: true, name: true, description: true } }, _count: { select: { products: true, buyers: true, webhookJobs: true } } },
     });
@@ -243,8 +255,9 @@ export class TestAdminController {
   // ---- Phase 05: orders (state machine control) ----
 
   @Get('orders')
-  async listOrders(@Query('shopId') shopId?: string, @Query('status') status?: string, @Query('limit') limit?: string) {
-    const take = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  async listOrders(@Query('shopId') shopId?: string, @Query('status') status?: string, @Query('limit') limit?: string, @Query('pageSize') pageSize?: string) {
+    // `pageSize` mirrors the toolkit's `--page-size` (at most 10) and wins over `limit`
+    const take = pageSize ? Math.min(Math.max(Number(pageSize) || 10, 1), MAX_SANDBOX_PAGE_SIZE) : Math.min(Math.max(Number(limit) || 50, 1), 200);
     const rows = await this.prisma.order.findMany({
       where: { ...(shopId ? { shopId } : {}), ...(status ? { status } : {}) },
       orderBy: { seq: 'desc' },
@@ -259,6 +272,7 @@ export class TestAdminController {
         shopName: o.shop.name,
         buyerName: o.buyer.name,
         status: o.status,
+        canonical_status: canonicalStatus(o),
         units: o._count.lines,
         createdAt: o.createdAt.toISOString(),
         updatedAt: o.updatedAt.toISOString(),
@@ -277,8 +291,20 @@ export class TestAdminController {
   @Post('orders/:ref/transition')
   async transitionOrder(@Req() req: Rq, @Param('ref') ref: string, @Body(new ZodPipe(OrderTransition)) body: z.infer<typeof OrderTransition>) {
     const order = await this.orders.findForAdmin(ref, body.shopId);
-    const updated = await this.orders.transition(order.id, body.to, 'TEST_CONSOLE', { note: body.note ?? 'test console', cancelReason: body.cancelReason, requestId: req.requestId });
-    return { id: updated.externalId, from: order.status, status: updated.status, updatedAt: updated.updatedAt.toISOString() };
+    // no target state: one happy-path step like `sandbox order transition` (a terminal order stays as it is)
+    const updated = body.to
+      ? await this.orders.transition(order.id, body.to, 'TEST_CONSOLE', { note: body.note ?? 'test console', cancelReason: body.cancelReason, requestId: req.requestId })
+      : await advanceOneStep(this.orders, this.fulfillment, order, req.requestId);
+    const after = updated ?? order;
+    return {
+      id: after.externalId,
+      from: order.status,
+      status: after.status,
+      before_status: canonicalStatus(order),
+      after_status: canonicalStatus(after),
+      transitioned: updated !== null && updated.status !== order.status,
+      updatedAt: after.updatedAt.toISOString(),
+    };
   }
 
   /** Release every ON_HOLD order whose hold period (business clock) has elapsed; advance the clock first to test the boundary. */
@@ -417,7 +443,29 @@ export class TestAdminController {
     if (!exists) throw new NotFoundException('Unknown webhook job');
     return this.queue.replay(jobId, req.requestId);
   }
+
+  @Post('aftersale/:ref/arbitration')
+  async arbitrateAftersale(
+    @Req() req: Rq,
+    @Param('ref') ref: string,
+    @Body(new ZodPipe(AftersaleArbitrate)) body: z.infer<typeof AftersaleArbitrate>,
+  ) {
+    const aftersaleReq = await this.aftersale.findForAdmin(ref, body.shopId);
+    const targetStatus = (body.arbitration_status ?? (body.decision?.includes('WIN') ? 'ARBITRATION_WIN' : body.decision?.includes('LOSS') ? 'ARBITRATION_LOSS' : 'IN_ARBITRATION')) as any;
+    const result = await this.aftersale.arbitrate(
+      aftersaleReq.shopId,
+      aftersaleReq.externalId,
+      targetStatus,
+      'OPERATOR',
+      { note: body.note, requestId: req.requestId },
+    );
+    return {
+      id: result.request.externalId,
+      arbitration_status: result.request.arbitrationStatus,
+      changed: result.changed,
+    };
+  }
 }
 
-@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
+@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule, FulfillmentModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController, SandboxAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
 export class TestAdminModule {}

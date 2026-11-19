@@ -1,0 +1,34 @@
+{
+  "operation": "auth.deauthorize",
+  "schema": "schemas/ops/auth.deauthorize.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {},
+        "message": "Success",
+        "request_id": "TEST-auth.deauthorize-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "omit required query parameter 'shop_cipher'",
+      "requestMustFailValidation": true
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

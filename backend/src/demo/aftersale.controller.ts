@@ -1,6 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Inject, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
-import { AftersaleRow, AftersaleService, REJECT_REASONS, REQUEST_REASONS, RETURN_TYPES } from '../aftersale/aftersale.service';
+import { AftersaleRow, AftersaleService, REJECT_REASONS, REQUEST_REASONS } from '../aftersale/aftersale.service';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -11,15 +11,22 @@ import {
   DemoSessionGuard,
 } from './demo-session.guard';
 
+const BUYER_RETURN_TYPES = ['REFUND', 'RETURN_AND_REFUND'] as const;
+
 const CreateReturn = z.object({
   orderId: z.string().min(1).max(100),
   items: z.array(z.object({ skuId: z.string().min(1).max(100), quantity: z.number().int().min(1).max(50) })).min(1).max(50),
-  returnType: z.enum(RETURN_TYPES),
+  returnType: z.enum(BUYER_RETURN_TYPES),
   reason: z.string().trim().min(1).max(300).default('OTHER'),
+  sellerProposedReturnType: z.string().max(50).optional(),
 });
 const CreateCancellation = z.object({ orderId: z.string().min(1).max(100), reason: z.string().trim().min(1).max(300).default('CHANGED_MIND') });
 const Approve = z.object({ decision: z.string().max(60).optional() });
 const Reject = z.object({ reason: z.string().min(1).max(100), comment: z.string().max(500).optional(), decision: z.string().max(60).optional() });
+const Arbitrate = z.object({
+  decision: z.enum(['WIN', 'LOSS', 'ARBITRATION_WIN', 'ARBITRATION_LOSS']),
+  note: z.string().max(500).optional(),
+});
 
 function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
@@ -48,6 +55,8 @@ export function aftersaleView(r: AftersaleRow) {
     role: r.role,
     rejectReason: r.rejectReason,
     returnTrackingNumber: r.returnTrackingNumber,
+    arbitrationStatus: r.arbitrationStatus ?? 'NO_ARBITRATION',
+    sellerProposedReturnType: r.sellerProposedReturnType ?? null,
     buyer: { id: r.order.buyer.externalId, name: r.order.buyer.name },
     refund: { subtotalVnd: r.refundSubtotal, shippingVnd: r.refundShipping, totalVnd: r.refundTotal },
     createdAt: r.createdAt.toISOString(),
@@ -82,7 +91,16 @@ export class AftersaleDemoController {
   async createReturn(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateReturn)) body: z.infer<typeof CreateReturn>) {
     const p = principal(req);
     await assertShopAccess(p, shopId, this.prisma);
-    return { request: aftersaleView(await this.aftersale.createReturn(buyerOf(p, shopId), body.orderId, { items: body.items, returnType: body.returnType, reason: body.reason }, this.rid(req))) };
+    return {
+      request: aftersaleView(
+        await this.aftersale.createReturn(
+          buyerOf(p, shopId),
+          body.orderId,
+          { items: body.items, returnType: body.returnType, reason: body.reason, sellerProposedReturnType: body.sellerProposedReturnType },
+          this.rid(req),
+        ),
+      ),
+    };
   }
 
   @Post('shops/:shopId/aftersale/cancellations')
@@ -129,6 +147,32 @@ export class AftersaleDemoController {
       existing.kind === 'CANCELLATION'
         ? await this.aftersale.rejectCancellation(shopId, id, { reason: body.reason, comment: body.comment }, 'SELLER', this.rid(req))
         : await this.aftersale.rejectReturn(shopId, id, { reason: body.reason, comment: body.comment, decision: body.decision }, 'SELLER', { requestId: this.rid(req) });
+    return { changed: r.changed, request: aftersaleView(r.request) };
+  }
+
+  /** Buyer raises arbitration / dispute: transitions arbitration_status to IN_ARBITRATION. */
+  @Post('shops/:shopId/aftersale/:id/dispute')
+  @UseGuards(DemoSessionGuard)
+  async raiseDispute(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('id') id: string) {
+    const p = principal(req);
+    await assertShopAccess(p, shopId, this.prisma);
+    const r = await this.aftersale.arbitrate(shopId, id, 'IN_ARBITRATION', p.role === 'BUYER' ? 'BUYER' : 'OPERATOR', { requestId: this.rid(req) });
+    return { changed: r.changed, request: aftersaleView(r.request) };
+  }
+
+  /** TikTok Admin / Operator arbitrates: transitions to ARBITRATION_WIN or ARBITRATION_LOSS. */
+  @Post('shops/:shopId/aftersale/:id/arbitrate')
+  @UseGuards(DemoSessionGuard)
+  async arbitrate(
+    @Req() req: DemoRequest,
+    @Param('shopId') shopId: string,
+    @Param('id') id: string,
+    @Body(new ZodPipe(Arbitrate)) body: z.infer<typeof Arbitrate>,
+  ) {
+    const p = principal(req);
+    await assertShopAccess(p, shopId, this.prisma);
+    const targetStatus = body.decision.includes('WIN') ? 'ARBITRATION_WIN' : 'ARBITRATION_LOSS';
+    const r = await this.aftersale.arbitrate(shopId, id, targetStatus, 'OPERATOR', { note: body.note, requestId: this.rid(req) });
     return { changed: r.changed, request: aftersaleView(r.request) };
   }
 }

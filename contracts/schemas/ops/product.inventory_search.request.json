@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/product.inventory_search.request.json",
+  "title": "POST /product/202309/inventory/search request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "product_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sku_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

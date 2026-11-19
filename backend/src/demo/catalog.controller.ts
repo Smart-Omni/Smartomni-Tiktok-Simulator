@@ -21,6 +21,8 @@ import { BusinessClock } from '../clock/clock';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { logInventory } from '../inventory/inventory-log';
+import { emitInventoryChanged } from '../inventory/inventory-webhook';
+import { WebhookEmitter } from '../webhooks/webhook-emitter.service';
 import { numericId } from '../seed/seed-data';
 import {
   assertSellerShop,
@@ -101,8 +103,24 @@ function sellerView(p: ProductRow) {
   };
 }
 
+/** Real image URLs from the product's `mainImages` (`urls[0]` when present, else an http(s) `uri`). */
+function realImageUrls(mainImages: Prisma.JsonValue): string[] {
+  if (!Array.isArray(mainImages)) return [];
+  const out: string[] = [];
+  for (const item of mainImages) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
+    const urls = item.urls;
+    const first = Array.isArray(urls) && typeof urls[0] === 'string' ? urls[0] : undefined;
+    const candidate = first ?? (typeof item.uri === 'string' ? item.uri : undefined);
+    if (candidate && /^https?:\/\//i.test(candidate)) out.push(candidate);
+  }
+  return out;
+}
+
 /** What a buyer sees: SKUs that can be bought, with price and a stock flag but no warehouse breakdown. */
 function buyerView(p: ProductRow) {
+  const placeholder = `/demo/media/products/${p.id}.svg`;
+  const images = realImageUrls(p.mainImages);
   const skus = p.skus.map((s) => {
     const total = s.inventory.reduce((n, i) => n + i.quantity, 0);
     return { id: s.externalId, name: s.name, attributeName: s.attributeName, priceVnd: s.priceVnd, available: s.status === 'NORMAL' && total > 0, stock: total };
@@ -112,7 +130,8 @@ function buyerView(p: ProductRow) {
     id: p.externalId,
     title: p.title,
     description: p.description,
-    imageUrl: `/demo/media/products/${p.id}.svg`,
+    imageUrl: images[0] ?? placeholder,
+    images: images.length ? images : [placeholder],
     minPriceVnd: prices.length ? Math.min(...prices) : 0,
     maxPriceVnd: prices.length ? Math.max(...prices) : 0,
     skus,
@@ -129,6 +148,7 @@ export class CatalogDemoController {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(BusinessClock) private readonly clock: BusinessClock,
+    @Inject(WebhookEmitter) private readonly emitter: WebhookEmitter,
   ) {}
 
   // ---- Public Marketplace Storefront --------------------------------------------------------------------------
@@ -328,15 +348,21 @@ export class CatalogDemoController {
     const updated = await this.prisma.$transaction(async (tx) => {
       if (Object.keys(fields).length) await tx.sku.update({ where: { id: sku.id }, data: { ...fields, updatedAt: now } });
       if (stock) {
+        let changed = false;
         for (const w of warehouses) {
           if (stock[w.externalId] === undefined) continue;
           const [prev] = await tx.$queryRaw<{ quantity: number }[]>`SELECT quantity FROM "InventoryLevel" WHERE "skuId" = ${sku.id} AND "warehouseId" = ${w.id} FOR UPDATE`;
+          if ((prev?.quantity ?? 0) !== stock[w.externalId]) changed = true;
           await logInventory(tx, [{ shopId, skuId: sku.id, warehouseId: w.id, before: prev?.quantity ?? 0, after: stock[w.externalId], source: 'SELLER', noop: (prev?.quantity ?? 0) === stock[w.externalId], note: 'seller edit' }]);
           await tx.inventoryLevel.upsert({
             where: { skuId_warehouseId: { skuId: sku.id, warehouseId: w.id } },
             create: { id: randomUUID(), skuId: sku.id, warehouseId: w.id, quantity: stock[w.externalId] },
             update: { quantity: stock[w.externalId] },
           });
+        }
+        if (changed) {
+          const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+          await emitInventoryChanged(tx, this.emitter, this.clock, shop, { id: sku.id, externalId: sku.externalId, productExternalId: sku.product.externalId }, 'SELLER');
         }
       }
       await tx.product.update({ where: { id: sku.productId }, data: { updatedAt: now } });

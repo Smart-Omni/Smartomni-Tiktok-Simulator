@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/cancellation.seller_cancel.request.json",
+  "title": "POST /return_refund/202309/cancellations request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "cancel_reason": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "order_line_item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer"
+          },
+          "sku_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

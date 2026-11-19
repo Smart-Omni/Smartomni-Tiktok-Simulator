@@ -73,36 +73,38 @@ model Seller {
 }
 
 model Shop {
-  id                String                @id @default(uuid())
-  tiktokShopId      String                @unique
-  shopCipher        String                @unique
+  id                 String                @id @default(uuid())
+  tiktokShopId       String                @unique
+  shopCipher         String                @unique
   // Shop "code" and seller type as returned by Get Authorized Shops (code is simulator-generated; seller_type LOCAL for VN domestic shops, VN applicability unverified).
-  code              String                @default("")
-  sellerType        String                @default("LOCAL")
-  name              String
-  region            String                @default("VN")
-  currency          String                @default("VND")
-  status            ShopStatus            @default(ACTIVE)
-  sellerId          String
-  seller            Seller                @relation(fields: [sellerId], references: [id])
-  activeScenarioId  String?
-  buyers            Buyer[]
-  warehouses        Warehouse[]
-  products          Product[]
-  scenarios         Scenario[]            @relation("ShopScenarios")
-  tokens            Token[]
-  authCodes         AuthorizationCode[]
-  webhookJobs       WebhookJob[]
-  orders            Order[]
-  conversations     Conversation[]
-  webhookSubs       WebhookSubscription[]
-  packages          Package[]
-  aftersaleRequests AftersaleRequest[]
-  coupons           Coupon[]
-  faultRules        FaultRule[]
-  demoSessions      DemoSession[]
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  code               String                @default("")
+  sellerType         String                @default("LOCAL")
+  name               String
+  region             String                @default("VN")
+  currency           String                @default("VND")
+  status             ShopStatus            @default(ACTIVE)
+  // Get/Update Agent Settings `can_accept_chat` (one simulated agent per shop).
+  agentCanAcceptChat Boolean               @default(true)
+  sellerId           String
+  seller             Seller                @relation(fields: [sellerId], references: [id])
+  activeScenarioId   String?
+  buyers             Buyer[]
+  warehouses         Warehouse[]
+  products           Product[]
+  scenarios          Scenario[]            @relation("ShopScenarios")
+  tokens             Token[]
+  authCodes          AuthorizationCode[]
+  webhookJobs        WebhookJob[]
+  orders             Order[]
+  conversations      Conversation[]
+  webhookSubs        WebhookSubscription[]
+  packages           Package[]
+  aftersaleRequests  AftersaleRequest[]
+  coupons            Coupon[]
+  faultRules         FaultRule[]
+  demoSessions       DemoSession[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   @@index([sellerId])
 }
@@ -208,21 +210,30 @@ model Warehouse {
 }
 
 model Product {
-  id           String   @id @default(uuid())
-  shopId       String
-  shop         Shop     @relation(fields: [shopId], references: [id])
+  id                String   @id @default(uuid())
+  shopId            String
+  shop              Shop     @relation(fields: [shopId], references: [id])
   // Marketplace product id (string). Unique PER SHOP only: the same id may exist in another shop and must never be confused.
-  externalId   String
-  title        String
-  description  String   @default("")
+  externalId        String
+  title             String
+  description       String   @default("")
   // OAS values: DRAFT PENDING FAILED ACTIVATE SELLER_DEACTIVATED PLATFORM_DEACTIVATED FREEZE DELETED. DELETED is a soft delete.
-  status       String   @default("ACTIVATE")
-  isNotForSale Boolean  @default(false)
+  status            String   @default("ACTIVATE")
+  isNotForSale      Boolean  @default(false)
+  // Listing fields stored from Create/Edit Product (all optional in the OAS body).
+  categoryId        String?
+  brandId           String?
+  mainImages        Json     @default("[]")
+  packageWeight     Json?
+  packageDimensions Json?
+  productAttributes Json     @default("[]")
+  isCodAllowed      Boolean  @default(false)
+  externalProductId String?
   // Immutable, monotonic listing order. Backs the opaque page_token (keyset), so rows added during an import are never skipped or repeated.
-  seq          Int      @unique @default(autoincrement())
-  skus         Sku[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  seq               Int      @unique @default(autoincrement())
+  skus              Sku[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([shopId, externalId])
   @@index([shopId, seq])
@@ -584,6 +595,8 @@ model Conversation {
   createdAt          DateTime
   updatedAt          DateTime
   nextIndex          Int           @default(1)
+  // Highest ChatMessage.seq the seller has marked as read (Read Message). Unread = buyer messages after max(last seller reply, this).
+  sellerReadSeq      Int           @default(0)
   messages           ChatMessage[]
 
   @@unique([shopId, externalId])
@@ -729,34 +742,39 @@ model CouponUsage {
 //                 REFUND_OR_RETURN_REQUEST_REJECT | RETURN_OR_REFUND_REQUEST_SUCCESS | _CANCEL | _COMPLETE
 // The order status is NEVER changed by a return (the OAS order statuses have no RETURNED value).
 model AftersaleRequest {
-  id                   String            @id @default(uuid())
-  shopId               String
-  shop                 Shop              @relation(fields: [shopId], references: [id])
-  orderId              String
-  order                Order             @relation(fields: [orderId], references: [id])
-  externalId           String
-  seq                  Int               @unique @default(autoincrement())
+  id                       String            @id @default(uuid())
+  shopId                   String
+  shop                     Shop              @relation(fields: [shopId], references: [id])
+  orderId                  String
+  order                    Order             @relation(fields: [orderId], references: [id])
+  externalId               String
+  seq                      Int               @unique @default(autoincrement())
   // CANCELLATION | RETURN
-  kind                 String
+  kind                     String
   // cancel_type CANCEL | BUYER_CANCEL, or return_type REFUND | RETURN_AND_REFUND
-  type                 String
-  status               String
-  reason               String
+  type                     String
+  status                   String
+  reason                   String
   // BUYER | SELLER | SYSTEM
-  role                 String
-  rejectReason         String?
-  rejectComment        String?
-  returnTrackingNumber String?
-  currency             String            @default("VND")
-  refundSubtotal       Int
-  refundShipping       Int               @default(0)
-  refundTotal          Int
-  createdAt            DateTime
-  updatedAt            DateTime
-  lines                AftersaleLine[]
-  records              AftersaleRecord[]
+  role                     String
+  rejectReason             String?
+  rejectComment            String?
+  returnTrackingNumber     String?
+  arbitrationStatus        String            @default("NO_ARBITRATION")
+  sellerProposedReturnType String?
+  // Create Return idempotency: a repeated key returns the same return_id. NULLs are not unique-constrained.
+  idempotencyKey           String?
+  currency                 String            @default("VND")
+  refundSubtotal           Int
+  refundShipping           Int               @default(0)
+  refundTotal              Int
+  createdAt                DateTime
+  updatedAt                DateTime
+  lines                    AftersaleLine[]
+  records                  AftersaleRecord[]
 
   @@unique([shopId, externalId])
+  @@unique([shopId, idempotencyKey])
   @@index([shopId, seq])
   @@index([orderId])
 }

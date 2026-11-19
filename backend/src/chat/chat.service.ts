@@ -57,13 +57,18 @@ export class ChatService {
 
   /** The buyer's single open conversation with a shop; created on the first message. */
   async conversationForBuyer(shopId: string, buyerId: string): Promise<Conversation> {
+    return (await this.ensureForBuyer(shopId, buyerId)).conversation;
+  }
+
+  /** Same as conversationForBuyer, also telling whether THIS call created the row (the concurrent loser gets created=false). */
+  private async ensureForBuyer(shopId: string, buyerId: string): Promise<{ conversation: Conversation; created: boolean }> {
     const existing = await this.prisma.conversation.findFirst({ where: { shopId, buyerId }, orderBy: { seq: 'asc' } });
-    if (existing) return existing;
+    if (existing) return { conversation: existing, created: false };
     const [shop, buyer] = await Promise.all([this.prisma.shop.findUniqueOrThrow({ where: { id: shopId } }), this.prisma.buyer.findUniqueOrThrow({ where: { id: buyerId } })]);
     const id = randomUUID();
     const now = this.clock.now();
     try {
-      return await this.prisma.conversation.create({
+      const conversation = await this.prisma.conversation.create({
         data: {
           id,
           shopId,
@@ -77,10 +82,11 @@ export class ChatService {
           updatedAt: now,
         },
       });
+      return { conversation, created: true };
     } catch (e) {
       // two concurrent first messages: keep the winner (a buyer has one conversation per shop)
       const winner = await this.prisma.conversation.findFirst({ where: { shopId, buyerId }, orderBy: { seq: 'asc' } });
-      if (winner) return winner;
+      if (winner) return { conversation: winner, created: false };
       throw e;
     }
   }
@@ -162,6 +168,30 @@ export class ChatService {
 
   async unreadFor(c: Conversation): Promise<number> {
     const lastReply = await this.prisma.chatMessage.findFirst({ where: { conversationId: c.id, senderRole: { not: 'BUYER' } }, orderBy: { seq: 'desc' }, select: { seq: true } });
-    return this.prisma.chatMessage.count({ where: { conversationId: c.id, senderRole: 'BUYER', seq: { gt: lastReply?.seq ?? 0 } } });
+    return this.prisma.chatMessage.count({ where: { conversationId: c.id, senderRole: 'BUYER', seq: { gt: Math.max(lastReply?.seq ?? 0, c.sellerReadSeq) } } });
+  }
+
+  /** Read Message: the seller has seen every buyer message so far. Never moves backwards, so a repeat is harmless. */
+  async markRead(conversationId: string): Promise<void> {
+    const last = await this.prisma.chatMessage.findFirst({ where: { conversationId }, orderBy: { seq: 'desc' }, select: { seq: true } });
+    if (!last) return;
+    await this.prisma.conversation.updateMany({ where: { id: conversationId, sellerReadSeq: { lt: last.seq } }, data: { sellerReadSeq: last.seq } });
+  }
+
+  /**
+   * Create Conversation (OAS): the buyer's single conversation with the shop, created when missing. NEW_CONVERSATION is only
+   * emitted when a row was really created (DECISIONS DA-10). An unknown buyer_user_id returns null.
+   */
+  async createForBuyerUser(shopId: string, buyerUserId: string, requestId?: string): Promise<{ conversation: Conversation; created: boolean } | null> {
+    const buyer = await this.prisma.buyer.findFirst({ where: { shopId, externalId: buyerUserId } });
+    if (!buyer) return null;
+    const { conversation, created } = await this.ensureForBuyer(shopId, buyer.id);
+    if (created) {
+      await this.prisma.$transaction(async (tx) => {
+        const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+        await this.emitter.emit(tx, shop, 'NEW_CONVERSATION', { conversation_id: conversation.externalId, event: 'CONVERSATION_CREATED', participant_count: 2, create_time: Math.floor(conversation.createdAt.getTime() / 1000) }, requestId);
+      });
+    }
+    return { conversation, created };
   }
 }

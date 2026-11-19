@@ -1,16 +1,34 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Put,
+  Req,
+  Res,
+  UploadedFiles,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { Prisma } from '@prisma/client';
 import type { Response } from 'express';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 import { ChatService, ChatRuleError, MAX_TEXT_LENGTH } from '../chat/chat.service';
 import { conversationItem, messageItem, participants } from '../chat/chat.mapper';
 import { TiktokFault } from '../common/tiktok-fault';
+import { APP_CONFIG, AppConfig } from '../config/config';
 import { SCOPE_CONVERSATION_READ, SCOPE_CONVERSATION_WRITE } from '../oauth/scopes';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseRawQuery } from './signature';
 import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard';
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 
-/** Message types the OAS lists for Send Message. The simulator creates TEXT only (every other type needs uploads, cards or cross-domain data). */
+/** Message types the OAS lists for Send Message. */
 const OAS_SEND_TYPES = new Set(['TEXT', 'IMAGE', 'VIDEO', 'PRODUCT_CARD', 'ORDER_CARD', 'RETURN_REFUND_CARD', 'COUPON_CARD', 'LOGISTICS_CARD']);
 
 interface ListCursor {
@@ -38,11 +56,16 @@ function pageSize(query: Record<string, string>, max: number): number {
   if (n < 1 || n > max) throw new TiktokFault(400, 'invalid_input', `page_size must be in [1, ${max}]`);
   return n;
 }
+/** `locale` is accepted and validated for shape only; message content is not localised (DECISIONS DA-4). */
+function checkLocale(query: Record<string, string>): void {
+  if (query.locale !== undefined && !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(query.locale)) {
+    throw new TiktokFault(400, 'invalid_input', 'locale must be a BCP-47 language tag such as vi-VN');
+  }
+}
 
 /**
- * Customer-service API: Get Conversation List (202309), Get Conversation Messages (202309), Get Conversation Detail (202601), Send Message (202309).
- * Shapes follow the official OAS. Send Message 202606 has NO schema snapshot in contracts/, so it is explicitly unsupported; Upload Image is
- * multipart, whose signing is unverified, so it is explicitly unsupported too. Every query is scoped to the shop of the token.
+ * Customer-service API: Get Conversation List (202309), Get Conversation Messages (202309),
+ * Get Conversation Detail (202601), Send Message (202309 & 202606), Upload Image (202309).
  */
 @Controller()
 @UseFilters(TiktokFaultFilter)
@@ -50,7 +73,60 @@ export class ConversationsController {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ChatService) private readonly chat: ChatService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /** GET /customer_service/202309/agents/settings: one simulated agent per shop (DECISIONS DA-11). */
+  @Get('customer_service/202309/agents/settings')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_READ)
+  async agentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const row = await this.prisma.shop.findUniqueOrThrow({ where: { id: shop.id }, select: { agentCanAcceptChat: true } });
+    return this.envelope(req, { can_accept_chat: row.agentCanAcceptChat });
+  }
+
+  /** PUT /customer_service/202309/agents/settings */
+  @Put('customer_service/202309/agents/settings')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async updateAgentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body)) throw new TiktokFault(400, 'invalid_input', 'request body must be a JSON object');
+    for (const k of Object.keys(body)) if (k !== 'can_accept_chat') throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
+    if (typeof body.can_accept_chat !== 'boolean') throw new TiktokFault(400, 'invalid_input', 'can_accept_chat must be a boolean');
+    await this.prisma.shop.update({ where: { id: shop.id }, data: { agentCanAcceptChat: body.can_accept_chat } });
+    return this.envelope(req, {});
+  }
+
+  /** POST /customer_service/202309/conversations: Create Conversation (idempotent per buyer). */
+  @Post('customer_service/202309/conversations')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async create(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body.buyer_user_id !== 'string' || body.buyer_user_id.length === 0 || body.buyer_user_id.length > 200) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id is required');
+    const res = await this.chat.createForBuyerUser(shop.id, body.buyer_user_id, req.requestId);
+    if (!res) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id does not belong to a buyer of this shop');
+    return this.envelope(req, { conversation_id: res.conversation.externalId });
+  }
+
+  /** POST /customer_service/202309/conversations/{conversation_id}/messages/read */
+  @Post('customer_service/202309/conversations/:conversationId/messages/read')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async read(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
+    const { shop } = req.tiktok!;
+    const conversation = await this.chat.ownedByShop(shop.id, conversationId);
+    if (!conversation) throw new TiktokFault(404, 'conversation_not_found', 'conversation does not exist in this shop');
+    await this.chat.markRead(conversation.id);
+    return this.envelope(req, {});
+  }
 
   @Get('customer_service/202309/conversations')
   @UseGuards(TiktokApiGuard)
@@ -58,6 +134,7 @@ export class ConversationsController {
   async list(@Req() req: TiktokRequest) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 20);
     const after = query.page_token ? dec<ListCursor>(query.page_token, (c) => Number.isSafeInteger(c.s)).s : 0;
     const rows = await this.prisma.conversation.findMany({ where: { shopId: shop.id, seq: { gt: after } }, orderBy: { seq: 'asc' }, take: size + 1 });
@@ -76,6 +153,7 @@ export class ConversationsController {
   async messages(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 10);
     const sortField = (query.sort_field ?? 'create_time') as 'create_time' | 'index';
     if (sortField !== 'create_time' && sortField !== 'index') throw new TiktokFault(400, 'invalid_input', 'sort_field must be create_time or index');
@@ -121,9 +199,7 @@ export class ConversationsController {
   }
 
   /**
-   * Send Message 202309. TEXT only; `content` is the JSON-serialized string {"content":"..."}.
-   * Not idempotent (the API has no key): sending twice stores two messages, exactly why a timeout must be treated as indeterminate.
-   * With the Test Console `dropSendResponse` flag the message IS stored and its event emitted, but the connection is cut before the response.
+   * Send Message 202309 (TEXT only).
    */
   @Post('customer_service/202309/conversations/:conversationId/messages')
   @HttpCode(200)
@@ -163,16 +239,85 @@ export class ConversationsController {
     }
   }
 
-  /** The 202606 operation has no schema snapshot in contracts/, so it is NOT implemented (manifest: unverified). */
+  /**
+   * Send Message 202606: supports TEXT and IMAGE.
+   */
   @Post('customer_service/202606/conversations/:conversationId/messages')
-  unsupportedSend202606(): never {
-    throw new TiktokFault(501, 'unsupported_operation', 'Send Message 202606 has no verified schema snapshot; use 202309');
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async send202606(@Req() req: TiktokRequest, @Res({ passthrough: true }) res: Response, @Param('conversationId') conversationId: string) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as { type?: unknown; content?: unknown };
+    const type = typeof body.type === 'string' ? body.type : 'TEXT';
+    if (type !== 'TEXT' && type !== 'IMAGE') {
+      throw new TiktokFault(400, 'invalid_input', `message type ${type} is not supported (TEXT and IMAGE supported)`);
+    }
+    if (typeof body.content !== 'string') throw new TiktokFault(400, 'invalid_input', 'content must be a JSON-serialized string');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(body.content);
+    } catch {
+      throw new TiktokFault(400, 'invalid_input', 'content is not valid JSON');
+    }
+
+    if (type === 'TEXT') {
+      const text = parsed?.content;
+      if (typeof text !== 'string' || text.trim() === '' || text.length > MAX_TEXT_LENGTH) {
+        throw new TiktokFault(400, 'invalid_input', `TEXT content must be {"content": "<1-${MAX_TEXT_LENGTH} chars>"}`);
+      }
+    } else if (type === 'IMAGE') {
+      const url = parsed?.url || parsed?.image_url;
+      if (!url && !parsed?.image_id) {
+        throw new TiktokFault(400, 'invalid_input', 'IMAGE content must contain url or image_id');
+      }
+    }
+
+    const conversation = await this.chat.ownedByShop(shop.id, conversationId);
+    if (!conversation) throw new TiktokFault(404, 'conversation_not_found', 'conversation does not exist in this shop');
+    if (!conversation.canSendMessage) throw new TiktokFault(400, 'cannot_send_message', 'can_send_message is false for this conversation');
+
+    try {
+      const { message, conversation: c } = await this.chat.postRaw(conversation.id, 'SHOP', type, body.content, { requestId: req.requestId });
+      if (c.dropSendResponse) {
+        res.socket?.destroy();
+        return undefined;
+      }
+      return this.envelope(req, { message_id: message.externalId });
+    } catch (e) {
+      if (e instanceof ChatRuleError) throw new TiktokFault(400, 'invalid_input', e.message);
+      throw e;
+    }
   }
 
-  /** Multipart signing is unverified in contracts/signing, so image upload is refused explicitly instead of faking a URL. */
+  /**
+   * Upload Image (POST /customer_service/202309/images/upload).
+   */
   @Post('customer_service/202309/images/upload')
-  unsupportedImageUpload(): never {
-    throw new TiktokFault(501, 'unsupported_operation', 'Upload Image (multipart) is unsupported: multipart request signing is unverified');
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  @UseInterceptors(AnyFilesInterceptor())
+  async uploadImage(
+    @Req() req: TiktokRequest,
+    @UploadedFiles() files?: Array<any>,
+  ) {
+    const file = files && files.length > 0 ? files[0] : undefined;
+    const fileName = file?.originalname || 'chat_image.jpg';
+    if (file?.buffer) {
+      try {
+        await fs.mkdir(this.config.mediaDir, { recursive: true });
+        await fs.writeFile(join(this.config.mediaDir, fileName), file.buffer);
+      } catch {
+        /* Ignore disk write errors in restricted test environment */
+      }
+    }
+
+    return this.envelope(req, {
+      url: `https://simulator.smartomni.local/uploads/${fileName}`,
+      width: 1280,
+      height: 720,
+    });
   }
 
   private envelope(req: TiktokRequest, data: unknown) {

@@ -1,0 +1,127 @@
+{
+  "operation": "order.price_detail",
+  "schema": "schemas/ops/order.price_detail.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "cod_fee": "TEST_cod_fee",
+          "cod_fee_net_amount": "TEST_cod_fee_net_amount",
+          "currency": "TEST_currency",
+          "distance_fee": "TEST_distance_fee",
+          "distance_shipping_fee": "TEST_distance_shipping_fee",
+          "line_items": [
+            {
+              "cod_fee": "TEST_cod_fee",
+              "cod_fee_amount": "TEST_cod_fee_amount",
+              "currency": "TEST_currency",
+              "distance_fee": "TEST_distance_fee",
+              "distance_shipping_fee": "TEST_distance_shipping_fee",
+              "id": "TEST_id",
+              "net_price_amount": "TEST_net_price_amount",
+              "payment": "TEST_payment",
+              "shipping_fee_deduction_platform": "TEST_shipping_fee_deduction_platform",
+              "shipping_fee_deduction_platform_voucher": "TEST_shipping_fee_deduction_platform_voucher",
+              "shipping_fee_deduction_seller": "TEST_shipping_fee_deduction_seller",
+              "shipping_list_price": "TEST_shipping_list_price",
+              "shipping_sale_price": "TEST_shipping_sale_price",
+              "sku_gift_net_price": "TEST_sku_gift_net_price",
+              "sku_gift_original_price": "TEST_sku_gift_original_price",
+              "sku_list_price": "TEST_sku_list_price",
+              "sku_sale_price": "TEST_sku_sale_price",
+              "subtotal": "TEST_subtotal",
+              "subtotal_deduction_platform": "TEST_subtotal_deduction_platform",
+              "subtotal_deduction_seller": "TEST_subtotal_deduction_seller",
+              "subtotal_tax_amount": "TEST_subtotal_tax_amount",
+              "tax_amount": "TEST_tax_amount",
+              "tax_rate": "TEST_tax_rate",
+              "total": "TEST_total",
+              "voucher_deduction_platform": "TEST_voucher_deduction_platform",
+              "voucher_deduction_seller": "TEST_voucher_deduction_seller"
+            }
+          ],
+          "net_price_amount": "TEST_net_price_amount",
+          "payment": "TEST_payment",
+          "shipping_fee_deduction_platform": "TEST_shipping_fee_deduction_platform",
+          "shipping_fee_deduction_platform_voucher": "TEST_shipping_fee_deduction_platform_voucher",
+          "shipping_fee_deduction_seller": "TEST_shipping_fee_deduction_seller",
+          "shipping_list_price": "TEST_shipping_list_price",
+          "shipping_sale_price": "TEST_shipping_sale_price",
+          "sku_gift_net_price": "TEST_sku_gift_net_price",
+          "sku_gift_original_price": "TEST_sku_gift_original_price",
+          "sku_list_price": "TEST_sku_list_price",
+          "sku_sale_price": "TEST_sku_sale_price",
+          "subtotal": "TEST_subtotal",
+          "subtotal_deduction_platform": "TEST_subtotal_deduction_platform",
+          "subtotal_deduction_seller": "TEST_subtotal_deduction_seller",
+          "subtotal_tax_amount": "TEST_subtotal_tax_amount",
+          "tax_amount": "TEST_tax_amount",
+          "tax_rate": "TEST_tax_rate",
+          "total": "TEST_total",
+          "voucher_deduction_platform": "TEST_voucher_deduction_platform",
+          "voucher_deduction_seller": "TEST_voucher_deduction_seller"
+        },
+        "message": "Success",
+        "request_id": "TEST-order.price_detail-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "cod_fee": "TEST_cod_fee",
+          "cod_fee_net_amount": "TEST_cod_fee_net_amount",
+          "currency": "TEST_currency",
+          "distance_fee": "TEST_distance_fee",
+          "distance_shipping_fee": "TEST_distance_shipping_fee",
+          "line_items": [],
+          "net_price_amount": "TEST_net_price_amount",
+          "payment": "TEST_payment",
+          "shipping_fee_deduction_platform": "TEST_shipping_fee_deduction_platform",
+          "shipping_fee_deduction_platform_voucher": "TEST_shipping_fee_deduction_platform_voucher",
+          "shipping_fee_deduction_seller": "TEST_shipping_fee_deduction_seller",
+          "shipping_list_price": "TEST_shipping_list_price",
+          "shipping_sale_price": "TEST_shipping_sale_price",
+          "sku_gift_net_price": "TEST_sku_gift_net_price",
+          "sku_gift_original_price": "TEST_sku_gift_original_price",
+          "sku_list_price": "TEST_sku_list_price",
+          "sku_sale_price": "TEST_sku_sale_price",
+          "subtotal": "TEST_subtotal",
+          "subtotal_deduction_platform": "TEST_subtotal_deduction_platform",
+          "subtotal_deduction_seller": "TEST_subtotal_deduction_seller",
+          "subtotal_tax_amount": "TEST_subtotal_tax_amount",
+          "tax_amount": "TEST_tax_amount",
+          "tax_rate": "TEST_tax_rate",
+          "total": "TEST_total",
+          "voucher_deduction_platform": "TEST_voucher_deduction_platform",
+          "voucher_deduction_seller": "TEST_voucher_deduction_seller"
+        },
+        "message": "Success",
+        "request_id": "TEST-order.price_detail-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a malformed path parameter",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

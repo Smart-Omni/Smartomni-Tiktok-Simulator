@@ -154,4 +154,235 @@ export const paths: PathsFragment = {
       errorShape: 'tiktok',
     }),
   },
+
+  '/product/202309/categories/{categoryId}/attributes': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Attributes',
+      description: 'OAS: GET /product/202309/categories/{category_id}/attributes. category_id must be a leaf category.',
+      handler: 'ProductsController.categoryAttributes',
+      security: ['TiktokSignedApi'],
+      pathParams: [{ name: 'categoryId', description: 'Leaf category id.', example: '100002' }],
+      query: [{ name: 'locale' }, { name: 'category_version' }],
+      errors: { 400: 'invalid_input: category is not an existing leaf category, or locale is malformed.' },
+      errorShape: 'tiktok',
+      ok: { description: 'Attributes list', schema: envelope(obj({ attributes: arr(obj({})) })) },
+    }),
+  },
+
+  '/product/202309/categories/{categoryId}/rules': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Category Rules',
+      description: 'OAS: GET /product/202309/categories/{category_id}/rules. category_id must be a leaf category.',
+      handler: 'ProductsController.categoryRules',
+      security: ['TiktokSignedApi'],
+      pathParams: [{ name: 'categoryId', description: 'Leaf category id.', example: '100002' }],
+      query: [{ name: 'locale' }, { name: 'category_version' }],
+      errors: { 400: 'invalid_input: category is not an existing leaf category, or locale is malformed.' },
+      errorShape: 'tiktok',
+      ok: { description: 'Category rules', schema: envelope(obj({ cod: obj({}), package_dimension: obj({}), size_chart: obj({}) })) },
+    }),
+  },
+
+  '/product/202309/attributes': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Product Attributes (removed)',
+      description: 'Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).',
+      handler: 'ProductsController.attributesRemoved',
+      security: [],
+      errors: { 501: 'unsupported_operation' },
+      errorShape: 'tiktok',
+      ok: { description: 'Never returned.' },
+    }),
+  },
+
+  '/product/202309/rules': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Product Rules (removed)',
+      description: 'Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).',
+      handler: 'ProductsController.rulesRemoved',
+      security: [],
+      errors: { 501: 'unsupported_operation' },
+      errorShape: 'tiktok',
+      ok: { description: 'Never returned.' },
+    }),
+  },
+
+  '/product/202309/brands': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Brands',
+      handler: 'ProductsController.brands',
+      security: ['TiktokSignedApi'],
+      query: [
+        { name: 'page_size', required: true, description: 'Integer in [1, 100].', schema: { type: 'integer', minimum: 1, maximum: 100 }, example: 20 },
+        { name: 'page_token' },
+        { name: 'category_id' },
+        { name: 'is_authorized', schema: { type: 'boolean' } },
+        { name: 'brand_name', description: 'Case-insensitive prefix filter.' },
+        { name: 'category_version' },
+      ],
+      errors: { 400: 'invalid_input: page_size missing or out of range, bad page_token, unknown category_id.' },
+      errorShape: 'tiktok',
+      ok: { description: 'Brands page', schema: envelope(obj({ brands: arr(obj({})), next_page_token: str(), total_count: int() })) },
+    }),
+  },
+
+  '/product/202309/categories': {
+    get: op({
+      tag: 'Product',
+      summary: 'Get Categories',
+      handler: 'ProductsController.categories',
+      security: ['TiktokSignedApi'],
+      query: [
+        { name: 'locale' },
+        { name: 'keyword', description: 'Substring filter on local_name.' },
+        { name: 'category_version' },
+        { name: 'include_prohibited_categories', schema: { type: 'boolean' } },
+      ],
+      errors: { 400: 'invalid_input: malformed locale or boolean.' },
+      errorShape: 'tiktok',
+      ok: { description: 'Categories', schema: envelope(obj({ categories: arr(obj({})) })) },
+    }),
+  },
+
+  '/product/202309/products': {
+    post: op({
+      tag: 'Product',
+      summary: 'Create Product',
+      handler: 'ProductsController.createProduct',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Created product', schema: envelope(obj({ product_id: str() })) },
+    }),
+  },
+
+  '/product/202509/products/{productId}': {
+    put: op({
+      tag: 'Product',
+      summary: 'Edit Product',
+      handler: 'ProductsController.editProduct',
+      pathParams: [{ name: 'productId', description: 'Product ID' }],
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Updated product', schema: envelope(obj({ product_id: str() })) },
+    }),
+  },
+
+  '/product/202309/products/activate': {
+    post: op({
+      tag: 'Product',
+      summary: 'Activate Products',
+      handler: 'ProductsController.activateProducts',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Activated products result', schema: envelope(obj({ errors: arr(obj({})) })) },
+    }),
+  },
+
+  '/product/202309/products/deactivate': {
+    post: op({
+      tag: 'Product',
+      summary: 'Deactivate Products',
+      handler: 'ProductsController.deactivateProducts',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Deactivated products result', schema: envelope(obj({ errors: arr(obj({})) })) },
+    }),
+  },
+
+  '/product/202309/products/listing_check': {
+    post: op({
+      tag: 'Product',
+      summary: 'Check Product Listing',
+      handler: 'ProductsController.listingCheck',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Listing check result', schema: envelope(obj({ check_result: str('PASS | FAILED'), fail_reasons: arr(obj({ code: int(), message: str() })) })) },
+    }),
+  },
+
+  '/product/202309/images/upload': {
+    post: op({
+      tag: 'Product',
+      summary: 'Upload Product Image',
+      handler: 'ProductsController.uploadImage',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Uploaded image info', schema: envelope(obj({ url: str(), uri: str() })) },
+    }),
+  },
+
+  '/product/202309/files/upload': {
+    post: op({
+      tag: 'Product',
+      summary: 'Upload Product File',
+      handler: 'ProductsController.uploadFile',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Uploaded file info', schema: envelope(obj({ url: str(), id: str() })) },
+    }),
+  },
+
+  '/return_refund/202602/returns/search': {
+    post: op({
+      tag: 'Aftersale',
+      summary: 'Search Returns 202602',
+      handler: 'AftersaleController.searchReturns202602',
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Returns search list', schema: envelope(obj({ return_orders: arr(obj({})), returns: arr(obj({})) })) },
+    }),
+  },
+
+  '/return_refund/202602/orders/{orderId}/aftersale_eligibility': {
+    get: op({
+      tag: 'Aftersale',
+      summary: 'Get Aftersale Eligibility 202602',
+      handler: 'AftersaleController.eligibility202602',
+      pathParams: [{ name: 'orderId', description: 'Order ID' }],
+      security: ['TiktokSignedApi'],
+      errorShape: 'tiktok',
+      ok: { description: 'Aftersale eligibility info', schema: envelope(obj({ request_types: arr(str()) })) },
+    }),
+  },
+
+  '/demo/shops/{shopId}/aftersale/{id}/dispute': {
+    post: op({
+      tag: 'Demo Aftersale',
+      summary: 'Buyer Dispute Trigger',
+      handler: 'DemoAftersaleController.raiseDispute',
+      pathParams: [{ name: 'shopId', description: 'Shop ID' }, { name: 'id', description: 'Aftersale request ID' }],
+      security: ['DemoSession'],
+      errorShape: 'nest',
+      ok: { description: 'Dispute raised result', schema: obj({ changed: str() }) },
+    }),
+  },
+
+  '/demo/shops/{shopId}/aftersale/{id}/arbitrate': {
+    post: op({
+      tag: 'Demo Aftersale',
+      summary: 'Admin / Operator Arbitrate Trigger',
+      handler: 'DemoAftersaleController.arbitrate',
+      pathParams: [{ name: 'shopId', description: 'Shop ID' }, { name: 'id', description: 'Aftersale request ID' }],
+      security: ['DemoSession'],
+      errorShape: 'nest',
+      ok: { description: 'Arbitration result', schema: obj({ changed: str() }) },
+    }),
+  },
+
+  '/test-admin/aftersale/{ref}/arbitration': {
+    post: op({
+      tag: 'Test Admin Aftersale',
+      summary: 'Test Admin Arbitrate',
+      handler: 'TestAdminController.arbitrateAftersale',
+      pathParams: [{ name: 'ref', description: 'Aftersale Request ID or external ID' }],
+      security: ['TestAdminToken'],
+      errorShape: 'nest',
+      ok: { description: 'Arbitration adjudication result', schema: obj({ arbitration_status: str() }) },
+    }),
+  },
 };

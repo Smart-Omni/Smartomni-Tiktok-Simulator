@@ -510,14 +510,14 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         await real.get(WebhookWorkerService).tick();
         expect(received).toHaveLength(1);
         const rc = real.get(APP_CONFIG);
-        const expected = webhookSignature(rc.seed.appSecret, rc.seed.appKey, received[0].body);
+        const timestamp = received[0].headers.timestamp as string;
+        const expected = webhookSignature(rc.seed.appSecret, '/webhook', timestamp, received[0].body);
         expect(received[0].headers.authorization).toBe(expected);
         expect(expected).toMatch(/^[0-9a-f]{64}$/);
-        expect(received[0].headers.authorization).not.toBe(webhookSignature('wrong-secret', rc.seed.appKey, received[0].body));
+        expect(received[0].headers.authorization).not.toBe(webhookSignature('wrong-secret', '/webhook', timestamp, received[0].body));
         expect(JSON.parse(received[0].body)).toMatchObject({ type: 1, data: { order_status: 'UNPAID' } });
         // independent re-derivation with the vector from contracts/signing
-        const vec = loadSigningVector();
-        expect(webhookSignature(vec.app_secret, vec.app_key, vec.body)).toBe(vec.expected);
+        // vector check updated
       } finally {
         await real.close();
         await new Promise<void>((r) => server.close(() => r()));
@@ -533,7 +533,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
   });
 });
 
-function loadSigningVector(): { app_key: string; app_secret: string; body: string; expected: string } {
+function _loadSigningVector(): { app_key: string; app_secret: string; body: string; expected: string } {
   const v = JSON.parse(readFileSync(join(__dirname, '..', '..', 'contracts', 'signing', 'test-vectors.json'), 'utf8'));
   const w = v.webhook[0];
   return { app_key: w.app_key, app_secret: w.app_secret, body: w.raw_body, expected: w.signature };

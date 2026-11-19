@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/logistics.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "ac54907db1a70846662cd8314563e091feaec9e2d83499f8131941a6ab018700",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/logistics/202309/delivery_options/{delivery_option_id}/shipping_providers",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/logistics/202309/delivery_options/{delivery_option_id}/shipping_providers",
+  "operation": {
+    "tags": [
+      "logistics_v202309"
+    ],
+    "summary": "GetShippingProviders",
+    "description": "This API is used to obtain the shipping provider corresponding to the specified delivery option",
+    "parameters": [
+      {
+        "name": "delivery_option_id",
+        "in": "path",
+        "description": "The specific delivery option identifier for getting the shipping provider list.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "6955034615128000261"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "shipping_providers": {
+                      "description": "shipping provider list",
+                      "items": {
+                        "properties": {
+                          "id": {
+                            "description": "shipping provider id",
+                            "example": "7117858858072016686",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "shipping provider name",
+                            "example": "USPS",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

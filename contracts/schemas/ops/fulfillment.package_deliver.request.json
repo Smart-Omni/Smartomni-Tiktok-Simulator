@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/fulfillment.package_deliver.request.json",
+  "title": "POST /fulfillment/202309/packages/deliver request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "delivery_type": {
+            "type": "string"
+          },
+          "fail_delivery_reason": {
+            "type": "string"
+          },
+          "file_type": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "operation": "fulfillment.package_search",
+  "schema": "schemas/ops/fulfillment.package_search.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "next_page_token": "",
+          "packages": [
+            {
+              "create_time": 1635338186,
+              "id": "TEST_id",
+              "order_line_item_ids": [
+                "TEST_order_line_item_ids"
+              ],
+              "orders": [
+                {
+                  "id": "TEST_id",
+                  "skus": [
+                    {
+                      "id": "TEST_id",
+                      "image_url": "TEST_image_url",
+                      "name": "TEST_name",
+                      "quantity": 5
+                    }
+                  ]
+                }
+              ],
+              "shipping_provider_id": "TEST_shipping_provider_id",
+              "shipping_provider_name": "TEST_shipping_provider_name",
+              "status": "TEST_status",
+              "tracking_number": "TEST_tracking_number",
+              "update_time": 1635338186
+            }
+          ],
+          "total_count": 221
+        },
+        "message": "Success",
+        "request_id": "TEST-fulfillment.package_search-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "next_page_token": "",
+          "packages": [],
+          "total_count": 0
+        },
+        "message": "Success",
+        "request_id": "TEST-fulfillment.package_search-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "multi_page_first",
+      "request": {
+        "query": {
+          "page_size": "1"
+        }
+      },
+      "response": {
+        "code": 0,
+        "data": {
+          "next_page_token": "TEST_PAGE_TOKEN_2",
+          "packages": [
+            {
+              "create_time": 1635338186,
+              "id": "TEST_id",
+              "order_line_item_ids": [
+                "TEST_order_line_item_ids"
+              ],
+              "orders": [
+                {
+                  "id": "TEST_id",
+                  "skus": [
+                    {
+                      "id": "TEST_id",
+                      "image_url": "TEST_image_url",
+                      "name": "TEST_name",
+                      "quantity": 5
+                    }
+                  ]
+                }
+              ],
+              "shipping_provider_id": "TEST_shipping_provider_id",
+              "shipping_provider_name": "TEST_shipping_provider_name",
+              "status": "TEST_status",
+              "tracking_number": "TEST_tracking_number",
+              "update_time": 1635338186
+            }
+          ],
+          "total_count": 2
+        },
+        "message": "Success",
+        "request_id": "TEST-fulfillment.package_search-multi_first"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "multi_page_last",
+      "request": {
+        "query": {
+          "page_size": "1",
+          "page_token": "TEST_PAGE_TOKEN_2"
+        }
+      },
+      "response": {
+        "code": 0,
+        "data": {
+          "next_page_token": "",
+          "packages": [
+            {
+              "create_time": 1635338186,
+              "id": "TEST_id",
+              "order_line_item_ids": [
+                "TEST_order_line_item_ids"
+              ],
+              "orders": [
+                {
+                  "id": "TEST_id",
+                  "skus": [
+                    {
+                      "id": "TEST_id",
+                      "image_url": "TEST_image_url",
+                      "name": "TEST_name",
+                      "quantity": 5
+                    }
+                  ]
+                }
+              ],
+              "shipping_provider_id": "TEST_shipping_provider_id",
+              "shipping_provider_name": "TEST_shipping_provider_name",
+              "status": "TEST_status",
+              "tracking_number": "TEST_tracking_number",
+              "update_time": 1635338186
+            }
+          ],
+          "total_count": 2
+        },
+        "message": "Success",
+        "request_id": "TEST-fulfillment.package_search-multi_last"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "omit required query parameter 'page_size'",
+      "requestMustFailValidation": true
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

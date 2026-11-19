@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/fulfillment.shipping_info_update.request.json",
+  "title": "POST /fulfillment/202309/packages/{package_id}/shipping_info/update request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "shipping_provider_id": {
+      "type": "string"
+    },
+    "tracking_number": {
+      "type": "string"
+    }
+  }
+}

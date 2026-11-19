@@ -1,0 +1,53 @@
+{
+  "operation": "logistics.shipping_providers",
+  "schema": "schemas/ops/logistics.shipping_providers.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "shipping_providers": [
+            {
+              "id": "TEST_id",
+              "name": "TEST_name"
+            }
+          ]
+        },
+        "message": "Success",
+        "request_id": "TEST-logistics.shipping_providers-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "shipping_providers": []
+        },
+        "message": "Success",
+        "request_id": "TEST-logistics.shipping_providers-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a malformed path parameter",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

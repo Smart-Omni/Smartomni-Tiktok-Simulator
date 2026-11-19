@@ -2,7 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { APP_CONFIG, AppConfig } from '../config/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { seedConversations } from '../chat/conversation-seed';
-import { SEED_SCENARIOS, SEED_SHOPS, SeedShop, detId, numericId } from './seed-data';
+import { Prisma } from '@prisma/client';
+import { SEED_SCENARIOS, SEED_SHOPS, SeedProduct, SeedShop, detId, numericId } from './seed-data';
 
 /** Simulator-generated shop code (the `code` field of Get Authorized Shops); same rule as the Phase 03 migration backfill. */
 export const shopCode = (tiktokShopId: string): string => `SIMVN${tiktokShopId.slice(-4)}`;
@@ -17,6 +18,24 @@ export interface SeedSummary {
   inventoryLevels: number;
   scenarios: number;
   apps: number;
+}
+
+/** A fashion shop seeds ~400 SKUs in one transaction; Prisma's 5s default is too short on slow disks or a cold start. */
+const SEED_TX_OPTIONS = { maxWait: 30_000, timeout: 180_000 };
+
+/** Listing columns for a seeded product (create-only, so a re-seed never overwrites later edits). */
+function listingData(p: SeedProduct): Partial<Prisma.ProductUncheckedCreateInput> {
+  const l = p.listing;
+  if (!l) return {};
+  return {
+    categoryId: l.categoryId,
+    brandId: l.brandId,
+    mainImages: (l.mainImages ?? []) as Prisma.InputJsonValue,
+    packageWeight: l.packageWeight as Prisma.InputJsonValue | undefined,
+    productAttributes: (l.productAttributes ?? []) as Prisma.InputJsonValue,
+    isCodAllowed: l.isCodAllowed ?? false,
+    externalProductId: l.externalProductId,
+  };
 }
 
 /**
@@ -115,7 +134,7 @@ export class SeedService {
         const productExternalId = p.externalId ?? `sim-product-${p.code}`;
         await tx.product.upsert({
           where: { shopId_externalId: { shopId, externalId: productExternalId } },
-          create: { id: productId, shopId, externalId: productExternalId, title: p.title, description: p.description, status: p.status ?? 'ACTIVATE' },
+          create: { id: productId, shopId, externalId: productExternalId, title: p.title, description: p.description, status: p.status ?? 'ACTIVATE', ...listingData(p) },
           update: {},
         });
         const productRow = await tx.product.findUniqueOrThrow({ where: { shopId_externalId: { shopId, externalId: productExternalId } } });
@@ -148,7 +167,7 @@ export class SeedService {
       if (!shop.activeScenarioId) {
         await tx.shop.update({ where: { id: shopId }, data: { activeScenarioId: detId(`scenario:${def.key}:default`) } });
       }
-    });
+    }, SEED_TX_OPTIONS);
     await seedConversations(this.prisma, await this.prisma.shop.findUniqueOrThrow({ where: { id: shopId } }), def.key);
     this.logger.log(`seeded shop ${def.tiktokShopId}`);
   }

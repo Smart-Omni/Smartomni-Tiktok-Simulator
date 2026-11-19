@@ -44,8 +44,11 @@ function Breadcrumb({ shopName, title }: { shopName?: string; title: string }) {
 }
 
 function Gallery({ product }: { product: EnrichedProduct }) {
-  // one real image; the extra thumbnails are mock color tiles
-  const images = [product, ...[1, 2, 3].map((i) => ({ ...product, imageUrl: '', imageBg: imageBackgrounds[(imageBackgrounds.indexOf(product.imageBg) + i) % imageBackgrounds.length] }))];
+  // real images from the backend; fall back to the single imageUrl, padded with mock color tiles only when there is just one
+  const urls = product.images?.length ? product.images : [product.imageUrl];
+  const real = urls.map((imageUrl) => ({ ...product, imageUrl }));
+  const tiles = real.length > 1 ? [] : [1, 2, 3].map((i) => ({ ...product, imageUrl: '', imageBg: imageBackgrounds[(imageBackgrounds.indexOf(product.imageBg) + i) % imageBackgrounds.length] }));
+  const images = [...real, ...tiles];
   const [index, setIndex] = useState(0);
   return (
     <div className="flex flex-col gap-3">

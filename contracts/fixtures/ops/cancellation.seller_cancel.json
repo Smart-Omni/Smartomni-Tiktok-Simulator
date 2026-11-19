@@ -1,0 +1,37 @@
+{
+  "operation": "cancellation.seller_cancel",
+  "schema": "schemas/ops/cancellation.seller_cancel.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "cancel_id": "TEST_cancel_id",
+          "cancel_status": "TEST_cancel_status"
+        },
+        "message": "Success",
+        "request_id": "TEST-cancellation.seller_cancel-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a body that is not valid JSON or has a wrongly typed field",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

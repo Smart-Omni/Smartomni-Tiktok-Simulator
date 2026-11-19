@@ -78,6 +78,12 @@ cd frontend && npm run typecheck && npm run lint && npm test && npm run build
 
 Backend integration tests need a real PostgreSQL (`FOR UPDATE SKIP LOCKED`). `npm test` starts a throw-away embedded PostgreSQL 16 automatically; set `TEST_DATABASE_URL` (database name must contain `simulator`) to use your own instead.
 
+## Quy trình làm việc với GitHub
+
+Team tích hợp công việc trên `develop`; `main` là nhánh phát hành. Mỗi tính năng hoặc bản sửa lỗi có nhánh riêng từ `develop` và đi qua Pull Request: `feature/*` hoặc `fix/*` → `develop` → `main`. Không đẩy commit trực tiếp lên hai nhánh dùng chung.
+
+Xem [quy trình GitHub](docs/github-workflow.md) để tạo nhánh, kiểm tra, mở PR và phát hành. [CONTRIBUTING.md](CONTRIBUTING.md) ghi quy ước commit và checklist review. Dự án dùng npm trong `backend/` và `frontend/`, không dùng lệnh Maven.
+
 ## Frontend (Tiptop Shop UI)
 
 React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` (no password); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time.

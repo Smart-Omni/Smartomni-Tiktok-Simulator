@@ -98,7 +98,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       onStart: bool('SEED_ON_START', true, env),
       appKey: env.SEED_APP_KEY ?? 'smartomni-dev-app-key',
       appSecret: env.SEED_APP_SECRET ?? 'smartomni-dev-app-secret-fake',
-      appRedirectUris: (env.SEED_APP_REDIRECT_URIS ?? 'http://localhost:8080/api/v1/integrations/tiktok/callback')
+      appRedirectUris: (env.SEED_APP_REDIRECT_URIS ?? 'http://localhost:8080/api/v1/integrations/tiktok/callback,smartomni://oauth/tiktok')
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean),
