@@ -42,9 +42,9 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
   // ---------- helpers ----------
   async function sellerSession(index = 0) {
     const ids = (await http.get('/demo/identities')).body;
-    // index 0 = seeded shop A (Mộc Lan), index 1 = the other seeded shop
+    // index 0 = seeded shop A (Mộc Lan), index 1 = seeded shop B (Bát Tràng); the three fashion shops are not addressed by index
     const isA = (x: any) => x.shops.some((sh: any) => sh.name.includes('Mộc Lan'));
-    const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => !isA(x));
+    const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
     const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }

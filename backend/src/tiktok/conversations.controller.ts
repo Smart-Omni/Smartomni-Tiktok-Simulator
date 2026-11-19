@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   Post,
+  Put,
   Req,
   Res,
   UploadedFiles,
@@ -55,6 +56,12 @@ function pageSize(query: Record<string, string>, max: number): number {
   if (n < 1 || n > max) throw new TiktokFault(400, 'invalid_input', `page_size must be in [1, ${max}]`);
   return n;
 }
+/** `locale` is accepted and validated for shape only; message content is not localised (DECISIONS DA-4). */
+function checkLocale(query: Record<string, string>): void {
+  if (query.locale !== undefined && !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(query.locale)) {
+    throw new TiktokFault(400, 'invalid_input', 'locale must be a BCP-47 language tag such as vi-VN');
+  }
+}
 
 /**
  * Customer-service API: Get Conversation List (202309), Get Conversation Messages (202309),
@@ -69,12 +76,65 @@ export class ConversationsController {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
+  /** GET /customer_service/202309/agents/settings: one simulated agent per shop (DECISIONS DA-11). */
+  @Get('customer_service/202309/agents/settings')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_READ)
+  async agentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const row = await this.prisma.shop.findUniqueOrThrow({ where: { id: shop.id }, select: { agentCanAcceptChat: true } });
+    return this.envelope(req, { can_accept_chat: row.agentCanAcceptChat });
+  }
+
+  /** PUT /customer_service/202309/agents/settings */
+  @Put('customer_service/202309/agents/settings')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async updateAgentSettings(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body)) throw new TiktokFault(400, 'invalid_input', 'request body must be a JSON object');
+    for (const k of Object.keys(body)) if (k !== 'can_accept_chat') throw new TiktokFault(400, 'invalid_input', `unknown body field "${k}"`);
+    if (typeof body.can_accept_chat !== 'boolean') throw new TiktokFault(400, 'invalid_input', 'can_accept_chat must be a boolean');
+    await this.prisma.shop.update({ where: { id: shop.id }, data: { agentCanAcceptChat: body.can_accept_chat } });
+    return this.envelope(req, {});
+  }
+
+  /** POST /customer_service/202309/conversations: Create Conversation (idempotent per buyer). */
+  @Post('customer_service/202309/conversations')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async create(@Req() req: TiktokRequest) {
+    const { shop } = req.tiktok!;
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body.buyer_user_id !== 'string' || body.buyer_user_id.length === 0 || body.buyer_user_id.length > 200) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id is required');
+    const res = await this.chat.createForBuyerUser(shop.id, body.buyer_user_id, req.requestId);
+    if (!res) throw new TiktokFault(400, 'invalid_input', 'buyer_user_id does not belong to a buyer of this shop');
+    return this.envelope(req, { conversation_id: res.conversation.externalId });
+  }
+
+  /** POST /customer_service/202309/conversations/{conversation_id}/messages/read */
+  @Post('customer_service/202309/conversations/:conversationId/messages/read')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_CONVERSATION_WRITE)
+  async read(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
+    const { shop } = req.tiktok!;
+    const conversation = await this.chat.ownedByShop(shop.id, conversationId);
+    if (!conversation) throw new TiktokFault(404, 'conversation_not_found', 'conversation does not exist in this shop');
+    await this.chat.markRead(conversation.id);
+    return this.envelope(req, {});
+  }
+
   @Get('customer_service/202309/conversations')
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_CONVERSATION_READ)
   async list(@Req() req: TiktokRequest) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 20);
     const after = query.page_token ? dec<ListCursor>(query.page_token, (c) => Number.isSafeInteger(c.s)).s : 0;
     const rows = await this.prisma.conversation.findMany({ where: { shopId: shop.id, seq: { gt: after } }, orderBy: { seq: 'asc' }, take: size + 1 });
@@ -93,6 +153,7 @@ export class ConversationsController {
   async messages(@Req() req: TiktokRequest, @Param('conversationId') conversationId: string) {
     const { shop } = req.tiktok!;
     const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query);
     const size = pageSize(query, 10);
     const sortField = (query.sort_field ?? 'create_time') as 'create_time' | 'index';
     if (sortField !== 'create_time' && sortField !== 'index') throw new TiktokFault(400, 'invalid_input', 'sort_field must be create_time or index');

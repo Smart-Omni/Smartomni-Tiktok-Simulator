@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/return.create.request.json",
+  "title": "POST /return_refund/202309/returns request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "currency": {
+      "type": "string"
+    },
+    "handover_method": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "order_line_item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "refund_total": {
+      "type": "string"
+    },
+    "return_reason": {
+      "type": "string"
+    },
+    "return_type": {
+      "type": "string"
+    },
+    "shipment_type": {
+      "type": "string"
+    },
+    "skus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "integer"
+          },
+          "sku_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

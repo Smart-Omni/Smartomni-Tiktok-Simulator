@@ -27,6 +27,8 @@ export type FaultKind =
   | 'cannot_send_message'
   | 'order_not_found'
   | 'package_not_found'
+  | 'warehouse_not_found'
+  | 'delivery_option_not_found'
   | 'package_not_arranged'
   | 'order_not_shippable'
   | 'coupon_not_found'

@@ -1,0 +1,144 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/fulfillment.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "ddf0a9001074ae1db28cad13d3b0705d6ede06246cb985ef3100b4cf09d80403",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/fulfillment/202309/packages/{package_id}/handover_time_slots",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/fulfillment/202309/packages/{package_id}/handover_time_slots",
+  "operation": {
+    "tags": [
+      "fulfillment_v202309"
+    ],
+    "summary": "GetPackageHandoverTimeSlots",
+    "description": "Use this API to retrieve the time slots available for pickup, drop-off, or van collection for the seller's specified package by using package ID.",
+    "parameters": [
+      {
+        "name": "package_id",
+        "in": "path",
+        "description": "TikTok Shop package ID.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "5433567853345"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "can_drop_off": {
+                      "description": "Whether this package be dropped off at a drop-off location",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "can_pickup": {
+                      "description": "Whether this package supports door-to-door collection.",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "can_van_collection": {
+                      "description": "Specific to UK. Use this field to determine whether van collection is available.",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "drop_off_point_url": {
+                      "description": "View package drop-off locations  via provided URL.",
+                      "example": "true",
+                      "type": "string"
+                    },
+                    "pickup_slots": {
+                      "description": "Time slot for door-to-door collection.",
+                      "items": {
+                        "properties": {
+                          "avaliable": {
+                            "description": "Whether an appointment be made for this time slot.",
+                            "example": true,
+                            "type": "boolean"
+                          },
+                          "end_time": {
+                            "description": "The end date and time of the package pick up time slot. Unix timestamp.",
+                            "example": 1623812664,
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "start_time": {
+                            "description": "The start date and time of the package pick up time slot. Unix timestamp.",
+                            "example": 1623812664,
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "operation": "product.category_attributes",
+  "schema": "schemas/ops/product.category_attributes.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "attributes": [
+            {
+              "id": "TEST_id",
+              "is_customizable": false,
+              "is_multiple_selection": false,
+              "is_requried": false,
+              "name": "TEST_name",
+              "requirement_conditions": [
+                {
+                  "attribute_id": "TEST_attribute_id",
+                  "attribute_value_id": "TEST_attribute_value_id",
+                  "condition_type": "TEST_condition_type"
+                }
+              ],
+              "type": "TEST_type",
+              "value_data_format": "TEST_value_data_format",
+              "values": [
+                {
+                  "icon_url": "TEST_icon_url",
+                  "id": "TEST_id",
+                  "name": "TEST_name"
+                }
+              ]
+            }
+          ]
+        },
+        "message": "Success",
+        "request_id": "TEST-product.category_attributes-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "attributes": []
+        },
+        "message": "Success",
+        "request_id": "TEST-product.category_attributes-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a malformed path parameter",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

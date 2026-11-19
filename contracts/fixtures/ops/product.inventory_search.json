@@ -1,0 +1,78 @@
+{
+  "operation": "product.inventory_search",
+  "schema": "schemas/ops/product.inventory_search.response.json",
+  "classification": "synthetic-from-official-oas",
+  "note": "Values are synthetic and generated from the official OAS response shape; they are not captured TikTok traffic. Error cases are TEST FAULTS: no readable official source documents their code/message values.",
+  "cases": [
+    {
+      "case": "success",
+      "response": {
+        "code": 0,
+        "data": {
+          "inventory": [
+            {
+              "product_id": "TEST_product_id",
+              "skus": [
+                {
+                  "id": "TEST_id",
+                  "seller_sku": "TEST_seller_sku",
+                  "total_available_inventory_distribution": {
+                    "campaign_inventory": [
+                      {}
+                    ],
+                    "creator_inventory": [
+                      {}
+                    ],
+                    "in_shop_inventory": {
+                      "quantity": 50
+                    }
+                  },
+                  "total_available_quantity": 100,
+                  "total_committed_quantity": 10,
+                  "warehouse_inventory": [
+                    {
+                      "available_quantity": 100,
+                      "committed_quantity": 10,
+                      "warehouse_id": "TEST_warehouse_id"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "message": "Success",
+        "request_id": "TEST-product.inventory_search-success"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "empty",
+      "response": {
+        "code": 0,
+        "data": {
+          "inventory": []
+        },
+        "message": "Success",
+        "request_id": "TEST-product.inventory_search-empty"
+      },
+      "expect": "valid"
+    },
+    {
+      "case": "invalid_input",
+      "classification": "test_fault_undocumented",
+      "trigger": "send a body that is not valid JSON or has a wrongly typed field",
+      "requestMustFailValidation": false
+    },
+    {
+      "case": "token_expired",
+      "classification": "test_fault_undocumented",
+      "trigger": "x-tts-access-token is past its expiry"
+    },
+    {
+      "case": "missing_scope",
+      "classification": "test_fault_undocumented",
+      "trigger": "app lacks the (unverified) scope of this operation"
+    }
+  ]
+}

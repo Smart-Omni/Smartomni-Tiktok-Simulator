@@ -1,0 +1,109 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/customer_service.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "3c2d51da7ef194e8b6736a3cc3240ffa1d52aa395b02ce391393d855f21d5637",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/customer_service/202309/conversations",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/customer_service/202309/conversations",
+  "operation": {
+    "tags": [
+      "customer_service_v202309"
+    ],
+    "summary": "CreateConversation",
+    "description": "Use this API to create a conversation with the specified buyer, on behalf of a shop. When there's no prior conversation, calling this API creates a new conversation; when there's a prior conversation, no matter whether it's active, finished, or closed, calling this API reopens the conversation and returns the same conversation ID as the prior one.",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "buyer_user_id": {
+                "description": "Buyer's user ID\nThe value is the same as `data.orders.user_id` in the response data of [Get Order Detail](650aa8ccc16ffe02b8f167a0).",
+                "example": "7494560109732338459",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "conversation_id": {
+                      "description": "Converstaion ID.\nThe unique identifier for a conversation between the buyer and a shop.",
+                      "example": "7106888323922608389",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/return_refund.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "c91d1b475750fd2ae866444aaa4c5d88ffe21fe27d67194d0e087b2897d2b341",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/return_refund/202309/refunds/calculate",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/return_refund/202309/refunds/calculate",
+  "operation": {
+    "tags": [
+      "return_refund_v202309"
+    ],
+    "summary": "CalculateRefund",
+    "description": "Use this API to check order refundable amounts.",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "handover_method": {
+                "description": "Which handover method buyer chooses to use when returning goods to seller by platform\n- DROP_OFF: buyer drops off the parcel in logistics service collect point.\n- PICKUP: logistics service picks up the buyer package.",
+                "example": "DROP_OFF",
+                "type": "string"
+              },
+              "order_id": {
+                "description": "TikTok Shop order id.",
+                "example": "576469648086175911",
+                "type": "string"
+              },
+              "order_line_item_ids": {
+                "description": "TikTok Shop order line item ids.",
+                "example": [
+                  "576469648086306986"
+                ],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "reason_name": {
+                "description": "Seller's reason to create a return，all available reasons, please reference to API overview.",
+                "example": "ecom_order_delivered_refund_reason_missing_product_seller",
+                "type": "string"
+              },
+              "request_type": {
+                "description": "Request type\n- CANCEL\n- REFUND\n- RETURN_AND_REFUND\nNote: different request types are used for different aftersales scenarios. Also, different request types might have different refund amounts, because the refund amount calculation policy is different.",
+                "example": "REFUND",
+                "type": "string"
+              },
+              "shipment_type": {
+                "description": "How buyer ships items to seller when in a return request, could be:\n- PLATFORM\n- BUYER_ARRANGE",
+                "example": "PLATFORM",
+                "type": "string"
+              },
+              "skus": {
+                "description": "skus",
+                "items": {
+                  "properties": {
+                    "quantity": {
+                      "description": "Sku id seller wants to create a return request.",
+                      "example": 1,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "sku_id": {
+                      "description": "Quantity seller wants to create a return request.",
+                      "example": "1729386416015578024",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "order_refund_amount": {
+                      "description": "Refund amount to buyer.",
+                      "properties": {
+                        "currency": {
+                          "description": "Currency for payment.",
+                          "example": "USD",
+                          "type": "string"
+                        },
+                        "refund_shipping_fee": {
+                          "description": "Shipping fee refund to buyer.",
+                          "example": "0.2",
+                          "type": "string"
+                        },
+                        "refund_subtotal": {
+                          "description": "Total price of item be returned.",
+                          "example": "1",
+                          "type": "string"
+                        },
+                        "refund_tax": {
+                          "description": "Tax returned to buyer.",
+                          "example": "0.03",
+                          "type": "string"
+                        },
+                        "refund_total": {
+                          "description": "Total amount refund to buyer.",
+                          "example": "1.23",
+                          "type": "string"
+                        },
+                        "retail_delivery_fee": {
+                          "description": "Retail delivery fee takes effect once platform GMV exceeds 500,000 USD, according to US Colorado states' compliance rules.",
+                          "example": "0.1",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

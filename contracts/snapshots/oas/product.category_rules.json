@@ -1,0 +1,284 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/product.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "e0f32015f50576f9f6ded2ba0434f2e3835d4afe10f6b12f80f48eb04fefd946",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/product/202309/categories/{category_id}/rules",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/product/202309/categories/{category_id}/rules",
+  "operation": {
+    "tags": [
+      "product_v202309"
+    ],
+    "summary": "GetCategoryRules",
+    "description": "Retrieve the additional requirements (beyond mandatory product attributes) for listing a product in a particular category based on your shop's location. Requirements may include product certifications, size charts, dimensions and more.\nUse this API to determine the supporting information that you must prepare before listing a product.\n**Note**: It must be a [leaf category](6509c89d0fcef602bf1acd9b) that corresponds to the category tree type specified in the `category_version` property.",
+    "parameters": [
+      {
+        "name": "category_id",
+        "in": "path",
+        "description": "The ID of the category. It must be a leaf category. ",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "600001"
+      },
+      {
+        "name": "category_version",
+        "in": "query",
+        "description": "The category tree version that corresponds to the specified `category_id`.\nPossible values based on region:\n- US: `v2`, represents the 7-level category tree.\n  **Important**: For US shops, you must pass `v2` when using this API.\n- Other regions: `v1`, represents the 3-level category tree.\nDefault: `v1`",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "v1"
+      },
+      {
+        "name": "locale",
+        "in": "query",
+        "description": "The BCP-47 locale codes for displaying category information. \nDefault: en-US\nPossible values:\n- de-DE\n- en-GB\n- en-IE\n- en-US\n- es-ES\n- es-MX\n- fr-FR\n- id-ID\n- it-IT\n- ja-JP\n- ms-MY\n- pt-BR\n- th-TH\n- vi-VN\n- zh-CN",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "es-MX"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "allowed_special_product_types": {
+                      "description": "The list of special product types, excluding regular products, that your shop is allowed to list in this category.\n\nPossible values based on the region:\n**US**\n- `PRE_ORDER`: The product is not yet available or released. Fulfillment can be extended by specifying a release date.\n- `MADE_TO_ORDER`: The product is produced only after the order is received. Fulfillment can be extended by specifying a duration.\n- `CUSTOM`: The product requires a fulfillment timeline that exceeds the standard due to other factors. Fulfillment can be extended by specifying a duration.\n\n**UK and SEA**\n- `PRE_ORDER`: The product is not yet available or released. Fulfillment can be extended by specifying a duration. \n\n**Note**: This field is omitted if you lack the permission to list special product types. Contact your account manager for assistance if you wish to list such products.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "cod": {
+                      "description": "Cash on Delivery (COD) related rules.\nApplicable only for the following markets:\n- Global sellers: MY, PH, SA, TH, VN\n- Local sellers: ID, MY, PH, SA, TH, VN",
+                      "properties": {
+                        "is_supported": {
+                          "description": "A flag to indicate whether COD is supported.\n\n**Note**: If COD is not supported, but you set `is_cod_allowed=true` when creating or editing a product, the listing will fail.",
+                          "example": true,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "epr": {
+                      "description": "Extended Producer Responsibility (EPR) related rules.",
+                      "properties": {
+                        "is_required": {
+                          "description": "A flag to indicate whether EPR is required.",
+                          "example": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "fees": {
+                      "description": "Product fees related rules.",
+                      "items": {
+                        "properties": {
+                          "is_required": {
+                            "description": "A flag to indicate whether information about the fee is required.",
+                            "example": true,
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "The type of fee.\nPossible values: PFAND",
+                            "example": "PFAND",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "manufacturer": {
+                      "description": "Manufacturer related rules. Applicable only for the EU market.",
+                      "properties": {
+                        "is_required": {
+                          "description": "A flag to indicate whether the manufacturer information is required.",
+                          "example": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "package_dimension": {
+                      "description": "Package dimension related rules.",
+                      "properties": {
+                        "is_required": {
+                          "description": "A flag to indicate whether package dimensions are required.",
+                          "example": true,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "product_certifications": {
+                      "description": "Certification related rules.\nAs per TikTok Shop guidelines, certifications are required for certain restricted product categories. Refer to [TikTok Shop Restricted Products Policy](https://seller-us.tiktok.com/university/essay?identity=1&role=1&knowledge_id=3238037484275457&from=policy) for information on product category restrictions.\n\nIf this is empty, it means certifications are not required for this category.",
+                      "items": {
+                        "properties": {
+                          "document_details": {
+                            "description": "Details about the certification documents that you must submit, including the content, format, and any other guidelines.",
+                            "example": "Upload a user manual or instructions in the official local language.\\n\\nWhere there are multiple items sold as a part of a bundle, please clearly indicate which specific product the certification pertains to in the uploaded file or image.",
+                            "type": "string"
+                          },
+                          "expiration_date": {
+                            "description": "Certification expiration date related rules.",
+                            "properties": {
+                              "is_required": {
+                                "description": "A flag to indicate whether an expiration date is required for this certification.",
+                                "example": true,
+                                "type": "boolean"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "id": {
+                            "description": "The ID to identify the type of certification required.",
+                            "example": "602362",
+                            "type": "string"
+                          },
+                          "is_required": {
+                            "description": "A flag to indicate if the certification is always required when creating or editing a product.\n- true: The certification is always required.\n- false: The certification is not required, or required only if certain conditions are met. Refer to `requirement_conditions` for the specific requirements.",
+                            "example": true,
+                            "type": "boolean"
+                          },
+                          "name": {
+                            "description": "The name of the certification type.",
+                            "example": "SNI Certificate",
+                            "type": "string"
+                          },
+                          "requirement_conditions": {
+                            "description": "A list of conditions that determine if the certification is required based on the seller's inputs for a product attribute. If any of the conditions is met, the certification is required; otherwise, it is optional.\n\nFor example, there's a condition that states that the \"Safety Data Sheet (SDS) for flammable materials\" certification is required if the seller selects the value \"Yes\" for the attribute \"Flammable Liquid?\". For more scenario-based guidance on using this parameter, refer to the [Solution Guide - CAT-PRE-HAZMAT](https://partner.tiktokshop.com/openlearn/guide/usecase?parent_id=7256668359046153985).\n\nApplicable only if `is_required=false`.",
+                            "items": {
+                              "properties": {
+                                "attribute_id": {
+                                  "description": "The ID of the product attribute that is being evaluated by the condition.",
+                                  "example": "101610",
+                                  "type": "string"
+                                },
+                                "attribute_value_id": {
+                                  "description": "The ID of the product attribute value that must match the seller's input for the condition to be true.\n",
+                                  "example": "1024358",
+                                  "type": "string"
+                                },
+                                "condition_type": {
+                                  "description": "The type of condition, such as matching values, or range comparisons.\nPossible values:\n- VALUE_ID_MATCH: The condition is true when the seller selects a value whose ID matches the one specified in this condition.",
+                                  "example": "VALUE_ID_MATCH",
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "sample_image_url": {
+                            "description": "The URL to view an image of the sample certification document.",
+                            "example": "https://p-boei18n.byted.org/tos-boei18n-i-jvtte31kaf/80b32f2896829eeb69d4b278c4f3aa75.jpg~tplv-jvtte31kaf-origin-jpeg.jpeg",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "responsible_person": {
+                      "description": "Responsible person (RP) related rules. Applicable only for the EU market.",
+                      "properties": {
+                        "is_required": {
+                          "description": "A flag to indicate whether the responsible person information is required.",
+                          "example": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "size_chart": {
+                      "description": "Size chart related rules.",
+                      "properties": {
+                        "is_required": {
+                          "description": "A flag to indicate whether a size chart is required.",
+                          "example": true,
+                          "type": "boolean"
+                        },
+                        "is_supported": {
+                          "description": "A flag to indicate whether size charts are supported.\n\n**Note**: If size charts are not supported, even if you provide a size chart when creating or editing a product, the size chart will not be saved.",
+                          "example": true,
+                          "type": "boolean"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

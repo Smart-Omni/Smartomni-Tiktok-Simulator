@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/product.partial_edit.response.json",
+  "title": "POST /product/202509/products/{product_id}/partial_edit response",
+  "x-verification": "official OAS 0.1.7 (2026-10-14); OAS declares no per-field required flags, so only the envelope trio code/message/request_id is required here (envelope trio taken from every OAS response schema)",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "integer"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "audit": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string"
+            }
+          }
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "skus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "external_sku_id": {
+                "type": "string"
+              },
+              "fees": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "additional_attribute": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "id": {
+                "type": "string"
+              },
+              "sales_attributes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "value_id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "seller_sku": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "request_id"
+  ]
+}

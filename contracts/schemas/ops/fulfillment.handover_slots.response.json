@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/fulfillment.handover_slots.response.json",
+  "title": "GET /fulfillment/202309/packages/{package_id}/handover_time_slots response",
+  "x-verification": "official OAS 0.1.7 (2026-10-14); OAS declares no per-field required flags, so only the envelope trio code/message/request_id is required here (envelope trio taken from every OAS response schema)",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "integer"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "can_drop_off": {
+          "type": "boolean"
+        },
+        "can_pickup": {
+          "type": "boolean"
+        },
+        "can_van_collection": {
+          "type": "boolean"
+        },
+        "drop_off_point_url": {
+          "type": "string"
+        },
+        "pickup_slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "avaliable": {
+                "type": "boolean"
+              },
+              "end_time": {
+                "type": "integer"
+              },
+              "start_time": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "request_id"
+  ]
+}

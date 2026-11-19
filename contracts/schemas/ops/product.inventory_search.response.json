@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/product.inventory_search.response.json",
+  "title": "POST /product/202309/inventory/search response",
+  "x-verification": "official OAS 0.1.7 (2026-10-14); OAS declares no per-field required flags, so only the envelope trio code/message/request_id is required here (envelope trio taken from every OAS response schema)",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "integer"
+    },
+    "data": {
+      "type": "object",
+      "properties": {
+        "inventory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": {
+                "type": "string"
+              },
+              "skus": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "seller_sku": {
+                      "type": "string"
+                    },
+                    "total_available_inventory_distribution": {
+                      "type": "object",
+                      "properties": {
+                        "campaign_inventory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "campaign_name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "creator_inventory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "creator_name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "in_shop_inventory": {
+                          "type": "object",
+                          "properties": {
+                            "quantity": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "total_available_quantity": {
+                      "type": "integer"
+                    },
+                    "total_committed_quantity": {
+                      "type": "integer"
+                    },
+                    "warehouse_inventory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "available_quantity": {
+                            "type": "integer"
+                          },
+                          "committed_quantity": {
+                            "type": "integer"
+                          },
+                          "warehouse_id": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "code",
+    "message",
+    "request_id"
+  ]
+}

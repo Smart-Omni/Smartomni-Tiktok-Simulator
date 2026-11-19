@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/fulfillment.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "2a92d17e75902677e84ea5023dc528326d42fc243f483f1ac778c4e1db1b3709",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/fulfillment/202309/packages/{package_id}/shipping_info/update",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/fulfillment/202309/packages/{package_id}/shipping_info/update",
+  "operation": {
+    "tags": [
+      "fulfillment_v202309"
+    ],
+    "summary": "UpdatePackageShippingInfo",
+    "description": "If the seller entered an incorrect tracking number, this API allows the seller to update the tracking number and shipping provider for a package that has already been shipped. Attention: This API is only applicable to orders (or packages) shipped by the seller.  It is only used to update the tracking number and shipping provider for packages that have already been shipped.",
+    "parameters": [
+      {
+        "name": "package_id",
+        "in": "path",
+        "description": "TikTok Shop package ID.",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "5433567853345"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "shipping_provider_id": {
+                "description": "Identifies the carrier that will deliver the package. Please call the [Get Shipping Providers API](https://partner.tiktokshop.com/docv2/page/650aa48d4a0bb702c06d85cd?external_id=650aa48d4a0bb702c06d85cd#Back%20To%20Top) to retrieve the available shipping provider(s).",
+                "example": "6965352555291346690",
+                "type": "string"
+              },
+              "tracking_number": {
+                "description": "The shipment tracking number provided by the carrier.",
+                "example": "576460868968549926",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

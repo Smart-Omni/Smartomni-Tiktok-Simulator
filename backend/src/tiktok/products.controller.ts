@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -29,6 +30,7 @@ import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard'
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 import { FaultService } from '../faults/fault.service';
 import { parseRawQuery } from './signature';
+import seededCatalog from './simulator-catalog.json';
 
 /** Values of the Search Products `status` filter, from the OAS description (ALL plus the product statuses). */
 const STATUS_FILTER = new Set(['ALL', 'DRAFT', 'PENDING', 'FAILED', 'ACTIVATE', 'SELLER_DEACTIVATED', 'PLATFORM_DEACTIVATED', 'FREEZE', 'DELETED']);
@@ -86,30 +88,143 @@ function stringList(value: unknown, field: string): string[] | undefined {
 }
 
 const CATEGORIES_DATA = [
-  { id: '100001', name: 'Thời trang & Phụ kiện', parent_id: '0', is_leaf: false, level: 1 },
-  { id: '100002', name: 'Áo Nam', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '100003', name: 'Quần Nam', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '100004', name: 'Áo Nữ', parent_id: '100001', is_leaf: true, level: 2 },
-  { id: '200001', name: 'Điện tử & Phụ kiện', parent_id: '0', is_leaf: false, level: 1 },
-  { id: '200002', name: 'Phụ kiện điện thoại', parent_id: '200001', is_leaf: true, level: 2 },
-  { id: '300001', name: 'Sức khỏe & Sắc đẹp', parent_id: '0', is_leaf: true, level: 1 },
-  { id: '400001', name: 'Nhà cửa & Đời sống', parent_id: '0', is_leaf: true, level: 1 },
+  { id: '100001', parent_id: '0', local_name: 'Thời trang & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
+  { id: '100002', parent_id: '100001', local_name: 'Áo Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '100003', parent_id: '100001', local_name: 'Quần Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '100004', parent_id: '100001', local_name: 'Áo Nữ', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '200001', parent_id: '0', local_name: 'Điện tử & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
+  { id: '200002', parent_id: '200001', local_name: 'Phụ kiện điện thoại', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '300001', parent_id: '0', local_name: 'Sức khỏe & Sắc đẹp', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '400001', parent_id: '0', local_name: 'Nhà cửa & Đời sống', is_leaf: true, permission_statuses: ['AVAILABLE'] },
+  { id: '500001', parent_id: '0', local_name: 'Hàng hạn chế (demo)', is_leaf: true, permission_statuses: ['INVITE_ONLY'] },
+  ...seededCatalog.categories,
 ];
 
+/** Attribute field names follow the OAS spelling, including `is_requried`. */
 const ATTRIBUTES_DATA = [
-  { id: 'attr_brand', name: 'Thương hiệu', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_color', name: 'Màu sắc', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_size', name: 'Kích cỡ', type: 'SINGLE_SELECT', is_required: false },
-  { id: 'attr_material', name: 'Chất liệu', type: 'TEXT', is_required: false },
+  { id: 'attr_brand', name: 'Thương hiệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: false, values: [{ id: 'brand_001', name: 'No Brand' }], requirement_conditions: [] },
+  { id: 'attr_color', name: 'Màu sắc', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'color_black', name: 'Đen' }, { id: 'color_white', name: 'Trắng' }], requirement_conditions: [] },
+  { id: 'attr_size', name: 'Kích cỡ', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'size_s', name: 'S' }, { id: 'size_m', name: 'M' }, { id: 'size_l', name: 'L' }], requirement_conditions: [] },
+  { id: 'attr_material', name: 'Chất liệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [], requirement_conditions: [] },
 ];
 
+const SEEDED_ATTRIBUTES = seededCatalog.attributesByCategory as Record<string, typeof ATTRIBUTES_DATA>;
+
+/** `UNAUTHORIEZD` is the OAS spelling of the unauthorized value. */
 const BRANDS_DATA = [
-  { id: 'brand_001', name: 'No Brand', status: 'AVAILABLE' },
-  { id: 'brand_002', name: 'OEM', status: 'AVAILABLE' },
-  { id: 'brand_003', name: 'SmartOmni', status: 'AVAILABLE' },
-  { id: 'brand_004', name: 'Apple', status: 'AVAILABLE' },
-  { id: 'brand_005', name: 'Samsung', status: 'AVAILABLE' },
+  { id: 'brand_001', name: 'No Brand', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_002', name: 'OEM', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_003', name: 'SmartOmni', authorized_status: 'AUTHORIZED', is_t1_brand: false },
+  { id: 'brand_004', name: 'Apple', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
+  { id: 'brand_005', name: 'Samsung', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
 ];
+
+/** Demo requirements (DECISIONS DA-6): leaf 100002 requires attr_material, leaf 200002 requires package dimensions. */
+const REQUIRED_ATTRS: Record<string, string[]> = { '100002': ['attr_material'] };
+const DIMENSIONS_REQUIRED = new Set(['200002']);
+
+function attributesFor(categoryId: string) {
+  if (SEEDED_ATTRIBUTES[categoryId]) return SEEDED_ATTRIBUTES[categoryId];
+  const req = REQUIRED_ATTRS[categoryId] ?? [];
+  return ATTRIBUTES_DATA.map((a) => ({ ...a, is_requried: req.includes(a.id) }));
+}
+
+export interface ListingFields {
+  categoryId?: string;
+  brandId?: string;
+  mainImages?: Prisma.InputJsonValue;
+  packageWeight?: Prisma.InputJsonValue;
+  packageDimensions?: Prisma.InputJsonValue;
+  productAttributes?: Prisma.InputJsonValue;
+  isCodAllowed?: boolean;
+  externalProductId?: string;
+}
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Shared by Create Product, Edit Product and Listing Check. Fields are optional (the OAS declares no required body
+ * fields), so they are only checked when sent. `existing` supplies stored values for Edit.
+ */
+function checkListing(body: Record<string, unknown>, existing: ListingFields = {}): { reasons: string[]; fields: ListingFields } {
+  const reasons: string[] = [];
+  const fields: ListingFields = {};
+  if (body.category_id !== undefined) {
+    if (typeof body.category_id !== 'string') reasons.push('category_id must be a string');
+    else if (!CATEGORIES_DATA.find((c) => c.id === body.category_id && c.is_leaf)) reasons.push('category_id must be an existing leaf category');
+    else fields.categoryId = body.category_id;
+  }
+  if (body.brand_id !== undefined) {
+    if (typeof body.brand_id !== 'string' || !BRANDS_DATA.some((b) => b.id === body.brand_id)) reasons.push('brand_id does not exist');
+    else fields.brandId = body.brand_id;
+  }
+  if (body.main_images !== undefined) {
+    if (!Array.isArray(body.main_images) || body.main_images.length > 9 || body.main_images.some((i) => !isObj(i) || typeof i.uri !== 'string')) reasons.push('main_images must be an array of up to 9 objects with a uri');
+    else fields.mainImages = body.main_images as Prisma.InputJsonValue;
+  }
+  if (body.package_weight !== undefined) {
+    if (!isObj(body.package_weight) || Number.isNaN(Number(body.package_weight.value)) || Number(body.package_weight.value) <= 0) reasons.push('package_weight.value must be a positive number');
+    else fields.packageWeight = body.package_weight as Prisma.InputJsonValue;
+  }
+  if (body.package_dimensions !== undefined) {
+    const d = body.package_dimensions;
+    if (!isObj(d) || ['length', 'width', 'height'].some((k) => Number.isNaN(Number(d[k])) || Number(d[k]) <= 0)) reasons.push('package_dimensions length, width and height must be positive numbers');
+    else fields.packageDimensions = d as Prisma.InputJsonValue;
+  }
+  if (body.product_attributes !== undefined) {
+    if (!Array.isArray(body.product_attributes) || body.product_attributes.some((a) => !isObj(a) || typeof a.id !== 'string')) reasons.push('product_attributes must be an array of objects with an id');
+    else fields.productAttributes = body.product_attributes as Prisma.InputJsonValue;
+  }
+  if (body.is_cod_allowed !== undefined) {
+    if (typeof body.is_cod_allowed !== 'boolean') reasons.push('is_cod_allowed must be a boolean');
+    else fields.isCodAllowed = body.is_cod_allowed;
+  }
+  if (body.external_product_id !== undefined) {
+    if (typeof body.external_product_id !== 'string' || body.external_product_id.length > 200) reasons.push('external_product_id must be a string up to 200 chars');
+    else fields.externalProductId = body.external_product_id;
+  }
+  if (reasons.length === 0) {
+    const eff = { ...existing, ...fields };
+    if (eff.categoryId) {
+      const sent = new Set(((eff.productAttributes as Array<{ id: string }> | undefined) ?? []).map((a) => a.id));
+      for (const id of REQUIRED_ATTRS[eff.categoryId] ?? []) if (!sent.has(id)) reasons.push(`required attribute ${id} is missing from product_attributes`);
+      if (DIMENSIONS_REQUIRED.has(eff.categoryId) && !eff.packageDimensions) reasons.push('package_dimensions is required for this category');
+      if (eff.isCodAllowed && !rulesFor(eff.categoryId).cod.is_supported) reasons.push('COD is not supported in this category');
+    }
+  }
+  return { reasons, fields };
+}
+
+function rulesFor(categoryId: string) {
+  return {
+    cod: { is_supported: true },
+    package_dimension: { is_required: DIMENSIONS_REQUIRED.has(categoryId) },
+    size_chart: { is_required: false, is_supported: ['100002', '100003', '100004'].includes(categoryId) },
+    product_certifications: [],
+    epr: { is_required: false },
+    fees: [],
+    allowed_special_product_types: [],
+  };
+}
+
+function leafCategory(categoryId: string): void {
+  const c = CATEGORIES_DATA.find((x) => x.id === categoryId);
+  if (!c || !c.is_leaf) throw new TiktokFault(400, 'invalid_input', 'category_id must be an existing leaf category');
+}
+
+/** BCP-47-ish locale check (e.g. vi-VN, en-US). Only the shape is validated. */
+function checkLocale(value: string | undefined): void {
+  if (value !== undefined && !/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(value)) {
+    throw new TiktokFault(400, 'invalid_input', 'locale must be a BCP-47 language tag such as vi-VN');
+  }
+}
+
+function queryBool(value: string | undefined, field: string): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (value === 'true' || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  throw new TiktokFault(400, 'invalid_input', `${field} must be a boolean`);
+}
 
 /**
  * Product management & catalog API per TikTok Shop OpenAPI standard.
@@ -207,12 +322,24 @@ export class ProductsController {
   @RequireScope(SCOPE_PRODUCT_READ)
   async detail(@Req() req: TiktokRequest, @Param('productId') productId: string) {
     const shop = req.tiktok!.shop;
+    const query = parseRawQuery(req.originalUrl)!.query;
+    // The simulator keeps no draft / under-review versions: these are validated and ignored (DECISIONS DA-4).
+    queryBool(query.return_under_review_version, 'return_under_review_version');
+    queryBool(query.return_draft_version, 'return_draft_version');
+    checkLocale(query.locale);
     const product = await this.prisma.product.findUnique({
       where: { shopId_externalId: { shopId: shop.id, externalId: productId } },
       include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
     });
     if (!product) throw new TiktokFault(404, 'product_not_found', 'product does not exist in this shop');
-    return this.envelope(req, productDetail(product as ProductWithSkus, this.config.publicApiBaseUrl));
+    const chain: typeof CATEGORIES_DATA = [];
+    for (let c = CATEGORIES_DATA.find((x) => x.id === product.categoryId); c; c = CATEGORIES_DATA.find((x) => x.id === c!.parent_id)) chain.unshift(c);
+    const brand = BRANDS_DATA.find((b) => b.id === product.brandId);
+    return this.envelope(req, {
+      ...productDetail(product as ProductWithSkus, this.config.publicApiBaseUrl),
+      category_chains: chain.map((c) => ({ id: c.id, parent_id: c.parent_id, local_name: c.local_name, is_leaf: c.is_leaf })),
+      ...(brand ? { brand: { id: brand.id, name: brand.name } } : {}),
+    });
   }
 
   /** POST /product/202309/products: Create product */
@@ -232,6 +359,8 @@ export class ProductsController {
     if (!skus) {
       throw new TiktokFault(400, 'invalid_input', 'skus must contain at least 1 SKU');
     }
+    const listing = checkListing(body);
+    if (listing.reasons.length) throw new TiktokFault(400, 'invalid_input', listing.reasons.join('; '));
 
     const defaultWarehouse = await this.prisma.warehouse.findFirst({ where: { shopId: shop.id } });
     const now = this.clock.now();
@@ -249,6 +378,7 @@ export class ProductsController {
           status: 'ACTIVATE',
           createdAt: now,
           updatedAt: now,
+          ...listing.fields,
         },
       });
 
@@ -335,6 +465,23 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_WRITE)
   async editProduct(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    return this.applyEdit(req, productId);
+  }
+
+  /** POST /product/202509/products/{id}/partial_edit: Edit already merges onto the stored fields, so a partial edit shares it (DECISIONS DA-11). */
+  @Post('product/202509/products/:productId/partial_edit')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async partialEditProduct(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length === 0) throw new TiktokFault(400, 'invalid_input', 'send at least one field to edit');
+    const res = (await this.applyEdit(req, productId)) as { data: { product_id: string } };
+    const product = await this.prisma.product.findUniqueOrThrow({ where: { shopId_externalId: { shopId: req.tiktok!.shop.id, externalId: productId } }, select: { status: true } });
+    return this.envelope(req, { ...res.data, audit: { status: product.status === 'ACTIVATE' ? 'APPROVED' : 'NONE' } });
+  }
+
+  private async applyEdit(req: TiktokRequest, productId: string) {
     const shop = req.tiktok!.shop;
     const body = (req.body ?? {}) as Record<string, unknown>;
 
@@ -348,11 +495,18 @@ export class ProductsController {
     const title = typeof body.title === 'string' && body.title.trim().length > 0 ? body.title.trim() : product.title;
     const description = typeof body.description === 'string' ? body.description : product.description;
     const isNotForSale = typeof body.is_not_for_sale === 'boolean' ? body.is_not_for_sale : product.isNotForSale;
+    const listing = checkListing(body, {
+      categoryId: product.categoryId ?? undefined,
+      packageDimensions: (product.packageDimensions ?? undefined) as Prisma.InputJsonValue | undefined,
+      productAttributes: product.productAttributes as Prisma.InputJsonValue,
+      isCodAllowed: product.isCodAllowed,
+    });
+    if (listing.reasons.length) throw new TiktokFault(400, 'invalid_input', listing.reasons.join('; '));
 
     await this.prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id: product.id },
-        data: { title, description, isNotForSale, updatedAt: now },
+        data: { title, description, isNotForSale, updatedAt: now, ...listing.fields },
       });
 
       // Update SKUs if provided
@@ -478,12 +632,149 @@ export class ProductsController {
     if (skus.length === 0) {
       failedReasons.push('At least one SKU is required');
     }
+    failedReasons.push(...checkListing(body).reasons);
 
-    const result = failedReasons.length === 0 ? 'PASS' : 'FAIL';
+    // OAS: check_result PASS | FAILED, fail_reasons[{code, message}]. Codes are undocumented, so -1 is a simulator sentinel (DA-6).
     return this.envelope(req, {
-      check_result: result,
-      failed_reasons: failedReasons,
+      check_result: failedReasons.length === 0 ? 'PASS' : 'FAILED',
+      fail_reasons: failedReasons.map((message) => ({ code: -1, message })),
     });
+  }
+
+  /** POST /product/202309/products/{product_id}/prices/update */
+  @Post('product/202309/products/:productId/prices/update')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async updatePrice(@Req() req: TiktokRequest, @Param('productId') productId: string) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { skus?: unknown };
+    if (!Array.isArray(body.skus) || body.skus.length === 0 || body.skus.length > 100) throw new TiktokFault(400, 'invalid_input', 'skus must be an array of 1-100 items');
+    const product = await this.prisma.product.findUnique({ where: { shopId_externalId: { shopId: shop.id, externalId: productId } }, include: { skus: true } });
+    if (!product) throw new TiktokFault(404, 'product_not_found', 'product does not exist in this shop');
+    if (product.status !== 'ACTIVATE') throw new TiktokFault(400, 'invalid_input', 'prices can only be updated for a product in ACTIVATE status');
+    const updates: { id: string; priceVnd: number }[] = [];
+    for (const raw of body.skus as Array<Record<string, unknown>>) {
+      const sku = product.skus.find((s) => s.externalId === raw?.id);
+      if (!sku) throw new TiktokFault(400, 'invalid_input', `sku ${String(raw?.id)} does not belong to this product`);
+      const price = raw.price as { amount?: unknown; currency?: unknown } | undefined;
+      if (!price || price.currency !== 'VND') throw new TiktokFault(400, 'invalid_input', 'price.currency must be VND');
+      const amount = typeof price.amount === 'number' ? String(price.amount) : price.amount;
+      if (typeof amount !== 'string' || !/^[1-9][0-9]{0,11}$/.test(amount)) throw new TiktokFault(400, 'invalid_input', 'price.amount must be a positive integer (VND has no minor units)');
+      updates.push({ id: sku.id, priceVnd: Number(amount) });
+    }
+    const now = this.clock.now();
+    // one transaction for the whole batch: a bad SKU above rejected everything before any write; orders keep their snapshot prices
+    await this.prisma.$transaction(async (tx) => {
+      for (const u of updates) await tx.sku.update({ where: { id: u.id }, data: { priceVnd: u.priceVnd, updatedAt: now } });
+      await tx.product.update({ where: { id: product.id }, data: { updatedAt: now } });
+    });
+    return this.envelope(req, {});
+  }
+
+  /** POST /product/202309/inventory/search */
+  @Post('product/202309/inventory/search')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_READ)
+  async inventorySearch(@Req() req: TiktokRequest) {
+    const shop = req.tiktok!.shop;
+    const body = (req.body ?? {}) as { product_ids?: unknown; sku_ids?: unknown };
+    const skuIds = body.sku_ids === undefined ? undefined : this.idList(body.sku_ids, 'sku_ids', 600);
+    const productIds = body.product_ids === undefined ? undefined : this.idList(body.product_ids, 'product_ids', 100);
+    if (!skuIds && !productIds) throw new TiktokFault(400, 'invalid_input', 'product_ids or sku_ids is required');
+    // OAS: when both are sent, sku_ids wins
+    const products = await this.prisma.product.findMany({
+      where: { shopId: shop.id, ...(skuIds ? { skus: { some: { externalId: { in: skuIds } } } } : { externalId: { in: productIds! } }) },
+      orderBy: { seq: 'asc' },
+      include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
+    });
+    const allSkus = products.flatMap((p) => p.skus.filter((s) => !skuIds || skuIds.includes(s.externalId)));
+    const open = await this.prisma.orderLine.findMany({
+      where: { skuId: { in: allSkus.map((s) => s.id) }, order: { status: { in: ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'] } } },
+      select: { skuId: true, order: { select: { warehouseId: true } } },
+    });
+    const committed = (skuId: string, warehouseId?: string) => open.filter((l) => l.skuId === skuId && (warehouseId === undefined || l.order.warehouseId === warehouseId)).length;
+    const inventory = products.map((p) => ({
+      product_id: p.externalId,
+      skus: p.skus
+        .filter((s) => !skuIds || skuIds.includes(s.externalId))
+        .map((s) => {
+          const available = s.inventory.reduce((n, i) => n + i.quantity, 0);
+          return {
+            id: s.externalId,
+            seller_sku: s.sellerSku,
+            total_available_quantity: available,
+            total_committed_quantity: committed(s.id),
+            total_available_inventory_distribution: { campaign_inventory: [], creator_inventory: [], in_shop_inventory: { quantity: available } },
+            warehouse_inventory: s.inventory.map((i) => ({ warehouse_id: i.warehouse.externalId, available_quantity: i.quantity, committed_quantity: committed(s.id, i.warehouseId) })),
+          };
+        }),
+    }));
+    return this.envelope(req, { inventory });
+  }
+
+  /** DELETE /product/202309/products: soft delete (status DELETED). Per-id errors, valid ids still processed. */
+  @Delete('product/202309/products')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async deleteProducts(@Req() req: TiktokRequest) {
+    return this.bulkStatus(req, 'delete');
+  }
+
+  /** POST /product/202309/products/recover: DELETED -> SELLER_DEACTIVATED. */
+  @Post('product/202309/products/recover')
+  @HttpCode(200)
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_WRITE)
+  async recoverProducts(@Req() req: TiktokRequest) {
+    return this.bulkStatus(req, 'recover');
+  }
+
+  private idList(value: unknown, field: string, max: number): string[] {
+    if (!Array.isArray(value) || value.length === 0 || value.length > max || value.some((v) => typeof v !== 'string' || v.length === 0 || v.length > 200)) {
+      throw new TiktokFault(400, 'invalid_input', `${field} must be an array of 1-${max} non-empty strings`);
+    }
+    return value as string[];
+  }
+
+  private async bulkStatus(req: TiktokRequest, mode: 'delete' | 'recover') {
+    const shop = req.tiktok!.shop;
+    const ids = [...new Set(this.idList(((req.body ?? {}) as { product_ids?: unknown }).product_ids, 'product_ids', 20))];
+    const now = this.clock.now();
+    const errors: Array<{ code: number; message: string; detail: { product_id: string } }> = [];
+    // OAS error codes are undocumented: -1 is a simulator sentinel (DECISIONS DA-9)
+    const fail = (id: string, message: string) => errors.push({ code: -1, message, detail: { product_id: id } });
+    await this.prisma.$transaction(async (tx) => {
+      for (const id of ids) {
+        const p = await tx.product.findUnique({ where: { shopId_externalId: { shopId: shop.id, externalId: id } }, include: { skus: { select: { id: true } } } });
+        if (!p) {
+          fail(id, 'product does not exist in this shop');
+          continue;
+        }
+        let next: string;
+        if (mode === 'delete') {
+          if (p.status === 'FREEZE') {
+            fail(id, 'a FREEZE product cannot be deleted');
+            continue;
+          }
+          if (p.status === 'DELETED') continue; // already deleted: nothing to do
+          next = 'DELETED';
+          await tx.cartItem.deleteMany({ where: { skuId: { in: p.skus.map((s) => s.id) } } });
+        } else {
+          if (p.status !== 'DELETED') {
+            fail(id, 'only a DELETED product can be recovered');
+            continue;
+          }
+          next = 'SELLER_DEACTIVATED';
+        }
+        await tx.product.update({ where: { id: p.id }, data: { status: next, updatedAt: now } });
+        const ev = buildProductStatusChangeData({ productId: id, status: next, auditStatus: 'NONE', updateTime: Math.floor(now.getTime() / 1000) });
+        await this.emitter.emit(tx, shop, 'PRODUCT_STATUS_CHANGE', ev, req.requestId);
+      }
+    });
+    return this.envelope(req, { errors });
   }
 
   /** GET /product/202309/categories */
@@ -491,15 +782,48 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
   async categories(@Req() req: TiktokRequest) {
-    return this.envelope(req, { categories: CATEGORIES_DATA });
+    const query = parseRawQuery(req.originalUrl)!.query;
+    checkLocale(query.locale);
+    const keyword = query.keyword?.trim().toLowerCase();
+    const includeProhibited = queryBool(query.include_prohibited_categories, 'include_prohibited_categories') ?? false;
+    const categories = CATEGORIES_DATA.filter((c) => {
+      if (keyword && !c.local_name.toLowerCase().includes(keyword)) return false;
+      if (!includeProhibited && !c.permission_statuses.includes('AVAILABLE')) return false;
+      return true;
+    });
+    return this.envelope(req, { categories });
   }
 
-  /** GET /product/202309/attributes */
-  @Get('product/202309/attributes')
+  /** GET /product/202309/categories/{category_id}/attributes */
+  @Get('product/202309/categories/:categoryId/attributes')
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
-  async attributes(@Req() req: TiktokRequest) {
-    return this.envelope(req, { attributes: ATTRIBUTES_DATA });
+  async categoryAttributes(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
+    checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
+    leafCategory(categoryId);
+    return this.envelope(req, { attributes: attributesFor(categoryId) });
+  }
+
+  /** GET /product/202309/categories/{category_id}/rules */
+  @Get('product/202309/categories/:categoryId/rules')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_PRODUCT_READ)
+  async categoryRules(@Req() req: TiktokRequest, @Param('categoryId') categoryId: string) {
+    checkLocale(parseRawQuery(req.originalUrl)!.query.locale);
+    leafCategory(categoryId);
+    return this.envelope(req, rulesFor(categoryId));
+  }
+
+  /** Old non-OAS path, answers 501 only (DECISIONS DA-3). */
+  @Get('product/202309/attributes')
+  attributesRemoved(): never {
+    throw new TiktokFault(501, 'unsupported_operation', 'GET /product/202309/attributes is not an official path; use /product/202309/categories/{category_id}/attributes');
+  }
+
+  /** Old non-OAS path, answers 501 only (DECISIONS DA-3). */
+  @Get('product/202309/rules')
+  rulesRemoved(): never {
+    throw new TiktokFault(501, 'unsupported_operation', 'GET /product/202309/rules is not an official path; use /product/202309/categories/{category_id}/rules');
   }
 
   /** GET /product/202309/brands */
@@ -507,21 +831,31 @@ export class ProductsController {
   @UseGuards(TiktokApiGuard)
   @RequireScope(SCOPE_PRODUCT_READ)
   async brands(@Req() req: TiktokRequest) {
-    return this.envelope(req, { brands: BRANDS_DATA, total_count: BRANDS_DATA.length });
-  }
-
-  /** GET /product/202309/rules */
-  @Get('product/202309/rules')
-  @UseGuards(TiktokApiGuard)
-  @RequireScope(SCOPE_PRODUCT_READ)
-  async rules(@Req() req: TiktokRequest) {
+    const query = parseRawQuery(req.originalUrl)!.query;
+    if (!/^\d{1,4}$/.test(query.page_size ?? '')) throw new TiktokFault(400, 'invalid_input', 'page_size is required and must be an integer in [1, 100]');
+    const pageSize = Number(query.page_size);
+    if (pageSize < 1 || pageSize > 100) throw new TiktokFault(400, 'invalid_input', 'page_size must be in [1, 100]');
+    const isAuthorized = queryBool(query.is_authorized, 'is_authorized');
+    const name = query.brand_name?.toLowerCase();
+    let offset = 0;
+    if (query.page_token) {
+      try {
+        const v = JSON.parse(Buffer.from(query.page_token, 'base64url').toString('utf8')) as { offset?: unknown };
+        if (typeof v.offset !== 'number' || !Number.isSafeInteger(v.offset) || v.offset < 0) throw new Error('bad token');
+        offset = v.offset;
+      } catch {
+        throw new TiktokFault(400, 'invalid_input', 'page_token is not a token issued by this API');
+      }
+    }
+    const categoryScoped = query.category_id !== undefined;
+    if (categoryScoped && !CATEGORIES_DATA.some((c) => c.id === query.category_id)) throw new TiktokFault(400, 'invalid_input', 'category_id does not exist');
+    const matched = BRANDS_DATA.filter((b) => (name === undefined || b.name.toLowerCase().startsWith(name)) && (isAuthorized === undefined || (b.authorized_status === 'AUTHORIZED') === isAuthorized));
+    const page = matched.slice(offset, offset + pageSize);
+    const hasMore = offset + pageSize < matched.length;
     return this.envelope(req, {
-      product_rules: {
-        title_rule: { max_length: 500, min_length: 1 },
-        description_rule: { max_length: 10000 },
-        image_rule: { max_count: 9, min_count: 1, max_size_mb: 5 },
-        sku_rule: { max_sku_count: 100, min_sku_count: 1 },
-      },
+      brands: page.map((b) => (categoryScoped && b.authorized_status === 'AUTHORIZED' ? { ...b, brand_status: 'AVAILABLE' } : b)),
+      next_page_token: hasMore ? Buffer.from(JSON.stringify({ offset: offset + pageSize }), 'utf8').toString('base64url') : '',
+      total_count: matched.length,
     });
   }
 

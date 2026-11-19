@@ -1,0 +1,183 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/fulfillment.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "68777273e41489fb5aa6e8b9a248a0ff8261836d45554505b1eadf6c0b3e1472",
+    "candidatesInBundle": [
+      {
+        "method": "POST",
+        "path": "/fulfillment/202309/packages/ship",
+        "version": "202309"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "POST",
+  "path": "/fulfillment/202309/packages/ship",
+  "operation": {
+    "tags": [
+      "fulfillment_v202309"
+    ],
+    "summary": "BatchShipPackages",
+    "description": "Use this API to batch ship packages by providing multiple package IDs. This API is available for TikTok shipping orders as well as seller shipping orders. \n\n- `TikTok Shipping`: Schedule a package handover time for TikTok Shipping carriers to pickup a package from the Seller. \n- `Seller Shipping`: Seller arranges their own shipping, and upload a `tracking_number` and `shipping_provider_id`. Package ID can be obtained from [Get Order Detail](https://partner.tiktokshop.com/docv2/page/650aa8ccc16ffe02b8f167a0?external_id=650aa8ccc16ffe02b8f167a0).",
+    "parameters": [
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "packages": {
+                "description": "Input list of packages you would like to batch ship.",
+                "items": {
+                  "properties": {
+                    "handover_method": {
+                      "description": "Possible values:\n- `PICKUP`: A shipping provider will pickup the package(s) from the seller's pickup address.\n- `DROP_OFF`: The seller will need to drop off the package(s) at a designated location.",
+                      "example": "PICKUP",
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "Package ID.",
+                      "example": "12321312312431",
+                      "type": "string"
+                    },
+                    "pickup_slot": {
+                      "description": "Package pickup time slot.",
+                      "properties": {
+                        "end_time": {
+                          "description": "The end date and time of the package pickup time slot. Unix timestamp.",
+                          "example": 1623812664,
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "start_time": {
+                          "description": "The start date and time of the package pickup time slot. Unix timestamp.",
+                          "example": 1623812664,
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "self_shipment": {
+                      "description": "Only needed for seller shipping packages. Check the `delivery_option `field in [Get Package Detail](https://partner.tiktokshop.com/docv2/page/650aa39fbace3e02b75d8617?external_id=650aa39fbace3e02b75d8617) to see how to differentiate between TikTok shipping and seller shipping. Use the `shipping_provider_id` retrieved from the [Get Shipping Providers](https://partner.tiktokshop.com/docv2/page/650aa48d4a0bb702c06d85cd?external_id=650aa48d4a0bb702c06d85cd#Back%20To%20Top) API and upload the corresponding tracking number.",
+                      "properties": {
+                        "shipping_provider_id": {
+                          "description": "For packages with the `SEND_BY_SELLER` delivery option type (seller shipping), you must provide the shipping provider information. Please use the [Get Shipping Providers](https://partner.tiktokshop.com/docv2/page/650aa48d4a0bb702c06d85cd?external_id=650aa48d4a0bb702c06d85cd#Back%20To%20Top) API to obtain the `shipping_provider_id`.",
+                          "example": "6617675021119438849",
+                          "type": "string"
+                        },
+                        "tracking_number": {
+                          "description": "For packages with the `SEND_BY_SELLER` delivery option type (seller shipping), you must provide the package's tracking number.",
+                          "example": "JX12345",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "errors": {
+                      "description": "Return list of possible errors during package batch shipment attempt.",
+                      "items": {
+                        "properties": {
+                          "code": {
+                            "description": "The failure reason code.",
+                            "example": 10007014,
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "detail": {
+                            "description": "Error detail.",
+                            "properties": {
+                              "package_id": {
+                                "description": "Package ID.",
+                                "example": "123123123123131",
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "message": {
+                            "description": "The failure reason message.",
+                            "example": "package in freeze status",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

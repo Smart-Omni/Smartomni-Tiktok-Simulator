@@ -1,0 +1,362 @@
+{
+  "_meta": {
+    "source": "tts-openapi-guide bundled OAS (OpenAPI 3.0.0, server https://open-api.tiktokglobalshop.com)",
+    "bundledWith": "@tts-open-toolkit/cli 0.1.7",
+    "oasFile": "references/oas/paths/order.json",
+    "accessDate": "2026-10-14",
+    "sha256OfCanonicalOperation": "709e727f71bc84c90f24dcb09d07c5fb8ed700ac6447a68fbc7b360d59404df3",
+    "candidatesInBundle": [
+      {
+        "method": "GET",
+        "path": "/order/202407/orders/{order_id}/price_detail",
+        "version": "202407"
+      }
+    ],
+    "note": "Verbatim OAS operation object (descriptions/examples included); sha256OfCanonicalOperation hashes the UNREDACTED bundle operation (expired CDN signature values are redacted in this file). Contains no secrets. docv2 pages could not be read (client-rendered SPA), so docv2 differences are UNKNOWN."
+  },
+  "method": "GET",
+  "path": "/order/202407/orders/{order_id}/price_detail",
+  "operation": {
+    "tags": [
+      "order_v202407"
+    ],
+    "summary": "GetPriceDetail",
+    "description": "Get the detailed pricing calculation information of an order or a line item, including vouchers, tax, etc.",
+    "parameters": [
+      {
+        "name": "order_id",
+        "in": "path",
+        "description": "Order ID",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "example": "576461413038785752"
+      },
+      {
+        "name": "shop_cipher",
+        "in": "query",
+        "description": "Use this property to pass shop information in requesting the API. Failure in passing the correct value when requesting the API for cross-border shops will return incorrect response. ",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "x-tts-access-token",
+        "in": "header",
+        "description": "",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "name": "Content-Type",
+        "in": "header",
+        "description": "Allowed type: application/json",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Successful response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "code": {
+                  "description": "The success or failure status code returned in API response.",
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "data": {
+                  "description": "Specific return information.",
+                  "properties": {
+                    "cod_fee": {
+                      "description": "COD fee charged by shipping aggregators. For regions outside of Saudi Arabia, the value is `0.00`.",
+                      "example": "0.00",
+                      "type": "string"
+                    },
+                    "cod_fee_net_amount": {
+                      "description": "COD fee charged by shipping aggregators including tax. For regions outside of Saudi Arabia, the value is `0.00`.",
+                      "example": "0.00",
+                      "type": "string"
+                    },
+                    "currency": {
+                      "description": "Currency Type. Three-letter code, see [ISO 4217](https://www.iso.org/iso-4217-currency-codes.html).",
+                      "example": "USD",
+                      "type": "string"
+                    },
+                    "distance_fee": {
+                      "description": "Total distance fee for Horizon+ Program. Only applicable for ID market",
+                      "example": "2.00",
+                      "type": "string"
+                    },
+                    "distance_shipping_fee": {
+                      "description": "Distance shipping fee is fee that charged charged by our logistics partner and covers the separate distance-based cost for deliveries outside Java island as a part of Horizon+ Program.\nOnly applicable in ID Market.",
+                      "example": "1.00",
+                      "type": "string"
+                    },
+                    "line_items": {
+                      "description": "Each object is the same as the \"data\" field (line 5) without \"line_items\"",
+                      "items": {
+                        "properties": {
+                          "cod_fee": {
+                            "description": "COD fee charged by shipping aggregators. For regions outside of Saudi Arabia, the value is `0.00`.",
+                            "example": "0.00",
+                            "type": "string"
+                          },
+                          "cod_fee_amount": {
+                            "description": "COD fee charged by shipping aggregators including tax. For regions outside of Saudi Arabia, the value is `0.00`.",
+                            "example": "0.00",
+                            "type": "string"
+                          },
+                          "currency": {
+                            "description": "Currency Type. Three-letter code, see [ISO 4217](https://www.iso.org/iso-4217-currency-codes.html).",
+                            "example": "USD",
+                            "type": "string"
+                          },
+                          "distance_fee": {
+                            "description": "Total distance fee for Horizon+ Program. Only applicable for ID market",
+                            "example": "2.00",
+                            "type": "string"
+                          },
+                          "distance_shipping_fee": {
+                            "description": "Distance shipping fee is fee that charged charged by our logistics partner and covers the separate distance-based cost for deliveries outside Java island as a part of Horizon+ Program.\nOnly applicable in ID Market.",
+                            "example": "1.00",
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "corresponding line_item id ",
+                            "example": "576461413032342720",
+                            "type": "string"
+                          },
+                          "net_price_amount": {
+                            "description": "Price after tax ",
+                            "example": "97.00",
+                            "type": "string"
+                          },
+                          "payment": {
+                            "description": "Payment of the order from the buyer. Calculation: `sku_sale_price` + `shipping_sale_price` + `tax_amount` + `small_order_fee`",
+                            "example": "101.00",
+                            "type": "string"
+                          },
+                          "shipping_fee_deduction_platform": {
+                            "description": "Shipping discount covered by the platform",
+                            "example": "12.00",
+                            "type": "string"
+                          },
+                          "shipping_fee_deduction_platform_voucher": {
+                            "description": "Shipping discount covered by the platform voucher\n`1010000`: PLATFORM_NEW_USER\n`1020000`: SELLER_SKU_PRICE\n`1030000`: PLATFORM_FREE_SHIPPING",
+                            "example": "1010000",
+                            "type": "string"
+                          },
+                          "shipping_fee_deduction_seller": {
+                            "description": "Shipping discount covered by the seller.",
+                            "example": "10.00",
+                            "type": "string"
+                          },
+                          "shipping_list_price": {
+                            "description": "Original shipping price ",
+                            "example": "25.00",
+                            "type": "string"
+                          },
+                          "shipping_sale_price": {
+                            "description": "Promotional shipping price Calculation: shipping_list_price - shipping_fee_deduction -shipping_fee_deduction_platform",
+                            "example": "3.00",
+                            "type": "string"
+                          },
+                          "sku_gift_net_price": {
+                            "description": "Original sku list price of the gift product from the seller including tax.",
+                            "example": "2.02",
+                            "type": "string"
+                          },
+                          "sku_gift_original_price": {
+                            "description": "Original sku list price of the gift product from the seller.",
+                            "example": "2.00",
+                            "type": "string"
+                          },
+                          "sku_list_price": {
+                            "description": "Total MSRP price of the products.",
+                            "example": "97.00",
+                            "type": "string"
+                          },
+                          "sku_sale_price": {
+                            "description": "Total promotional sale price of the products. Calculation: `sku_list_price` - `subtotal_deduction_seller` - `subtotal_deduction_platform`",
+                            "example": "96.00",
+                            "type": "string"
+                          },
+                          "subtotal": {
+                            "description": "Total promotional sale price of the products including tax. Calculation: `sku_sale_price` + `subtotal_tax_amount`",
+                            "example": "98.00",
+                            "type": "string"
+                          },
+                          "subtotal_deduction_platform": {
+                            "description": "Platform provided price discount on the product ",
+                            "example": "0.50",
+                            "type": "string"
+                          },
+                          "subtotal_deduction_seller": {
+                            "description": "Seller provided price discount on the product ",
+                            "example": "0.50",
+                            "type": "string"
+                          },
+                          "subtotal_tax_amount": {
+                            "description": "Total tax amount on the product ",
+                            "example": "2.00",
+                            "type": "string"
+                          },
+                          "tax_amount": {
+                            "description": "Total tax amount. Calculation: subtotal_tax_amount + shipping_fee_tax（in TaxDetail） + cod_fee_tax（TaxDetail）",
+                            "example": "2.00",
+                            "type": "string"
+                          },
+                          "tax_rate": {
+                            "description": "Tax rate ",
+                            "example": "0.021",
+                            "type": "string"
+                          },
+                          "total": {
+                            "description": "Total number of the original price of the order. Calculation: `sku_list_price` + `shipping_list_price`",
+                            "example": "122.00",
+                            "type": "string"
+                          },
+                          "voucher_deduction_platform": {
+                            "description": "Type of the platform-providing discount on the product. Possible values:\n`1010000`: PLATFORM_NEW_USER,\n`1020000`: SELLER_SKU_PRICE,\n`1030000`: PLATFORM_FREE_SHIPPING",
+                            "example": "1010000",
+                            "type": "string"
+                          },
+                          "voucher_deduction_seller": {
+                            "description": "Type of the seller-providing discount on the product. Possible values:\n`1010000`: PLATFORM_NEW_USER,\n`1020000`: SELLER_SKU_PRICE,\n`1030000`: PLATFORM_FREE_SHIPPING",
+                            "example": "1020000",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "net_price_amount": {
+                      "description": "Price after tax ",
+                      "example": "97.00",
+                      "type": "string"
+                    },
+                    "payment": {
+                      "description": "Payment of the order from the buyer. Calculation: `sku_sale_price` + `shipping_sale_price` + `tax_amount` + `small_order_fee`",
+                      "example": "101.00",
+                      "type": "string"
+                    },
+                    "shipping_fee_deduction_platform": {
+                      "description": "Shipping discount covered by the platform ",
+                      "example": "12.00",
+                      "type": "string"
+                    },
+                    "shipping_fee_deduction_platform_voucher": {
+                      "description": "Shipping discount covered by the platform voucher: \n`1010000`: PLATFORM_NEW_USER,\n`1020000`: SELLER_SKU_PRICE\n`1030000`: PLATFORM_FREE_SHIPPING",
+                      "example": "1010000",
+                      "type": "string"
+                    },
+                    "shipping_fee_deduction_seller": {
+                      "description": "Shipping discount covered by the seller.",
+                      "example": "10.00",
+                      "type": "string"
+                    },
+                    "shipping_list_price": {
+                      "description": "Original shipping price ",
+                      "example": "25.00",
+                      "type": "string"
+                    },
+                    "shipping_sale_price": {
+                      "description": "Promotional shipping price Calculation: shipping_list_price - shipping_fee_deduction -shipping_fee_deduction_platform",
+                      "example": "3.00",
+                      "type": "string"
+                    },
+                    "sku_gift_net_price": {
+                      "description": "Original sku list price of the gift product from the seller including tax.",
+                      "example": "2.02",
+                      "type": "string"
+                    },
+                    "sku_gift_original_price": {
+                      "description": "Original sku list price of the gift product from the seller.",
+                      "example": "2.00",
+                      "type": "string"
+                    },
+                    "sku_list_price": {
+                      "description": "Total MSRP price of the products.",
+                      "example": "97.00",
+                      "type": "string"
+                    },
+                    "sku_sale_price": {
+                      "description": "Total promotional sale price of the products. Calculation: `sku_list_price` - `subtotal_deduction_seller` - `subtotal_deduction_platform`",
+                      "example": "96.00",
+                      "type": "string"
+                    },
+                    "subtotal": {
+                      "description": "Total promotional sale price of the products including tax. Calculation: `sku_sale_price` + `subtotal_tax_amount`",
+                      "example": "98.00",
+                      "type": "string"
+                    },
+                    "subtotal_deduction_platform": {
+                      "description": "Platform provided price discount on the product ",
+                      "example": "0.50",
+                      "type": "string"
+                    },
+                    "subtotal_deduction_seller": {
+                      "description": "Seller provided price discount on the product ",
+                      "example": "0.50",
+                      "type": "string"
+                    },
+                    "subtotal_tax_amount": {
+                      "description": "Total tax amount on the product ",
+                      "example": "2.00",
+                      "type": "string"
+                    },
+                    "tax_amount": {
+                      "description": "Total tax amount. Calculation: subtotal_tax_amount + shipping_fee_tax（in TaxDetail） + cod_fee_tax（TaxDetail）",
+                      "example": "2.00",
+                      "type": "string"
+                    },
+                    "tax_rate": {
+                      "description": "Tax rate ",
+                      "example": "0.021",
+                      "type": "string"
+                    },
+                    "total": {
+                      "description": "Total number of the original price of the order. Calculation: `sku_list_price` + `shipping_list_price`",
+                      "example": "122.00",
+                      "type": "string"
+                    },
+                    "voucher_deduction_platform": {
+                      "description": "Type of the platform-providing discount on the product. Possible values:\n`1010000`: PLATFORM_NEW_USER,\n`1020000`: SELLER_SKU_PRICE`,\n`1030000`: PLATFORM_FREE_SHIPPING",
+                      "example": "1010000",
+                      "type": "string"
+                    },
+                    "voucher_deduction_seller": {
+                      "description": "Type of the seller-providing discount on the product. Possible values:\n`1010000`: PLATFORM_NEW_USER,\n`1020000`: SELLER_SKU_PRICE,\n`1030000`: PLATFORM_FREE_SHIPPING`",
+                      "example": "1020000",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "message": {
+                  "description": "The success or failure messages returned in API response. Reasons of failure will be described in the message.",
+                  "type": "string"
+                },
+                "request_id": {
+                  "description": "Request log.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

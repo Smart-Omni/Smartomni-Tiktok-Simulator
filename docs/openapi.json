@@ -5767,6 +5767,142 @@
             }
           }
         ]
+      },
+      "post": {
+        "tags": [
+          "TikTok Conversations"
+        ],
+        "summary": "Create Conversation (202309)",
+        "description": "Returns the buyer's conversation with the shop, creating it when missing. NEW_CONVERSATION is emitted only on creation.\n\nHandler: `ConversationsController.create`.\n\nRequired scope (simulator placeholder): `sim.conversation.write`.",
+        "operationId": "ConversationsController_create",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "conversation_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "buyer_user_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/customer_service/202309/conversations/{conversationId}/messages": {
@@ -8283,6 +8419,3082 @@
         }
       }
     },
+    "/return_refund/202309/cancellations": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Seller Cancel Order (202309)",
+        "description": "Cancels a whole order on behalf of the seller. Allowed in UNPAID, ON_HOLD and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.\n\nHandler: `AftersaleController.sellerCancel`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
+        "operationId": "AftersaleController_sellerCancel",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cancel_id": {
+                          "type": "string"
+                        },
+                        "cancel_status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "aftersale_not_found / order not in this shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "cancel_reason": {
+                    "type": "string"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202309/returns": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Create Return (202309)",
+        "description": "Creates a return on behalf of the buyer (role SELLER) for a DELIVERED/COMPLETED order in the return window. `idempotency_key` query: a repeat returns the same return_id. refund_total must not exceed the refundable amount.\n\nHandler: `AftersaleController.createReturn`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
+        "operationId": "AftersaleController_createReturn",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "return_id": {
+                          "type": "string"
+                        },
+                        "return_status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "order not in this shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency_key",
+            "in": "query",
+            "required": false,
+            "description": "1-100 characters.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "return_type": {
+                    "type": "string",
+                    "description": "REFUND | RETURN_AND_REFUND"
+                  },
+                  "return_reason": {
+                    "type": "string"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "refund_total": {
+                    "type": "string",
+                    "description": "VND integer string"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "VND"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202309/refunds/calculate": {
+      "post": {
+        "tags": [
+          "TikTok Aftersale"
+        ],
+        "summary": "Calculate Refund (202309)",
+        "description": "Pure read: refund_subtotal = sum of what was paid per free unit; shipping refunded for CANCEL or the whole order; tax 0 (VN). Amounts are strings.\n\nHandler: `AftersaleController.calculateRefund`.\n\nRequired scope (simulator placeholder): `sim.aftersale.read`.",
+        "operationId": "AftersaleController_calculateRefund",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "order_refund_amount": {
+                          "type": "object",
+                          "properties": {
+                            "currency": {
+                              "type": "string"
+                            },
+                            "refund_subtotal": {
+                              "type": "string"
+                            },
+                            "refund_shipping_fee": {
+                              "type": "string"
+                            },
+                            "refund_tax": {
+                              "type": "string"
+                            },
+                            "refund_total": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string"
+                  },
+                  "request_type": {
+                    "type": "string",
+                    "description": "CANCEL | REFUND | RETURN_AND_REFUND"
+                  },
+                  "order_line_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/{productId}/prices/update": {
+      "post": {
+        "tags": [
+          "TikTok Product"
+        ],
+        "summary": "Update Price (202309)",
+        "description": "Updates SKU prices of an ACTIVATE product in one transaction (a bad SKU rejects the whole batch). VND integer amounts; existing orders keep their snapshot prices.\n\nHandler: `ProductsController.updatePrice`.\n\nRequired scope (simulator placeholder): `sim.product.write`.",
+        "operationId": "ProductsController_updatePrice",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "skus": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/inventory/search": {
+      "post": {
+        "tags": [
+          "TikTok Product"
+        ],
+        "summary": "Inventory Search (202309)",
+        "description": "Inventory by product_ids (max 100) or sku_ids (max 600; wins when both are sent). Ids of other shops are ignored. total_committed_quantity counts units of open orders (UNPAID to AWAITING_COLLECTION).\n\nHandler: `ProductsController.inventorySearch`.\n\nRequired scope (simulator placeholder): `sim.product.read`.",
+        "operationId": "ProductsController_inventorySearch",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "inventory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "sku_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products": {
+      "delete": {
+        "tags": [
+          "TikTok Product"
+        ],
+        "summary": "Delete Products (202309)",
+        "description": "Soft delete (status DELETED, still visible to Search Products with that status). FREEZE and unknown ids are returned in errors; valid ids are still processed. Carts of the deleted SKUs are emptied.\n\nHandler: `ProductsController.deleteProducts`.\n\nRequired scope (simulator placeholder): `sim.product.write`.",
+        "operationId": "ProductsController_deleteProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer",
+                                "description": "-1 simulator sentinel"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "detail": {
+                                "type": "object",
+                                "properties": {
+                                  "product_id": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Create Product",
+        "description": "Handler: `ProductsController.createProduct`.",
+        "operationId": "ProductsController_createProduct",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/recover": {
+      "post": {
+        "tags": [
+          "TikTok Product"
+        ],
+        "summary": "Recover Products (202309)",
+        "description": "DELETED -> SELLER_DEACTIVATED. Other states are returned in errors.\n\nHandler: `ProductsController.recoverProducts`.\n\nRequired scope (simulator placeholder): `sim.product.write`.",
+        "operationId": "ProductsController_recoverProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer",
+                                "description": "-1 simulator sentinel"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "detail": {
+                                "type": "object",
+                                "properties": {
+                                  "product_id": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fulfillment/202309/packages/search": {
+      "post": {
+        "tags": [
+          "TikTok Fulfillment"
+        ],
+        "summary": "Search Package (202309)",
+        "description": "Keyset pagination on (create or update time, id). page_size [1, 50] is required. Status values are the package statuses the simulator stores (TO_FULFILL before shipment is arranged, then PROCESSING, FULFILLING, COMPLETED, CANCELLED).\n\nHandler: `FulfillmentController.search`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.read`.",
+        "operationId": "FulfillmentController_search",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "packages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        },
+                        "next_page_token": {
+                          "type": "string"
+                        },
+                        "total_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "example": 20
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_field",
+            "in": "query",
+            "required": false,
+            "description": "create_time (default) or update_time.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "description": "DESC (default) or ASC.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "create_time_ge": {
+                    "type": "integer"
+                  },
+                  "create_time_lt": {
+                    "type": "integer"
+                  },
+                  "update_time_ge": {
+                    "type": "integer"
+                  },
+                  "update_time_lt": {
+                    "type": "integer"
+                  },
+                  "package_status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fulfillment/202309/packages/ship": {
+      "post": {
+        "tags": [
+          "TikTok Fulfillment"
+        ],
+        "summary": "Batch Ship Packages (202309)",
+        "description": "Arranges each package like Ship Package, one transaction per package. Failures (unknown package, wrong state, self_shipment) are listed in errors and never block the other packages.\n\nHandler: `FulfillmentController.batchShip`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.write`.",
+        "operationId": "FulfillmentController_batchShip",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer",
+                                "description": "-1 simulator sentinel"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "detail": {
+                                "type": "object",
+                                "properties": {
+                                  "package_id": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customer_service/202309/conversations/{conversationId}/messages/read": {
+      "post": {
+        "tags": [
+          "TikTok Conversations"
+        ],
+        "summary": "Read Message (202309)",
+        "description": "Marks every buyer message as read; unread_count becomes 0 until the buyer writes again.\n\nHandler: `ConversationsController.read`.\n\nRequired scope (simulator placeholder): `sim.conversation.write`.",
+        "operationId": "ConversationsController_read",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/fulfillment/202309/packages/{packageId}/handover_time_slots": {
+      "get": {
+        "tags": [
+          "TikTok Fulfillment"
+        ],
+        "summary": "Get Package Handover Time Slots (202309)",
+        "description": "Three pickup slots (09:00-12:00 Vietnam time) on the next three business-clock days; drop-off is always possible; van collection is UK only (false). A COMPLETED or CANCELLED package is 400.\n\nHandler: `FulfillmentController.handoverSlots`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.read`.",
+        "operationId": "FulfillmentController_handoverSlots",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "can_pickup": {
+                          "type": "boolean"
+                        },
+                        "can_drop_off": {
+                          "type": "boolean"
+                        },
+                        "can_van_collection": {
+                          "type": "boolean"
+                        },
+                        "pickup_slots": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "packageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/fulfillment/202309/packages/{packageId}/shipping_info/update": {
+      "post": {
+        "tags": [
+          "TikTok Fulfillment"
+        ],
+        "summary": "Update Package Shipping Info (202309)",
+        "description": "Replaces tracking_number and carrier of an arranged package that is not COMPLETED/CANCELLED; cached shipping documents are dropped; PACKAGE_UPDATE is emitted. shipping_provider_id must be a simulator carrier (see Get Shipping Providers).\n\nHandler: `FulfillmentController.updateShippingInfo`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.write`.",
+        "operationId": "FulfillmentController_updateShippingInfo",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "packageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tracking_number": {
+                    "type": "string"
+                  },
+                  "shipping_provider_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fulfillment/202309/packages/deliver": {
+      "post": {
+        "tags": [
+          "TikTok Fulfillment"
+        ],
+        "summary": "Update Package Delivery Status (202309)",
+        "description": "DELIVERY_SUCCESS moves an IN_TRANSIT order to DELIVERED (repeat = no-op); DELIVERY_FAILED (fail_delivery_reason required) only records a tracking event. Failures are listed per package.\n\nHandler: `FulfillmentController.deliver`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.write`.",
+        "operationId": "FulfillmentController_deliver",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer",
+                                "description": "-1 simulator sentinel"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "detail": {
+                                "type": "object",
+                                "properties": {
+                                  "package_id": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logistics/202309/warehouses/{warehouseId}/delivery_options": {
+      "get": {
+        "tags": [
+          "TikTok Logistics"
+        ],
+        "summary": "Get Warehouse Delivery Options (202309)",
+        "description": "Static simulator options (STANDARD, EXPRESS). The warehouse id is the TikTok-style id from Get Warehouse List.\n\nHandler: `FulfillmentController.deliveryOptions`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.read`.",
+        "operationId": "FulfillmentController_deliveryOptions",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "delivery_options": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "description": "WAREHOUSE or ALL; the result is the same.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/logistics/202309/delivery_options/{deliveryOptionId}/shipping_providers": {
+      "get": {
+        "tags": [
+          "TikTok Logistics"
+        ],
+        "summary": "Get Shipping Providers (202309)",
+        "description": "Carriers of a simulator delivery option; unknown option is 404 delivery_option_not_found.\n\nHandler: `FulfillmentController.deliveryProviders`.\n\nRequired scope (simulator placeholder): `sim.fulfillment.read`.",
+        "operationId": "FulfillmentController_deliveryProviders",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "shipping_providers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": true
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "deliveryOptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/order/202407/orders/{orderId}/price_detail": {
+      "get": {
+        "tags": [
+          "TikTok Orders"
+        ],
+        "summary": "Get Price Detail (202407)",
+        "description": "Pure read of the order price columns, all amounts are VND strings. Shipping is shared over the lines; tax, COD and distance fees are \"0\".\n\nHandler: `OrdersController.priceDetail`.\n\nRequired scope (simulator placeholder): `sim.order.read`.",
+        "operationId": "OrdersController_priceDetail",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/customer_service/202309/agents/settings": {
+      "get": {
+        "tags": [
+          "TikTok Conversations"
+        ],
+        "summary": "Get Agent Settings (202309)",
+        "description": "One simulated agent per shop; the flag is stored on the shop.\n\nHandler: `ConversationsController.agentSettings`.\n\nRequired scope (simulator placeholder): `sim.conversation.read`.",
+        "operationId": "ConversationsController_agentSettings",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "can_accept_chat": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "TikTok Conversations"
+        ],
+        "summary": "Update Agent Settings (202309)",
+        "description": "Handler: `ConversationsController.updateAgentSettings`.\n\nRequired scope (simulator placeholder): `sim.conversation.write`.",
+        "operationId": "ConversationsController_updateAgentSettings",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "can_accept_chat": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/authorization/202403/shops": {
+      "delete": {
+        "tags": [
+          "TikTok Shops"
+        ],
+        "summary": "Deauthorize Shop (202403)",
+        "description": "Revokes every active token of the calling app for this shop at once and queues SELLER_DEAUTHORIZATION in the same transaction. Later calls with those tokens fail with 401 authorization_revoked.\n\nHandler: `ShopsController.deauthorize`.\n\nRequired scope (simulator placeholder): `sim.authorized_shops.read`.",
+        "operationId": "ShopsController_deauthorize",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202509/products/{productId}/partial_edit": {
+      "post": {
+        "tags": [
+          "TikTok Product"
+        ],
+        "summary": "Partial Edit Product (202509)",
+        "description": "Same merge as Edit Product: only the fields sent change. An empty body is 400.\n\nHandler: `ProductsController.partialEditProduct`.\n\nRequired scope (simulator placeholder): `sim.product.write`.",
+        "operationId": "ProductsController_partialEditProduct",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string"
+                        },
+                        "audit": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, or a validation failure of the endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "token_invalid, missing_scope or shop_cipher_mismatch.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "app_key",
+            "in": "query",
+            "required": true,
+            "description": "App key of the calling app.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sim_app_key"
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "required": true,
+            "description": "Unix SECONDS (1-12 digits); stale and future values are rejected (401 stale_timestamp).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "1760000000"
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "description": "HMAC signature over path + sorted query + raw body.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c0ffee…"
+          },
+          {
+            "name": "shop_cipher",
+            "in": "query",
+            "required": false,
+            "description": "Optional; when sent it must equal the shop cipher of the access token (else 403 shop_cipher_mismatch).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
     "/demo/identities": {
       "get": {
         "tags": [
@@ -9291,7 +12503,13 @@
                           },
                           "imageUrl": {
                             "type": "string",
-                            "description": "Relative URL of GET /demo/media/products/{file}"
+                            "description": "First real image URL from the product mainImages, else the relative placeholder URL of GET /demo/media/products/{file}"
+                          },
+                          "images": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "minPriceVnd": {
                             "type": "integer"
@@ -9439,6 +12657,12 @@
                         },
                         "imageUrl": {
                           "type": "string"
+                        },
+                        "images": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "minPriceVnd": {
                           "type": "integer"
@@ -11051,7 +14275,13 @@
                           },
                           "imageUrl": {
                             "type": "string",
-                            "description": "Relative URL of GET /demo/media/products/{file}"
+                            "description": "First real image URL from the product mainImages, else the relative placeholder URL of GET /demo/media/products/{file}"
+                          },
+                          "images": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "minPriceVnd": {
                             "type": "integer"
@@ -11190,6 +14420,12 @@
                         },
                         "imageUrl": {
                           "type": "string"
+                        },
+                        "images": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "minPriceVnd": {
                           "type": "integer"
@@ -18458,7 +21694,7 @@
           "Test Admin: Data"
         ],
         "summary": "List shops with scenarios and counts",
-        "description": "All shops ordered by name, with their scenarios and row counts. Use `id` as `shopId` in other endpoints.\n\nHandler: `TestAdminController.shops`.",
+        "description": "All shops ordered by name, with their scenarios and row counts. Use `id` as `shopId` in other endpoints. The optional `region` query keeps only shops of that region code (like the toolkit `sandbox shop list --region-code`).\n\nHandler: `TestAdminController.shops`.",
         "operationId": "TestAdminController_shops",
         "security": [
           {
@@ -18585,7 +21821,19 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "description": "Region code filter, e.g. VN. Omitted = every shop.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "VN"
+          }
+        ]
       }
     },
     "/test-admin/shops/{shopId}/scenario": {
@@ -19402,6 +22650,10 @@
                           "status": {
                             "type": "string"
                           },
+                          "canonical_status": {
+                            "type": "string",
+                            "description": "Toolkit canonical state: the status, or CANCEL_PENDING for AWAITING_SHIPMENT with a buyer cancel request"
+                          },
                           "units": {
                             "type": "integer",
                             "description": "Number of order lines (one per unit)"
@@ -19437,6 +22689,7 @@
                       "shopName": "Shop A",
                       "buyerName": "Nguyen Van A",
                       "status": "ON_HOLD",
+                      "canonical_status": "ON_HOLD",
                       "units": 2,
                       "createdAt": "2026-10-15T08:00:00.000Z",
                       "updatedAt": "2026-10-15T08:00:05.000Z",
@@ -19502,6 +22755,18 @@
               "maximum": 200
             },
             "example": 50
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Toolkit-style page size, clamped to [1, 10]; when sent it wins over `limit`.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "example": 10
           }
         ]
       }
@@ -19721,6 +22986,18 @@
                     "status": {
                       "type": "string"
                     },
+                    "before_status": {
+                      "type": "string",
+                      "description": "Canonical state before"
+                    },
+                    "after_status": {
+                      "type": "string",
+                      "description": "Canonical state after"
+                    },
+                    "transitioned": {
+                      "type": "boolean",
+                      "description": "false when nothing changed (terminal order)"
+                    },
                     "updatedAt": {
                       "type": "string",
                       "format": "date-time"
@@ -19730,6 +23007,9 @@
                     "id",
                     "from",
                     "status",
+                    "before_status",
+                    "after_status",
+                    "transitioned",
                     "updatedAt"
                   ]
                 },
@@ -19737,6 +23017,9 @@
                   "id": "5800000000000001",
                   "from": "ON_HOLD",
                   "status": "AWAITING_SHIPMENT",
+                  "before_status": "ON_HOLD",
+                  "after_status": "AWAITING_SHIPMENT",
+                  "transitioned": true,
                   "updatedAt": "2026-10-15T08:06:00.000Z"
                 }
               }
@@ -19814,7 +23097,8 @@
                       "DELIVERED",
                       "COMPLETED",
                       "CANCELLED"
-                    ]
+                    ],
+                    "description": "Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, ON_HOLD releases, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false."
                   },
                   "shopId": {
                     "type": "string",
@@ -19831,14 +23115,330 @@
                     "description": "Used when to=CANCELLED (max 300); falls back to note",
                     "maxLength": 300
                   }
-                },
-                "required": [
-                  "to"
-                ]
+                }
               },
               "example": {
                 "to": "AWAITING_SHIPMENT",
                 "note": "skip the hold"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test-admin/sandbox/products": {
+      "get": {
+        "tags": [
+          "Test Admin: Data"
+        ],
+        "summary": "Sandbox product list (toolkit shape)",
+        "description": "Counterpart of `sandbox product list`: ACTIVATE products with NORMAL SKUs; `stock_count` is the stock summed over the warehouses. `limits` are the simulator caps for Create Sandbox Order.\n\nHandler: `SandboxAdminController.products`.",
+        "operationId": "SandboxAdminController_products",
+        "security": [
+          {
+            "TestAdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Products.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shop_id": {
+                      "type": "string"
+                    },
+                    "products": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "product_id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "sku_list": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "seller_sku": {
+                                  "type": "string"
+                                },
+                                "price": {
+                                  "type": "integer"
+                                },
+                                "stock_count": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "limits": {
+                      "type": "object",
+                      "properties": {
+                        "max_quantity_per_sku": {
+                          "type": "integer"
+                        },
+                        "max_order_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "products",
+                    "limits"
+                  ]
+                },
+                "example": {
+                  "shop_id": "7494000000000001",
+                  "products": [
+                    {
+                      "product_id": "7500000000000001",
+                      "title": "Tote bag",
+                      "sku_list": [
+                        {
+                          "id": "7510000000000001",
+                          "seller_sku": "BAG-NAT",
+                          "price": 120000,
+                          "stock_count": 40
+                        }
+                      ]
+                    }
+                  ],
+                  "limits": {
+                    "max_quantity_per_sku": 20,
+                    "max_order_count": 10
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (zod): body `{ statusCode: 400, message: \"Validation failed\", issues: [{path, message}] }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "query",
+            "required": true,
+            "description": "Internal shop id (UUID, the `id` returned by GET /test-admin/shops).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11"
+          }
+        ]
+      }
+    },
+    "/test-admin/sandbox/orders": {
+      "post": {
+        "tags": [
+          "Test Admin: Data"
+        ],
+        "summary": "Create sandbox orders (batch)",
+        "description": "Counterpart of `sandbox order create`: places `order_count` orders through the real checkout (own checkoutKey each) and pays them unless `pay` is false. A batch can be partly created and partly failed; created orders are never rolled back. Uses the first buyer of the shop (or the first marketplace buyer).\n\nHandler: `SandboxAdminController.createOrders`.",
+        "operationId": "SandboxAdminController_createOrders",
+        "security": [
+          {
+            "TestAdminToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Batch result (201 Created).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "order_id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "failed": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer"
+                          },
+                          "error": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "request_id": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "created",
+                    "failed"
+                  ]
+                },
+                "example": {
+                  "created": [
+                    {
+                      "order_id": "5800000000000001",
+                      "status": "ON_HOLD"
+                    }
+                  ],
+                  "failed": [],
+                  "request_id": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (zod): body `{ statusCode: 400, message: \"Validation failed\", issues: [{path, message}] }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown shop, or the shop has no buyer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shopId": {
+                    "type": "string",
+                    "description": "Internal shop id",
+                    "minLength": 1
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string",
+                          "description": "Optional, informational"
+                        },
+                        "sku_id": {
+                          "type": "string",
+                          "description": "SKU external id"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 20
+                        }
+                      }
+                    }
+                  },
+                  "order_count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 1
+                  },
+                  "logistics_service_id": {
+                    "type": "string",
+                    "description": "Optional; one of the simulator delivery option ids"
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "description": "Optional label stored as the order payment method name"
+                  },
+                  "pay": {
+                    "type": "boolean",
+                    "description": "Default true: pay after checkout (the order becomes ON_HOLD)"
+                  }
+                },
+                "required": [
+                  "shopId",
+                  "items"
+                ]
+              },
+              "example": {
+                "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
+                "items": [
+                  {
+                    "sku_id": "7510000000000001",
+                    "quantity": 1
+                  }
+                ],
+                "order_count": 2
               }
             }
           }
@@ -23190,6 +26790,1107 @@
               "type": "string"
             },
             "example": "mock_dispute_123456"
+          }
+        ]
+      }
+    },
+    "/product/202309/categories/{categoryId}/attributes": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Attributes",
+        "description": "OAS: GET /product/202309/categories/{category_id}/attributes. category_id must be a leaf category.\n\nHandler: `ProductsController.categoryAttributes`.",
+        "operationId": "ProductsController_categoryAttributes",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attributes list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "attributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: category is not an existing leaf category, or locale is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "100002"
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/categories/{categoryId}/rules": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Category Rules",
+        "description": "OAS: GET /product/202309/categories/{category_id}/rules. category_id must be a leaf category.\n\nHandler: `ProductsController.categoryRules`.",
+        "operationId": "ProductsController_categoryRules",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cod": {
+                          "type": "object",
+                          "properties": {}
+                        },
+                        "package_dimension": {
+                          "type": "object",
+                          "properties": {}
+                        },
+                        "size_chart": {
+                          "type": "object",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: category is not an existing leaf category, or locale is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "description": "Leaf category id.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "100002"
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/attributes": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Product Attributes (removed)",
+        "description": "Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).\n\nHandler: `ProductsController.attributesRemoved`.",
+        "operationId": "ProductsController_attributesRemoved",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Never returned."
+          },
+          "501": {
+            "description": "unsupported_operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/rules": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Product Rules (removed)",
+        "description": "Not an official path. Always 501 unsupported_operation, no guard (DECISIONS DA-3).\n\nHandler: `ProductsController.rulesRemoved`.",
+        "operationId": "ProductsController_rulesRemoved",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Never returned."
+          },
+          "501": {
+            "description": "unsupported_operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/brands": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Brands",
+        "description": "Handler: `ProductsController.brands`.",
+        "operationId": "ProductsController_brands",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brands page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "brands": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "next_page_token": {
+                          "type": "string"
+                        },
+                        "total_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: page_size missing or out of range, bad page_token, unknown category_id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": true,
+            "description": "Integer in [1, 100].",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "example": 20
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "is_authorized",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "brand_name",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive prefix filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/categories": {
+      "get": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Get Categories",
+        "description": "Handler: `ProductsController.categories`.",
+        "operationId": "ProductsController_categories",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: malformed locale or boolean.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "description": "Substring filter on local_name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category_version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_prohibited_categories",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202509/products/{productId}": {
+      "put": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Edit Product",
+        "description": "Handler: `ProductsController.editProduct`.",
+        "operationId": "ProductsController_editProduct",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/product/202309/products/activate": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Activate Products",
+        "description": "Handler: `ProductsController.activateProducts`.",
+        "operationId": "ProductsController_activateProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activated products result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/deactivate": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Deactivate Products",
+        "description": "Handler: `ProductsController.deactivateProducts`.",
+        "operationId": "ProductsController_deactivateProducts",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deactivated products result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/products/listing_check": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Check Product Listing",
+        "description": "Handler: `ProductsController.listingCheck`.",
+        "operationId": "ProductsController_listingCheck",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listing check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "check_result": {
+                          "type": "string",
+                          "description": "PASS | FAILED"
+                        },
+                        "fail_reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "integer"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/images/upload": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Upload Product Image",
+        "description": "Handler: `ProductsController.uploadImage`.",
+        "operationId": "ProductsController_uploadImage",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded image info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "uri": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/product/202309/files/upload": {
+      "post": {
+        "tags": [
+          "Product"
+        ],
+        "summary": "Upload Product File",
+        "description": "Handler: `ProductsController.uploadFile`.",
+        "operationId": "ProductsController_uploadFile",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Uploaded file info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202602/returns/search": {
+      "post": {
+        "tags": [
+          "Aftersale"
+        ],
+        "summary": "Search Returns 202602",
+        "description": "Handler: `AftersaleController.searchReturns202602`.",
+        "operationId": "AftersaleController_searchReturns202602",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns search list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "return_orders": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "returns": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_refund/202602/orders/{orderId}/aftersale_eligibility": {
+      "get": {
+        "tags": [
+          "Aftersale"
+        ],
+        "summary": "Get Aftersale Eligibility 202602",
+        "description": "Handler: `AftersaleController.eligibility202602`.",
+        "operationId": "AftersaleController_eligibility202602",
+        "security": [
+          {
+            "TiktokSignedApi": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aftersale eligibility info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "description": "0 on success"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request_types": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "request_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "Order ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/aftersale/{id}/dispute": {
+      "post": {
+        "tags": [
+          "Demo Aftersale"
+        ],
+        "summary": "Buyer Dispute Trigger",
+        "description": "Handler: `DemoAftersaleController.raiseDispute`.",
+        "operationId": "DemoAftersaleController_raiseDispute",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dispute raised result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/demo/shops/{shopId}/aftersale/{id}/arbitrate": {
+      "post": {
+        "tags": [
+          "Demo Aftersale"
+        ],
+        "summary": "Admin / Operator Arbitrate Trigger",
+        "description": "Handler: `DemoAftersaleController.arbitrate`.",
+        "operationId": "DemoAftersaleController_arbitrate",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arbitration result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "Shop ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale request ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/test-admin/aftersale/{ref}/arbitration": {
+      "post": {
+        "tags": [
+          "Test Admin Aftersale"
+        ],
+        "summary": "Test Admin Arbitrate",
+        "description": "Handler: `TestAdminController.arbitrateAftersale`.",
+        "operationId": "TestAdminController_arbitrateAftersale",
+        "security": [
+          {
+            "TestAdminToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arbitration adjudication result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "arbitration_status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "description": "Aftersale Request ID or external ID",
+            "schema": {
+              "type": "string"
+            }
           }
         ]
       }

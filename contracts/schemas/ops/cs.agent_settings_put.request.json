@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ops/cs.agent_settings_put.request.json",
+  "title": "PUT /customer_service/202309/agents/settings request body",
+  "x-verification": "official OAS 0.1.7; OAS declares no required body fields (unknown which are mandatory)",
+  "type": "object",
+  "properties": {
+    "can_accept_chat": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Inject, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Param, Post, Req, UseFilters, UseGuards } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TiktokFault } from '../common/tiktok-fault';
 import { SCOPE_ORDER_READ } from '../oauth/scopes';
@@ -134,6 +134,62 @@ export class OrdersController {
       this.prisma.warehouse.findMany({ where: { shopId: shop.id }, select: { id: true, externalId: true } }),
     ]);
     return this.envelope(req, { orders: rows.map((o) => this.item(o, shopWarehouses)) });
+  }
+
+  /**
+   * GET /order/202407/orders/{order_id}/price_detail. Pure read of the stored price columns (strings, VND). The order shipping fee is shared
+   * over the lines (remainder to the earlier lines); tax, COD and distance fees are 0 for VN domestic orders (DECISIONS DA-11).
+   */
+  @Get('order/202407/orders/:orderId/price_detail')
+  @UseGuards(TiktokApiGuard)
+  @RequireScope(SCOPE_ORDER_READ)
+  async priceDetail(@Req() req: TiktokRequest, @Param('orderId') orderId: string) {
+    const shop = req.tiktok!.shop;
+    const o = await this.prisma.order.findFirst({ where: { shopId: shop.id, externalId: orderId }, include: { lines: { orderBy: [{ externalId: 'asc' }] } } });
+    if (!o) throw new TiktokFault(404, 'order_not_found', 'order does not exist in this shop');
+    const n = o.lines.length || 1;
+    const share = (total: number, i: number): number => Math.floor(total / n) + (i < total % n ? 1 : 0);
+    const s = (v: number): string => String(v);
+    const money = (list: number, sellerDed: number, platformDed: number, shipList: number, shipSeller: number) => {
+      const skuSale = list - sellerDed - platformDed;
+      const shipSale = shipList - shipSeller;
+      return {
+        sku_list_price: s(list),
+        sku_sale_price: s(skuSale),
+        sku_gift_original_price: '0',
+        sku_gift_net_price: '0',
+        subtotal_deduction_seller: s(sellerDed),
+        subtotal_deduction_platform: s(platformDed),
+        subtotal_tax_amount: '0',
+        subtotal: s(skuSale),
+        voucher_deduction_seller: '0',
+        voucher_deduction_platform: '0',
+        shipping_list_price: s(shipList),
+        shipping_fee_deduction_seller: s(shipSeller),
+        shipping_fee_deduction_platform: '0',
+        shipping_fee_deduction_platform_voucher: '0',
+        shipping_sale_price: s(shipSale),
+        tax_amount: '0',
+        tax_rate: '0',
+        net_price_amount: s(skuSale),
+        cod_fee: '0',
+        distance_fee: '0',
+        distance_shipping_fee: '0',
+        payment: s(skuSale + shipSale),
+        total: s(list + shipList),
+      };
+    };
+    return this.envelope(req, {
+      currency: o.currency,
+      ...money(o.originalProductPrice, o.sellerDiscount, o.platformDiscount, o.originalShippingFee, o.shippingFeeDiscount),
+      cod_fee_net_amount: '0',
+      line_items: o.lines.map((l, i) => ({
+        id: l.externalId,
+        currency: o.currency,
+        ...money(l.originalPrice, l.sellerDiscount, l.platformDiscount, share(o.originalShippingFee, i), share(o.shippingFeeDiscount, i)),
+        cod_fee_amount: '0',
+      })),
+    });
   }
 
   private item(o: Omit<OrderWithLines, 'warehouse'>, warehouses: { id: string; externalId: string }[]) {
