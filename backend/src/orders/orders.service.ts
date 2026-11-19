@@ -6,6 +6,7 @@ import { APP_CONFIG, AppConfig } from '../config/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { numericId } from '../seed/seed-data';
 import { logInventory } from '../inventory/inventory-log';
+import { emitInventoryChanged } from '../inventory/inventory-webhook';
 import { WebhookEmitter } from '../webhooks/webhook-emitter.service';
 import { distributeProportionally, recordCouponUsage, releaseCouponForOrder, reserveCoupon } from '../coupons/coupon-rules';
 import { canTransition, OrderStatus } from './order-state';
@@ -233,6 +234,7 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
         if (coupon) await recordCouponUsage(tx, coupon, orderId, now);
         const created = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
         await this.emitter.emit(tx, shop, 'ORDER_STATUS_CHANGE', this.eventData(created), requestId);
+        for (const sku of skus) await emitInventoryChanged(tx, this.emitter, this.clock, shop, { id: sku.id, externalId: sku.externalId, productExternalId: sku.product.externalId }, 'ORDER_CREATED', requestId);
         return created;
       }, TX_OPTIONS);
       return { order: order, replayed: false };
@@ -323,6 +325,14 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
       const updated = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });
       const shop = await tx.shop.findUniqueOrThrow({ where: { id: current.shopId } });
       await this.emitter.emit(tx, shop, 'ORDER_STATUS_CHANGE', this.eventData(updated), opts.requestId);
+      if (to === 'CANCELLED' && current.warehouseId) {
+        const seen = new Set<string>();
+        for (const line of current.lines) {
+          if (!line.skuId || seen.has(line.skuId)) continue;
+          seen.add(line.skuId);
+          await emitInventoryChanged(tx, this.emitter, this.clock, shop, { id: line.skuId, externalId: line.skuExternalId, productExternalId: line.productExternalId }, 'ORDER_CANCELLED', opts.requestId);
+        }
+      }
       for (const listener of this.listeners) await listener({ tx, shop, before: current, after: updated, to, actor, now, requestId: opts.requestId, forceRecord: opts.forceRecord });
       return updated;
     }, TX_OPTIONS);

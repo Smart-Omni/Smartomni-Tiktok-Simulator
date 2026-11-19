@@ -9,6 +9,7 @@ import { TiktokFaultFilter } from './tiktok-fault.filter';
 /** `event_type` topics listed in the official OAS description of PUT /event/202309/webhooks. */
 export const EVENT_TOPICS = new Set([
   'ORDER_STATUS_CHANGE',
+  'INVENTORY_CHANGED_BY_SHOP',
   'RECIPIENT_ADDRESS_UPDATE',
   'PACKAGE_UPDATE',
   'PRODUCT_STATUS_CHANGE',

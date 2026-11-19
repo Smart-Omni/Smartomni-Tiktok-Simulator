@@ -21,6 +21,8 @@ import { BusinessClock } from '../clock/clock';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { logInventory } from '../inventory/inventory-log';
+import { emitInventoryChanged } from '../inventory/inventory-webhook';
+import { WebhookEmitter } from '../webhooks/webhook-emitter.service';
 import { numericId } from '../seed/seed-data';
 import {
   assertSellerShop,
@@ -146,6 +148,7 @@ export class CatalogDemoController {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(BusinessClock) private readonly clock: BusinessClock,
+    @Inject(WebhookEmitter) private readonly emitter: WebhookEmitter,
   ) {}
 
   // ---- Public Marketplace Storefront --------------------------------------------------------------------------
@@ -345,15 +348,21 @@ export class CatalogDemoController {
     const updated = await this.prisma.$transaction(async (tx) => {
       if (Object.keys(fields).length) await tx.sku.update({ where: { id: sku.id }, data: { ...fields, updatedAt: now } });
       if (stock) {
+        let changed = false;
         for (const w of warehouses) {
           if (stock[w.externalId] === undefined) continue;
           const [prev] = await tx.$queryRaw<{ quantity: number }[]>`SELECT quantity FROM "InventoryLevel" WHERE "skuId" = ${sku.id} AND "warehouseId" = ${w.id} FOR UPDATE`;
+          if ((prev?.quantity ?? 0) !== stock[w.externalId]) changed = true;
           await logInventory(tx, [{ shopId, skuId: sku.id, warehouseId: w.id, before: prev?.quantity ?? 0, after: stock[w.externalId], source: 'SELLER', noop: (prev?.quantity ?? 0) === stock[w.externalId], note: 'seller edit' }]);
           await tx.inventoryLevel.upsert({
             where: { skuId_warehouseId: { skuId: sku.id, warehouseId: w.id } },
             create: { id: randomUUID(), skuId: sku.id, warehouseId: w.id, quantity: stock[w.externalId] },
             update: { quantity: stock[w.externalId] },
           });
+        }
+        if (changed) {
+          const shop = await tx.shop.findUniqueOrThrow({ where: { id: shopId } });
+          await emitInventoryChanged(tx, this.emitter, this.clock, shop, { id: sku.id, externalId: sku.externalId, productExternalId: sku.product.externalId }, 'SELLER');
         }
       }
       await tx.product.update({ where: { id: sku.productId }, data: { updatedAt: now } });

@@ -3,16 +3,19 @@ import type { Response } from 'express';
 import { TiktokFault, SIMULATOR_FAULT_CODE } from '../common/tiktok-fault';
 import { FaultService, INVENTORY_FAULT_KINDS } from '../faults/fault.service';
 import { logInventory } from '../inventory/inventory-log';
+import { emitInventoryChanged } from '../inventory/inventory-webhook';
 import { SCOPE_INVENTORY_WRITE } from '../oauth/scopes';
 import { PrismaService } from '../prisma/prisma.service';
+import { BusinessClock } from '../clock/clock';
+import { WebhookEmitter } from '../webhooks/webhook-emitter.service';
 import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard';
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 
 /** Main / secondary error codes. These two numbers are the EXAMPLE values printed in the official OAS; their meaning is unverified. */
 const MAIN_ERROR = 12052990;
 const EXTRA_ERROR = 12052097;
-/** OAS: "Valid range: [1, 99,999]". */
-const MIN_QUANTITY = 1;
+/** Simulator accepts zero stock; the current Partner Center quantity bounds are inconsistent. */
+const MIN_QUANTITY = 0;
 const MAX_QUANTITY = 99_999;
 const MAX_SKUS_PER_REQUEST = 100;
 const BLOCKED_PRODUCT_STATUSES = new Set(['FREEZE', 'DELETED']);
@@ -49,6 +52,7 @@ export class InventoryController {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(FaultService) private readonly faults: FaultService,
+    @Inject(BusinessClock) private readonly clock: BusinessClock,
   ) {}
 
   @Post('product/202309/products/:productId/inventory/update')
@@ -111,7 +115,7 @@ export class InventoryController {
         errors.push(this.skuError(item.id, 'the inventory of this SKU was not updated', extra));
         continue;
       }
-      await this.applySku(shop.id, sku.id, item, assignedHere, requestId);
+      await this.applySku(shop, product.externalId, sku.id, sku.externalId, item, assignedHere, requestId);
       applied++;
     }
     const afterWriteTimeout = fault?.kind === 'TIMEOUT_AFTER_WRITE';
@@ -183,18 +187,25 @@ export class InventoryController {
   }
 
   /** One transaction per SKU: lock its stock rows, replace the quantities, log before/after (a no-op retry is logged as such). */
-  private async applySku(shopId: string, skuId: string, item: { inventory: { warehouse_id?: string; quantity: unknown }[] }, assigned: { warehouseId: string; externalId: string }[], requestId: string): Promise<void> {
+  private async applySku(shop: { id: string; tiktokShopId: string }, productId: string, skuId: string, skuExternalId: string, item: { inventory: { warehouse_id?: string; quantity: unknown }[] }, assigned: { warehouseId: string; externalId: string }[], requestId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<{ id: string; warehouseId: string; quantity: number }[]>`SELECT id, "warehouseId", quantity FROM "InventoryLevel" WHERE "skuId" = ${skuId} ORDER BY id FOR UPDATE`;
       const log: Parameters<typeof logInventory>[1] = [];
+      let changed = false;
       for (const inv of item.inventory) {
         const target = assigned.length === 1 && inv.warehouse_id === undefined ? assigned[0] : assigned.find((a) => a.externalId === inv.warehouse_id)!;
         const row = rows.find((r) => r.warehouseId === target.warehouseId)!;
         const quantity = inv.quantity as number;
-        if (row.quantity !== quantity) await tx.inventoryLevel.update({ where: { id: row.id }, data: { quantity } });
-        log.push({ shopId, skuId, warehouseId: target.warehouseId, before: row.quantity, after: quantity, source: 'API', noop: row.quantity === quantity, requestId, note: 'absolute update' });
+        if (row.quantity !== quantity) {
+          changed = true;
+          await tx.inventoryLevel.update({ where: { id: row.id }, data: { quantity } });
+        }
+        log.push({ shopId: shop.id, skuId, warehouseId: target.warehouseId, before: row.quantity, after: quantity, source: 'API', noop: row.quantity === quantity, requestId, note: 'absolute update' });
       }
       await logInventory(tx, log);
+      if (changed) {
+        await emitInventoryChanged(tx, new WebhookEmitter(this.clock, this.faults), this.clock, shop, { id: skuId, externalId: skuExternalId, productExternalId: productId }, 'OPEN_API', requestId);
+      }
     });
   }
 
