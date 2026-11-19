@@ -24,4 +24,4 @@ export const identityCity = (name: string): string | undefined => cityByName[nor
 export const defaultBuyerName = 'Trần Văn An';
 
 /** Seed shop that sells the mock catalog items without a `seedShop`. */
-export const defaultMockShop = 'Cửa hàng Mộc Lan (demo)';
+export const defaultMockShop = 'Cửa hàng Mộc Lan';

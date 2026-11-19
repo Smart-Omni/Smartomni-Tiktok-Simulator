@@ -65,7 +65,7 @@ export const SEED_SHOPS: SeedShop[] = [
     key: 'a',
     tiktokShopId: '7494000000000000001',
     shopCipher: 'GCP_SIM_SHOP_A_FAKE_CIPHER',
-    name: 'Cửa hàng Mộc Lan (demo)',
+    name: 'Cửa hàng Mộc Lan',
     seller: { openId: 'sim-seller-open-id-a', name: 'Nguyễn Thị Lan', email: 'seller.a@simulator.local' },
     warehouses: [
       { code: 'WH-HN', name: 'Kho Hà Nội', city: 'Hà Nội', isDefault: true },
@@ -130,7 +130,7 @@ export const SEED_SHOPS: SeedShop[] = [
     key: 'b',
     tiktokShopId: '7494000000000000002',
     shopCipher: 'GCP_SIM_SHOP_B_FAKE_CIPHER',
-    name: 'Tiệm Gốm Bát Tràng (demo)',
+    name: 'Tiệm Gốm Bát Tràng',
     seller: { openId: 'sim-seller-open-id-b', name: 'Đặng Minh Quân', email: 'seller.b@simulator.local' },
     warehouses: [
       { code: 'WH-HN', name: 'Kho Bát Tràng', city: 'Hà Nội', isDefault: true },

@@ -103,8 +103,8 @@ describe('LoginPage', () => {
 /** Same shape as the seed: two shops, buyers listed out of order. */
 const seedIds: Identities = {
   sellers: [
-    { id: 'seller_a', name: 'Nguyễn Thị Lan', shops: [{ id: 'shop-a', name: 'Cửa hàng Mộc Lan (demo)' }] },
-    { id: 'seller_b', name: 'Đặng Minh Quân', shops: [{ id: 'shop-b', name: 'Tiệm Gốm Bát Tràng (demo)' }] },
+    { id: 'seller_a', name: 'Nguyễn Thị Lan', shops: [{ id: 'shop-a', name: 'Cửa hàng Mộc Lan' }] },
+    { id: 'seller_b', name: 'Đặng Minh Quân', shops: [{ id: 'shop-b', name: 'Tiệm Gốm Bát Tràng' }] },
   ],
   buyers: [
     { id: 'buyer_long', name: 'Hoàng Đức Long', shopId: 'shop-b' },
