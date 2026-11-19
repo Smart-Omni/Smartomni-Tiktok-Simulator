@@ -63,7 +63,8 @@ describe('LoginPage', () => {
   it('lists buyers with shop and city, and names the sign-in button after the selected account', async () => {
     renderLogin();
     expect(await screen.findByRole('button', { name: 'Sign in as Trần Văn An' })).toBeTruthy();
-    expect(screen.getByText('Demo Shop VN · Ho Chi Minh City')).toBeTruthy();
+    expect(screen.getByText('Ho Chi Minh City')).toBeTruthy();
+    expect(screen.queryByText(/Demo Shop VN/)).toBeNull();
   });
 
   it('renames the button when switching to the Seller tab and picking another seller', async () => {

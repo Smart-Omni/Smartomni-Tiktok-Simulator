@@ -185,9 +185,21 @@ export const SEED_SHOPS: SeedShop[] = [
 // Fashion catalog: the three Shopee-simulator shops re-created as TikTok shops (same names). Products come from
 // fashion-catalog.json; ids derive from the Shopee item id, so seeding is idempotent (upsert, never duplicates).
 const FASHION_SHOPS = [
-  { tiktokShopId: '7494000000000000003', cipher: 'GCP_SIM_SHOP_C_FAKE_CIPHER', seller: 'Phạm Gia Huy', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho TP.HCM', 'Hồ Chí Minh']] },
-  { tiktokShopId: '7494000000000000004', cipher: 'GCP_SIM_SHOP_D_FAKE_CIPHER', seller: 'Ngô Thanh Tùng', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho Đà Nẵng', 'Đà Nẵng']] },
-  { tiktokShopId: '7494000000000000005', cipher: 'GCP_SIM_SHOP_E_FAKE_CIPHER', seller: 'Bùi Ngọc Anh', warehouses: [['Kho TP.HCM', 'Hồ Chí Minh'], ['Kho Cần Thơ', 'Cần Thơ']] },
+  { tiktokShopId: '7494000000000000003', cipher: 'GCP_SIM_SHOP_C_FAKE_CIPHER', seller: 'Phạm Gia Huy', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho TP.HCM', 'Hồ Chí Minh']],
+    buyers: [
+      ['Nguyễn Minh Khôi', '21 Lý Thường Kiệt', 'Quận 10', 'Hồ Chí Minh'],
+      ['Trịnh Bảo Ngọc', '9 Hàng Bài', 'Hoàn Kiếm', 'Hà Nội'],
+    ] },
+  { tiktokShopId: '7494000000000000004', cipher: 'GCP_SIM_SHOP_D_FAKE_CIPHER', seller: 'Ngô Thanh Tùng', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho Đà Nẵng', 'Đà Nẵng']],
+    buyers: [
+      ['Phan Gia Huy', '45 Bạch Đằng', 'Hải Châu', 'Đà Nẵng'],
+      ['Đỗ Thanh Hương', '18 Nguyễn Trãi', 'Ninh Kiều', 'Cần Thơ'],
+    ] },
+  { tiktokShopId: '7494000000000000005', cipher: 'GCP_SIM_SHOP_E_FAKE_CIPHER', seller: 'Bùi Ngọc Anh', warehouses: [['Kho TP.HCM', 'Hồ Chí Minh'], ['Kho Cần Thơ', 'Cần Thơ']],
+    buyers: [
+      ['Bùi Quang Vinh', '33 Lạch Tray', 'Ngô Quyền', 'Hải Phòng'],
+      ['Lý Ngọc Trâm', '7 Lê Lợi', 'Phú Hội', 'Huế'],
+    ] },
 ];
 
 export const FASHION_SHOPS_SEED: SeedShop[] = fashionCatalog.shops.map((src, idx): SeedShop => {
@@ -200,10 +212,14 @@ export const FASHION_SHOPS_SEED: SeedShop[] = fashionCatalog.shops.map((src, idx
     name: src.name,
     seller: { openId: `sim-seller-open-id-${key}`, name: f.seller, email: `seller.${key}@simulator.local` },
     warehouses: f.warehouses.map(([name, city], i) => ({ code: i === 0 ? 'WH-1' : 'WH-2', name, city, isDefault: i === 0 })),
-    buyers: [
-      { code: `${key}-1`, name: 'Nguyễn Minh Khôi', phone: `09${idx}0000001`, addressLine: '21 Lý Thường Kiệt', district: 'Quận 10', city: 'Hồ Chí Minh' },
-      { code: `${key}-2`, name: 'Trịnh Bảo Ngọc', phone: `09${idx}0000002`, addressLine: '9 Hàng Bài', district: 'Hoàn Kiếm', city: 'Hà Nội' },
-    ],
+    buyers: f.buyers.map(([name, addressLine, district, city], i): SeedBuyer => ({
+      code: `${key}-${i + 1}`,
+      name,
+      phone: `09${idx}000000${i + 1}`,
+      addressLine,
+      district,
+      city,
+    })),
     products: src.products.map((p): SeedProduct => ({
       code: `fashion-${p.sourceItemId}`,
       externalId: numericId('7500', `fashion:${key}:${p.sourceItemId}`),

@@ -12,6 +12,12 @@ const cityByName: Record<string, string> = {
   'pham quoc bao': 'Da Nang',
   'vo thi mai': 'Hanoi',
   'hoang duc long': 'Da Nang',
+  'nguyen minh khoi': 'Ho Chi Minh City',
+  'trinh bao ngoc': 'Hanoi',
+  'phan gia huy': 'Da Nang',
+  'do thanh huong': 'Can Tho',
+  'bui quang vinh': 'Hai Phong',
+  'ly ngoc tram': 'Hue',
   // sellers
   'nguyen thi lan': 'Hanoi',
   'dang minh quan': 'Hanoi',
