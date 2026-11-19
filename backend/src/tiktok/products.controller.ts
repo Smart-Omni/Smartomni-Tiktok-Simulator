@@ -30,6 +30,7 @@ import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard'
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 import { FaultService } from '../faults/fault.service';
 import { parseRawQuery } from './signature';
+import seededCatalog from './simulator-catalog.json';
 
 /** Values of the Search Products `status` filter, from the OAS description (ALL plus the product statuses). */
 const STATUS_FILTER = new Set(['ALL', 'DRAFT', 'PENDING', 'FAILED', 'ACTIVATE', 'SELLER_DEACTIVATED', 'PLATFORM_DEACTIVATED', 'FREEZE', 'DELETED']);
@@ -96,6 +97,7 @@ const CATEGORIES_DATA = [
   { id: '300001', parent_id: '0', local_name: 'Sức khỏe & Sắc đẹp', is_leaf: true, permission_statuses: ['AVAILABLE'] },
   { id: '400001', parent_id: '0', local_name: 'Nhà cửa & Đời sống', is_leaf: true, permission_statuses: ['AVAILABLE'] },
   { id: '500001', parent_id: '0', local_name: 'Hàng hạn chế (demo)', is_leaf: true, permission_statuses: ['INVITE_ONLY'] },
+  ...seededCatalog.categories,
 ];
 
 /** Attribute field names follow the OAS spelling, including `is_requried`. */
@@ -105,6 +107,8 @@ const ATTRIBUTES_DATA = [
   { id: 'attr_size', name: 'Kích cỡ', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'size_s', name: 'S' }, { id: 'size_m', name: 'M' }, { id: 'size_l', name: 'L' }], requirement_conditions: [] },
   { id: 'attr_material', name: 'Chất liệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [], requirement_conditions: [] },
 ];
+
+const SEEDED_ATTRIBUTES = seededCatalog.attributesByCategory as Record<string, typeof ATTRIBUTES_DATA>;
 
 /** `UNAUTHORIEZD` is the OAS spelling of the unauthorized value. */
 const BRANDS_DATA = [
@@ -120,6 +124,7 @@ const REQUIRED_ATTRS: Record<string, string[]> = { '100002': ['attr_material'] }
 const DIMENSIONS_REQUIRED = new Set(['200002']);
 
 function attributesFor(categoryId: string) {
+  if (SEEDED_ATTRIBUTES[categoryId]) return SEEDED_ATTRIBUTES[categoryId];
   const req = REQUIRED_ATTRS[categoryId] ?? [];
   return ATTRIBUTES_DATA.map((a) => ({ ...a, is_requried: req.includes(a.id) }));
 }
@@ -783,7 +788,7 @@ export class ProductsController {
     const includeProhibited = queryBool(query.include_prohibited_categories, 'include_prohibited_categories') ?? false;
     const categories = CATEGORIES_DATA.filter((c) => {
       if (keyword && !c.local_name.toLowerCase().includes(keyword)) return false;
-      if (!includeProhibited && c.permission_statuses.some((p) => p === 'INVITE_ONLY' || p === 'NON_MAIN_CATEGORY' || p === 'PROHIBITED')) return false;
+      if (!includeProhibited && !c.permission_statuses.includes('AVAILABLE')) return false;
       return true;
     });
     return this.envelope(req, { categories });

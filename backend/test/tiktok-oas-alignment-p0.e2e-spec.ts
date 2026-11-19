@@ -35,6 +35,15 @@ describe('OAS alignment P0: catalog metadata, brands, categories, query params',
       expect(attr).not.toHaveProperty('is_required');
     });
 
+    it('serves captured clothing categories and their category-specific attributes', async () => {
+      const categories = await t.call('GET', '/product/202309/categories', token, { query: { keyword: 'Quần ngắn' } }).expect(200);
+      expect(categories.body.data.categories.some((category: { id: string }) => category.id === '601266')).toBe(true);
+      const attributes = await t.call('GET', '/product/202309/categories/601266/attributes', token).expect(200);
+      expect(attributes.body.data.attributes).toHaveLength(18);
+      expect(attributes.body.data.attributes[0]).toEqual(expect.objectContaining({ id: expect.any(String), name: expect.any(String), values: expect.any(Array) }));
+      await t.call('GET', '/product/202309/categories/601152/attributes', token).expect(400);
+    });
+
     it('serves rules for a leaf category, VN supports COD, no EU fields', async () => {
       const r = await t.call('GET', '/product/202309/categories/100002/rules', token, { query: { locale: 'vi-VN' } }).expect(200);
       expect(r.body.data.cod.is_supported).toBe(true);
@@ -108,7 +117,8 @@ describe('OAS alignment P0: catalog metadata, brands, categories, query params',
 
     it('filters by keyword on local_name and validates booleans', async () => {
       const r = await t.call('GET', '/product/202309/categories', token, { query: { keyword: 'áo' } }).expect(200);
-      expect(r.body.data.categories.map((c: any) => c.id).sort()).toEqual(['100002', '100004']);
+      expect(r.body.data.categories.map((c: { id: string }) => c.id)).toEqual(expect.arrayContaining(['100002', '100004', '842248']));
+      expect(r.body.data.categories.every((c: { local_name: string }) => c.local_name.toLowerCase().includes('áo'))).toBe(true);
       await t.call('GET', '/product/202309/categories', token, { query: { include_prohibited_categories: 'maybe' } }).expect(400);
     });
   });
