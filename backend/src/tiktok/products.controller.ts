@@ -18,6 +18,7 @@ import { Prisma } from '@prisma/client';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { attributesFor, BRANDS_DATA, CATEGORIES_DATA, categoryChain, checkListing, isLeafCategory, rulesFor } from '../catalog-meta';
 import { BusinessClock } from '../clock/clock';
 import { TiktokFault } from '../common/tiktok-fault';
 import { APP_CONFIG, AppConfig } from '../config/config';
@@ -30,7 +31,6 @@ import { RequireScope, TiktokApiGuard, TiktokRequest } from './tiktok-api.guard'
 import { TiktokFaultFilter } from './tiktok-fault.filter';
 import { FaultService } from '../faults/fault.service';
 import { parseRawQuery } from './signature';
-import seededCatalog from './simulator-catalog.json';
 
 /** Values of the Search Products `status` filter, from the OAS description (ALL plus the product statuses). */
 const STATUS_FILTER = new Set(['ALL', 'DRAFT', 'PENDING', 'FAILED', 'ACTIVATE', 'SELLER_DEACTIVATED', 'PLATFORM_DEACTIVATED', 'FREEZE', 'DELETED']);
@@ -87,129 +87,8 @@ function stringList(value: unknown, field: string): string[] | undefined {
   return value as string[];
 }
 
-const CATEGORIES_DATA = [
-  { id: '100001', parent_id: '0', local_name: 'Thời trang & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
-  { id: '100002', parent_id: '100001', local_name: 'Áo Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '100003', parent_id: '100001', local_name: 'Quần Nam', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '100004', parent_id: '100001', local_name: 'Áo Nữ', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '200001', parent_id: '0', local_name: 'Điện tử & Phụ kiện', is_leaf: false, permission_statuses: ['AVAILABLE'] },
-  { id: '200002', parent_id: '200001', local_name: 'Phụ kiện điện thoại', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '300001', parent_id: '0', local_name: 'Sức khỏe & Sắc đẹp', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '400001', parent_id: '0', local_name: 'Nhà cửa & Đời sống', is_leaf: true, permission_statuses: ['AVAILABLE'] },
-  { id: '500001', parent_id: '0', local_name: 'Hàng hạn chế (demo)', is_leaf: true, permission_statuses: ['INVITE_ONLY'] },
-  ...seededCatalog.categories,
-];
-
-/** Attribute field names follow the OAS spelling, including `is_requried`. */
-const ATTRIBUTES_DATA = [
-  { id: 'attr_brand', name: 'Thương hiệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: false, values: [{ id: 'brand_001', name: 'No Brand' }], requirement_conditions: [] },
-  { id: 'attr_color', name: 'Màu sắc', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'color_black', name: 'Đen' }, { id: 'color_white', name: 'Trắng' }], requirement_conditions: [] },
-  { id: 'attr_size', name: 'Kích cỡ', type: 'SALES_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [{ id: 'size_s', name: 'S' }, { id: 'size_m', name: 'M' }, { id: 'size_l', name: 'L' }], requirement_conditions: [] },
-  { id: 'attr_material', name: 'Chất liệu', type: 'PRODUCT_PROPERTY', is_requried: false, is_multiple_selection: false, is_customizable: true, values: [], requirement_conditions: [] },
-];
-
-const SEEDED_ATTRIBUTES = seededCatalog.attributesByCategory as Record<string, typeof ATTRIBUTES_DATA>;
-
-/** `UNAUTHORIEZD` is the OAS spelling of the unauthorized value. */
-const BRANDS_DATA = [
-  { id: 'brand_001', name: 'No Brand', authorized_status: 'AUTHORIZED', is_t1_brand: false },
-  { id: 'brand_002', name: 'OEM', authorized_status: 'AUTHORIZED', is_t1_brand: false },
-  { id: 'brand_003', name: 'SmartOmni', authorized_status: 'AUTHORIZED', is_t1_brand: false },
-  { id: 'brand_004', name: 'Apple', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
-  { id: 'brand_005', name: 'Samsung', authorized_status: 'UNAUTHORIEZD', is_t1_brand: true },
-];
-
-/** Demo requirements (DECISIONS DA-6): leaf 100002 requires attr_material, leaf 200002 requires package dimensions. */
-const REQUIRED_ATTRS: Record<string, string[]> = { '100002': ['attr_material'] };
-const DIMENSIONS_REQUIRED = new Set(['200002']);
-
-function attributesFor(categoryId: string) {
-  if (SEEDED_ATTRIBUTES[categoryId]) return SEEDED_ATTRIBUTES[categoryId];
-  const req = REQUIRED_ATTRS[categoryId] ?? [];
-  return ATTRIBUTES_DATA.map((a) => ({ ...a, is_requried: req.includes(a.id) }));
-}
-
-export interface ListingFields {
-  categoryId?: string;
-  brandId?: string;
-  mainImages?: Prisma.InputJsonValue;
-  packageWeight?: Prisma.InputJsonValue;
-  packageDimensions?: Prisma.InputJsonValue;
-  productAttributes?: Prisma.InputJsonValue;
-  isCodAllowed?: boolean;
-  externalProductId?: string;
-}
-
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-/**
- * Shared by Create Product, Edit Product and Listing Check. Fields are optional (the OAS declares no required body
- * fields), so they are only checked when sent. `existing` supplies stored values for Edit.
- */
-function checkListing(body: Record<string, unknown>, existing: ListingFields = {}): { reasons: string[]; fields: ListingFields } {
-  const reasons: string[] = [];
-  const fields: ListingFields = {};
-  if (body.category_id !== undefined) {
-    if (typeof body.category_id !== 'string') reasons.push('category_id must be a string');
-    else if (!CATEGORIES_DATA.find((c) => c.id === body.category_id && c.is_leaf)) reasons.push('category_id must be an existing leaf category');
-    else fields.categoryId = body.category_id;
-  }
-  if (body.brand_id !== undefined) {
-    if (typeof body.brand_id !== 'string' || !BRANDS_DATA.some((b) => b.id === body.brand_id)) reasons.push('brand_id does not exist');
-    else fields.brandId = body.brand_id;
-  }
-  if (body.main_images !== undefined) {
-    if (!Array.isArray(body.main_images) || body.main_images.length > 9 || body.main_images.some((i) => !isObj(i) || typeof i.uri !== 'string')) reasons.push('main_images must be an array of up to 9 objects with a uri');
-    else fields.mainImages = body.main_images as Prisma.InputJsonValue;
-  }
-  if (body.package_weight !== undefined) {
-    if (!isObj(body.package_weight) || Number.isNaN(Number(body.package_weight.value)) || Number(body.package_weight.value) <= 0) reasons.push('package_weight.value must be a positive number');
-    else fields.packageWeight = body.package_weight as Prisma.InputJsonValue;
-  }
-  if (body.package_dimensions !== undefined) {
-    const d = body.package_dimensions;
-    if (!isObj(d) || ['length', 'width', 'height'].some((k) => Number.isNaN(Number(d[k])) || Number(d[k]) <= 0)) reasons.push('package_dimensions length, width and height must be positive numbers');
-    else fields.packageDimensions = d as Prisma.InputJsonValue;
-  }
-  if (body.product_attributes !== undefined) {
-    if (!Array.isArray(body.product_attributes) || body.product_attributes.some((a) => !isObj(a) || typeof a.id !== 'string')) reasons.push('product_attributes must be an array of objects with an id');
-    else fields.productAttributes = body.product_attributes as Prisma.InputJsonValue;
-  }
-  if (body.is_cod_allowed !== undefined) {
-    if (typeof body.is_cod_allowed !== 'boolean') reasons.push('is_cod_allowed must be a boolean');
-    else fields.isCodAllowed = body.is_cod_allowed;
-  }
-  if (body.external_product_id !== undefined) {
-    if (typeof body.external_product_id !== 'string' || body.external_product_id.length > 200) reasons.push('external_product_id must be a string up to 200 chars');
-    else fields.externalProductId = body.external_product_id;
-  }
-  if (reasons.length === 0) {
-    const eff = { ...existing, ...fields };
-    if (eff.categoryId) {
-      const sent = new Set(((eff.productAttributes as Array<{ id: string }> | undefined) ?? []).map((a) => a.id));
-      for (const id of REQUIRED_ATTRS[eff.categoryId] ?? []) if (!sent.has(id)) reasons.push(`required attribute ${id} is missing from product_attributes`);
-      if (DIMENSIONS_REQUIRED.has(eff.categoryId) && !eff.packageDimensions) reasons.push('package_dimensions is required for this category');
-      if (eff.isCodAllowed && !rulesFor(eff.categoryId).cod.is_supported) reasons.push('COD is not supported in this category');
-    }
-  }
-  return { reasons, fields };
-}
-
-function rulesFor(categoryId: string) {
-  return {
-    cod: { is_supported: true },
-    package_dimension: { is_required: DIMENSIONS_REQUIRED.has(categoryId) },
-    size_chart: { is_required: false, is_supported: ['100002', '100003', '100004'].includes(categoryId) },
-    product_certifications: [],
-    epr: { is_required: false },
-    fees: [],
-    allowed_special_product_types: [],
-  };
-}
-
 function leafCategory(categoryId: string): void {
-  const c = CATEGORIES_DATA.find((x) => x.id === categoryId);
-  if (!c || !c.is_leaf) throw new TiktokFault(400, 'invalid_input', 'category_id must be an existing leaf category');
+  if (!isLeafCategory(categoryId)) throw new TiktokFault(400, 'invalid_input', 'category_id must be an existing leaf category');
 }
 
 /** BCP-47-ish locale check (e.g. vi-VN, en-US). Only the shape is validated. */
@@ -332,8 +211,7 @@ export class ProductsController {
       include: { skus: { orderBy: [{ createdAt: 'asc' }, { sellerSku: 'asc' }, { id: 'asc' }], include: { inventory: { include: { warehouse: true } } } } },
     });
     if (!product) throw new TiktokFault(404, 'product_not_found', 'product does not exist in this shop');
-    const chain: typeof CATEGORIES_DATA = [];
-    for (let c = CATEGORIES_DATA.find((x) => x.id === product.categoryId); c; c = CATEGORIES_DATA.find((x) => x.id === c!.parent_id)) chain.unshift(c);
+    const chain = categoryChain(product.categoryId);
     const brand = BRANDS_DATA.find((b) => b.id === product.brandId);
     return this.envelope(req, {
       ...productDetail(product as ProductWithSkus, this.config.publicApiBaseUrl),
