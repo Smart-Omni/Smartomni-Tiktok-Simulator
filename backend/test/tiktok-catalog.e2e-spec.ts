@@ -361,6 +361,8 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
       const detail = (await http.get(`/demo/shops/${buyer.shopId}/storefront/products/sim-product-a-tee`).set('x-demo-session', buyer.token).expect(200)).body.product;
       const black = detail.skus.find((s: any) => s.id === 'sim-sku-a-TEE-BLK-M');
       expect(black).toMatchObject({ priceVnd: 135000, available: true, stock: 50 });
+      expect(detail.images.length).toBeGreaterThan(0);
+      expect(detail.imageUrl).toBe(detail.images[0]);
       await http.get(`/demo/shops/${buyer.shopId}/storefront/products/sim-product-a-hidden`).set('x-demo-session', buyer.token).expect(404);
       const otherShop = await sellerSession(1);
       await http.get(`/demo/shops/${otherShop.shopId}/storefront/products`).set('x-demo-session', buyer.token).expect(200);

@@ -12503,7 +12503,13 @@
                           },
                           "imageUrl": {
                             "type": "string",
-                            "description": "Relative URL of GET /demo/media/products/{file}"
+                            "description": "First real image URL from the product mainImages, else the relative placeholder URL of GET /demo/media/products/{file}"
+                          },
+                          "images": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "minPriceVnd": {
                             "type": "integer"
@@ -12651,6 +12657,12 @@
                         },
                         "imageUrl": {
                           "type": "string"
+                        },
+                        "images": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "minPriceVnd": {
                           "type": "integer"
@@ -14263,7 +14275,13 @@
                           },
                           "imageUrl": {
                             "type": "string",
-                            "description": "Relative URL of GET /demo/media/products/{file}"
+                            "description": "First real image URL from the product mainImages, else the relative placeholder URL of GET /demo/media/products/{file}"
+                          },
+                          "images": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "minPriceVnd": {
                             "type": "integer"
@@ -14402,6 +14420,12 @@
                         },
                         "imageUrl": {
                           "type": "string"
+                        },
+                        "images": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "minPriceVnd": {
                           "type": "integer"

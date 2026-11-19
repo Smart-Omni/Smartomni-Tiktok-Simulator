@@ -101,8 +101,24 @@ function sellerView(p: ProductRow) {
   };
 }
 
+/** Real image URLs from the product's `mainImages` (`urls[0]` when present, else an http(s) `uri`). */
+function realImageUrls(mainImages: Prisma.JsonValue): string[] {
+  if (!Array.isArray(mainImages)) return [];
+  const out: string[] = [];
+  for (const item of mainImages) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
+    const urls = item.urls;
+    const first = Array.isArray(urls) && typeof urls[0] === 'string' ? urls[0] : undefined;
+    const candidate = first ?? (typeof item.uri === 'string' ? item.uri : undefined);
+    if (candidate && /^https?:\/\//i.test(candidate)) out.push(candidate);
+  }
+  return out;
+}
+
 /** What a buyer sees: SKUs that can be bought, with price and a stock flag but no warehouse breakdown. */
 function buyerView(p: ProductRow) {
+  const placeholder = `/demo/media/products/${p.id}.svg`;
+  const images = realImageUrls(p.mainImages);
   const skus = p.skus.map((s) => {
     const total = s.inventory.reduce((n, i) => n + i.quantity, 0);
     return { id: s.externalId, name: s.name, attributeName: s.attributeName, priceVnd: s.priceVnd, available: s.status === 'NORMAL' && total > 0, stock: total };
@@ -112,7 +128,8 @@ function buyerView(p: ProductRow) {
     id: p.externalId,
     title: p.title,
     description: p.description,
-    imageUrl: `/demo/media/products/${p.id}.svg`,
+    imageUrl: images[0] ?? placeholder,
+    images: images.length ? images : [placeholder],
     minPriceVnd: prices.length ? Math.min(...prices) : 0,
     maxPriceVnd: prices.length ? Math.max(...prices) : 0,
     skus,
