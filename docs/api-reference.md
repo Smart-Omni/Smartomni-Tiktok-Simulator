@@ -2,7 +2,7 @@
 
 Tài liệu này mô tả toàn bộ HTTP API của simulator (backend NestJS, cổng `8090`): cách xác thực, cách ký request, định dạng phản hồi và lỗi, webhook, lỗi giả lập, cùng tham chiếu đầy đủ cho 172 operation.
 
-**Nguồn sự thật.** Phần tham chiếu (mục 7 đến 11) được sinh tự động từ `docs/openapi.json`. File này do `backend/src/openapi/` tạo và được `backend/test/openapi.e2e-spec.ts` đối chiếu với route thật. Phần mô tả chung (mục 1 đến 6) được viết từ mã nguồn trong `backend/src/`. Khi tài liệu này và mã nguồn khác nhau, mã nguồn đúng. Ghi chú kỹ thuật của từng endpoint được trích nguyên văn (tiếng Anh) từ OpenAPI để không sai lệch khi dịch.
+**Nguồn sự thật.** Phần tham chiếu (mục 7 đến 11) được sinh từ `docs/openapi.json` tại commit `c09a274` và **không tự cập nhật**: khi route thay đổi, cần sinh lại phần này. `docs/openapi.json` do `backend/src/openapi/` tạo và được `backend/test/openapi.e2e-spec.ts` đối chiếu với route thật. Phần mô tả chung (mục 1 đến 6) được viết từ mã nguồn trong `backend/src/`. Khi tài liệu này và mã nguồn khác nhau, mã nguồn đúng. Trong phần tham chiếu, tiêu đề và tóm tắt viết bằng tiếng Việt; cột mô tả tham số, trường body, mô tả mã phản hồi và ghi chú kỹ thuật được trích nguyên văn (tiếng Anh) từ OpenAPI để không sai lệch khi dịch.
 
 > **Lưu ý quan trọng.** Simulator mô phỏng hình dạng API của TikTok Shop, nhưng mọi operation vẫn ở trạng thái `unverified` trong `contracts/manifest.json`. Tên scope (`sim.*`), mã lỗi, URL trang đồng ý và thân lỗi đều do simulator tự định nghĩa, không phải giá trị thật của TikTok. Các sai khác có chủ đích được ghi trong `DECISIONS.md`.
 
@@ -190,7 +190,7 @@ Phản hồi của `/api/v2/token/get` và `/api/v2/token/refresh`:
 - Refresh xoay vòng cả hai token. Nếu hai request dùng cùng một refresh token cùng lúc, chỉ một request thành công; request còn lại nhận `400 refresh_token_invalid`.
 - `grant_type` được chấp nhận nhưng không bị kiểm tra.
 - DB chỉ lưu hash SHA-256 của token. Token cấp trước khi restart vẫn dùng được.
-- Seller hủy ủy quyền (`DELETE /authorization/202403/shops`, hoặc `/test-admin/tokens/{id}/revoke`) làm token bị thu hồi: gọi API trả `401 authorization_revoked`, refresh trả `400 authorization_revoked`.
+- Thu hồi ủy quyền: app tự gọi `DELETE /authorization/202403/shops` (request có ký; thu hồi mọi token đang hoạt động của app với shop đó và phát webhook `SELLER_DEAUTHORIZATION` với `reason: "DEAUTHORIZED_BY_APP"`), hoặc người kiểm thử giả lập seller gỡ app bằng `POST /test-admin/tokens/{id}/revoke`. Sau đó gọi API trả `401 authorization_revoked`, refresh trả `400 authorization_revoked`.
 
 ### 4.2. Scope
 
@@ -215,8 +215,10 @@ Scope yêu cầu của từng endpoint nằm ở dòng **Scope** trong phần th
 ### 5.1. Router TikTok: thành công
 
 ```json
-{ "code": 0, "message": "success", "request_id": "…", "data": { … } }
+{ "code": 0, "message": "Success", "request_id": "…", "data": { … } }
 ```
+
+Hai endpoint token trả `"message": "success"` (chữ thường). Đừng so sánh `message`; hãy kiểm tra `code === 0`.
 
 ### 5.2. Router TikTok: lỗi
 
@@ -362,6 +364,10 @@ Lease và lịch gửi lại của worker webhook cũng dùng giờ thật.
 | `x-simulator-attempt` | Số thứ tự lần gửi, bắt đầu từ 1 |
 | `x-request-id` | Request đã gây ra sự kiện (nếu có) |
 
+> **Lưu ý:** `README.md` (mục "Orders and webhooks") và `docs/curl-samples.md` vẫn mô tả công thức cũ `HMAC-SHA256(app_secret, app_key + raw_body)`. Công thức đó đã bị thay ở commit `593e223`; hãy dùng công thức trong bảng trên.
+>
+> `timestamp` (cũng là một phần của chữ ký) lấy theo **BusinessClock**. Sau khi tua đồng hồ bằng `PUT /test-admin/clock`, bên nhận nào kiểm tra độ tươi của `timestamp` theo giờ thật sẽ từ chối sự kiện.
+
 Chỉ job gắn với một app (tức phát từ đăng ký webhook) mới có header `Authorization`. Job tạo tay qua `POST /test-admin/webhooks`, job tranh chấp và job gửi lại bằng `/test-admin/webhooks/{jobId}/replay` **không được ký**.
 
 **Giao nhận.**
@@ -389,6 +395,8 @@ Luật lỗi tạo bằng `POST /test-admin/faults` với `target`, `kind`, `pat
 | `APP_ERROR_200` | `API` | path cập nhật tồn kho | | HTTP 200 với `code: -1`, không ghi gì |
 
 `DROP` và `DUPLICATE` với `target: API` không có tác dụng. Ba kind cuối chỉ được handler cập nhật tồn kho xử lý.
+
+**Hạn chế hiện tại:** với `target: API`, luật `HTTP_ERROR` và `DELAY` có `shopId` **không bao giờ khớp**. Middleware áp lỗi chạy trước guard xác thực, nên lúc đó chưa biết shop của request; chỉ luật có `shopId: null` (mọi shop) có tác dụng. Ba kind tồn kho không bị ảnh hưởng vì handler tồn kho truyền shop trực tiếp.
 
 ### 6.6. Reset, seed và dữ liệu mẫu
 
