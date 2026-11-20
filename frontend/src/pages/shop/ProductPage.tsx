@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, Star, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
 import { ShopFooter } from '@/components/shop/ShopFooter';
@@ -50,7 +51,7 @@ function Gallery({ product }: { product: EnrichedProduct }) {
   const [index, setIndex] = useState(0);
   return (
     <div className="detail-gallery">
-      <ProductImage product={images[index]} className="rounded-none" />
+      <ProductImage product={images[index]} className="rounded-xl" />
       <div className="flex gap-2" role="group" aria-label="Product images">
         {images.map((img, i) => (
           <button
@@ -61,7 +62,7 @@ function Gallery({ product }: { product: EnrichedProduct }) {
             onClick={() => setIndex(i)}
             className="detail-thumbnail"
           >
-            <ProductImage product={img} className="rounded-none" />
+            <ProductImage product={img} className="rounded-md" />
           </button>
         ))}
       </div>
@@ -158,15 +159,12 @@ function Reviews() {
 }
 
 function VariantTiles({ label, skus, value, onChange }: { label: string; skus: Sku[]; value: string | undefined; onChange: (id: string) => void }) {
-  const available = skus.filter((sku) => !soldOut(sku));
-  const index = Math.max(0, available.findIndex((sku) => sku.id === value));
-  const selected = available[index];
-  const progress = available.length > 1 ? index / (available.length - 1) * 100 : 0;
-  return <div className="detail-variant-slider">
-    <div className="detail-variant-slider-heading"><label htmlFor="product-variant-slider">{label}</label><strong>{selected?.name ?? 'Out of stock'}</strong></div>
-    <input id="product-variant-slider" type="range" aria-label={label} aria-valuetext={selected?.name ?? 'Out of stock'} min={0} max={Math.max(1, available.length - 1)} step={1} value={index} disabled={available.length < 2} onChange={(event) => { const next = available[Number(event.target.value)]; if (next) onChange(next.id); }} style={{ background: `linear-gradient(to right, #222 ${progress}%, #e5e5e5 ${progress}%)` }} />
-    <div className="detail-variant-slider-labels">{available.map((sku, i) => <button key={sku.id} type="button" aria-pressed={value === sku.id} onClick={() => onChange(sku.id)}>{sku.name}<span aria-hidden="true">{i + 1}</span></button>)}</div>
-    {skus.some(soldOut) && <p className="detail-variant-unavailable">Out of stock: {skus.filter(soldOut).map((sku) => sku.name).join(', ')}</p>}
+  const selected = skus.find((sku) => sku.id === value);
+  return <div className="detail-variant-picker">
+    <div className="detail-variant-heading"><span>{label}</span><strong>{selected?.name ?? 'Out of stock'}</strong></div>
+    <RadioGroupPrimitive.Root aria-label={label} value={value} onValueChange={onChange} className="detail-variant-grid">
+      {skus.map((sku) => <RadioGroupPrimitive.Item key={sku.id} value={sku.id} disabled={soldOut(sku)} className="detail-variant-option" title={soldOut(sku) ? `${sku.name} — Out of stock` : sku.name}>{sku.name}</RadioGroupPrimitive.Item>)}
+    </RadioGroupPrimitive.Root>
   </div>;
 }
 
@@ -240,7 +238,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
       <div className="detail-purchase-actions">
         <Button
           size="lg"
-          className="!h-11 !rounded-none !bg-ink text-sm text-white hover:!bg-ink/90"
+          className="!h-11 !rounded-lg !bg-ink text-sm text-white hover:!bg-ink/90"
           disabled={!sku || busy}
           onClick={async () => {
             if (sku && shop && (await addToCart())) navigate('/checkout', { state: { items: [{ shopId: shop.id, skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
@@ -251,7 +249,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
         <Button
           size="lg"
           variant="outline"
-          className="!h-11 !rounded-none border-ink text-sm"
+          className="!h-11 !rounded-lg border-ink text-sm"
           disabled={!sku || busy}
           onClick={async () => {
             if (await addToCart()) toast.success('Added to cart', { action: { label: 'View cart', onClick: () => navigate('/cart') } });
