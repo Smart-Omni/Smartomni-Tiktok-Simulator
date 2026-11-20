@@ -141,7 +141,7 @@ const collections = [
   { label: 'Fashion Trends', icon: Shirt },
 ];
 function HomeNavigation({ signedIn }: { signedIn: boolean }) {
-  return <><section className="buyer-home-section" aria-label="Quick actions"><div className="buyer-section-heading"><h2>Quick actions</h2></div>
+  return <><section className="buyer-home-section" aria-label="Quick actions">
     <div className="buyer-actions-row">{actions.map(({ label, icon: Icon, to }) => signedIn && to ? <Link key={label} to={to} className="buyer-action-tile"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></Link> : <div key={label} className="buyer-action-tile buyer-unavailable" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></div>)}</div>
   </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-section-heading"><h2>Explore</h2></div><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
 }
