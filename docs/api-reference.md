@@ -1,8 +1,8 @@
 # Tài liệu API: SmartOmni TikTok Shop Simulator
 
-Tài liệu này mô tả toàn bộ HTTP API của simulator (backend NestJS, cổng `8090`): cách xác thực, cách ký request, định dạng phản hồi và lỗi, webhook, lỗi giả lập, cùng tham chiếu đầy đủ cho 172 operation.
+Tài liệu này mô tả toàn bộ HTTP API của simulator (backend NestJS, cổng `8090`): cách xác thực, cách ký request, định dạng phản hồi và lỗi, webhook, lỗi giả lập, cùng tham chiếu đầy đủ cho 177 operation.
 
-**Nguồn sự thật.** Phần tham chiếu (mục 7 đến 11) được sinh từ `docs/openapi.json` tại commit `c09a274` và **không tự cập nhật**: khi route thay đổi, cần sinh lại phần này. `docs/openapi.json` do `backend/src/openapi/` tạo và được `backend/test/openapi.e2e-spec.ts` đối chiếu với route thật. Phần mô tả chung (mục 1 đến 6) được viết từ mã nguồn trong `backend/src/`. Khi tài liệu này và mã nguồn khác nhau, mã nguồn đúng. Trong phần tham chiếu, tiêu đề và tóm tắt viết bằng tiếng Việt; cột mô tả tham số, trường body, mô tả mã phản hồi và ghi chú kỹ thuật được trích nguyên văn (tiếng Anh) từ OpenAPI để không sai lệch khi dịch.
+**Nguồn sự thật.** Phần tham chiếu (mục 7 đến 11) được sinh từ `docs/openapi.json` tại commit `c09a274` (các mục coupon 7.8, 8.7 và `/test-admin/coupons`, `/test-admin/scenarios/loyalty-vouchers` được sinh lại cho Phase 09c) và **không tự cập nhật**: khi route thay đổi, cần sinh lại phần này. `docs/openapi.json` do `backend/src/openapi/` tạo và được `backend/test/openapi.e2e-spec.ts` đối chiếu với route thật. Phần mô tả chung (mục 1 đến 6) được viết từ mã nguồn trong `backend/src/`. Khi tài liệu này và mã nguồn khác nhau, mã nguồn đúng. Trong phần tham chiếu, tiêu đề và tóm tắt viết bằng tiếng Việt; cột mô tả tham số, trường body, mô tả mã phản hồi và ghi chú kỹ thuật được trích nguyên văn (tiếng Anh) từ OpenAPI để không sai lệch khi dịch.
 
 > **Lưu ý quan trọng.** Simulator mô phỏng hình dạng API của TikTok Shop, nhưng mọi operation vẫn ở trạng thái `unverified` trong `contracts/manifest.json`. Tên scope (`sim.*`), mã lỗi, URL trang đồng ý và thân lỗi đều do simulator tự định nghĩa, không phải giá trị thật của TikTok. Các sai khác có chủ đích được ghi trong `DECISIONS.md`.
 
@@ -2224,6 +2224,47 @@ Cập nhật cài đặt nhân viên CSKH. _(Update Agent Settings (202309))_
 
 ### 7.8. Khuyến mãi (coupon)
 
+#### Lô mã dùng một lần cho loyalty (Phase 09c)
+
+Router TikTok **không có API tạo coupon** (manifest `promotion.coupon_create` = `unsupported`, `LOCKED`). Seller tạo trước một lô mã trên Seller Center (`POST /demo/shops/{shopId}/coupon-batches`, mục 8.7) hoặc test tạo bằng `POST /test-admin/scenarios/loyalty-vouchers` (mục 9). Mỗi mã trong lô là một coupon riêng: mã 10 ký tự (chữ in hoa và số, bỏ `0`, `O`, `1`, `I`), `usage_limits.redemption_limit = 1`, cùng `title`, mức giảm và hạn dùng. Mã lô bị ẩn khỏi danh sách voucher của buyer; khách phải gõ mã nhận từ SmartOmni.
+
+SmartOmni dùng hai API đọc có sẵn:
+
+1. **Kéo mã**: `POST /promotion/202406/coupons/search` với `{"title_keyword": "Loyalty Diamond", "status": ["ONGOING"]}`, `page_size=100`, lặp theo `next_page_token`. `title_keyword` là "chứa chuỗi", **không phân biệt hoa thường**. Lưu `id` (coupon_id) và `promo_code`. Search không trả `usage_stats` (đúng schema OAS).
+2. **Theo dõi dùng mã**: `GET /promotion/202406/coupons/{coupon_id}` cho mã đã giao mà chưa ở trạng thái cuối; đọc `status` và `usage_stats.redeemed_count`. Mã hết hạn hoặc bị tắt có thể lọc hàng loạt bằng Search `status: ["EXPIRED", "DEACTIVATED"]`.
+
+| `status` | `redeemed_count` | Ý nghĩa | SmartOmni làm gì |
+|---|---|---|---|
+| `ONGOING` | 0 | Còn trống, hoặc đã giao nhưng khách chưa dùng | Tiếp tục poll nếu đã giao |
+| `ONGOING` | 1 | Đã dùng trong một đơn | Dừng poll, đánh dấu đã dùng |
+| `DEACTIVATED` | 0 hoặc 1 | Bị đốt (đơn UNPAID dùng mã bị hủy) hoặc seller tắt | Dừng poll, không giao lại |
+| `EXPIRED` | 0 hoặc 1 | Hết hạn | Dừng poll |
+| `NOT_START` | 0 | Chưa tới ngày bắt đầu | Chưa giao cho khách |
+
+Mọi trạng thái ngoài "còn trống" là trạng thái cuối. `status` vẫn `ONGOING` sau khi mã đã dùng (OAS không có trạng thái "hết lượt"). Đơn hàng không chứa coupon id hay mã (Order Detail của OAS không có field đó); khoản giảm nằm ở `seller_discount` và `sub_total` đã trừ giảm giá. Liên kết đơn ↔ mã chỉ có ở `GET /test-admin/coupons` (`usages`). Chi tiết: `DECISIONS.md` mục Phase 09c.
+
+Ví dụ phần tử `data.coupon` của Get Coupon cho một mã lô đã dùng:
+
+```json
+{
+  "id": "7700123456789013",
+  "title": "Loyalty Diamond 30%",
+  "status": "ONGOING",
+  "creation_source": "SELLER_CENTER",
+  "display_type": "PROMO_CODE",
+  "promo_code": "K7M2QX9PRT",
+  "product_scope": "FULL_SHOP",
+  "target_buyer_segment": "ALL",
+  "discount": { "type": "PERCENT_OFF", "percentage": "30" },
+  "threshold": { "type": "NONE" },
+  "usage_limits": { "redemption_limit": 1 },
+  "display_channels": ["PRIVATE"],
+  "usage_stats": { "claimed_count": 1, "redeemed_count": 1 }
+}
+```
+
+(Đã lược `create_time`, `update_time`, `claim_duration`, `redemption_duration`.)
+
 #### `POST /promotion/202406/coupons/search`
 
 Tìm kiếm coupon. _(Search Coupon List (202406))_
@@ -2244,7 +2285,7 @@ Tìm kiếm coupon. _(Search Coupon List (202406))_
 |---|---|---|---|
 | `status` |  | string: `NOT_START`, `ONGOING`, `EXPIRED`, `DEACTIVATED`[] |  |
 | `display_type` |  | string: `REGULAR`, `LIVE`, `CREATOR_EXCLUSIVE`, `CHAT`, `PROMO_CODE`[] |  |
-| `title_keyword` |  | string [minLength 1, maxLength 100] | substring match on title |
+| `title_keyword` |  | string [minLength 1, maxLength 100] | case-insensitive substring match on title (simulator choice; the OAS does not say) |
 
 Ví dụ:
 
@@ -4068,7 +4109,7 @@ Danh sách coupon. _(List coupons)_
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Both roles. Seller: every coupon of the shop with status, counters and discount details. Buyer: only coupons usable right now (ONGOING on the business clock, not exhausted, and for audience NEW only if the buyer has no earlier non-cancelled order), with the code shown so it can be typed at checkout.
+Both roles. Codes of a batch (POST /coupon-batches) are never listed here: they are private and a buyer must type a code received from SmartOmni; the seller reads them per batch. Seller: every single voucher of the shop with status, counters and discount details. Buyer: only single vouchers usable right now (ONGOING on the business clock, not exhausted, and for audience NEW only if the buyer has no earlier non-cancelled order), with the code shown so it can be typed at checkout.
 
 </details>
 
@@ -4089,7 +4130,7 @@ Tạo coupon (seller). _(Create a coupon (seller))_
 | Trường | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|
 | `title` | có | string | 1-100 chars |
-| `promoCode` | có | string | 6-12 letters or digits |
+| `promoCode` |  | string | Optional; 6-12 letters or digits. Omitted or empty => generated. |
 | `discount` | có | object \\| object |  |
 | `minSpendVnd` |  | integer | 1..2,000,000,000 |
 | `startAt` |  | string (date-time) | ISO datetime (business clock) |
@@ -4125,7 +4166,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-SELLER only. Stores a coupon (code upper-cased; `startAt` defaults to the current business time). Not a TikTok API: simulator data setup. Duplicate code in the shop => 409. `endAt` must be after `startAt` when both are given.
+SELLER only. Stores a single voucher (code upper-cased; `startAt` defaults to the current business time). `promoCode` is optional: left out or empty, a unique 10-character code is generated (letters and digits without 0/O/1/I). Not a TikTok API: simulator data setup. Duplicate typed code in the shop => 409. `endAt` must be after `startAt` when both are given.
 
 </details>
 
@@ -4172,6 +4213,275 @@ Ví dụ:
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
 SELLER only. The code and the discount are immutable (orders may carry a snapshot). Updatable: title, startAt, endAt, redemptionLimit (nullable = unlimited), minSpendVnd (nullable), deactivated. 404 unknown coupon (by marketplace id); 400 if the resulting start >= end or redemptionLimit is below the redemptions already used.
+
+</details>
+
+#### `POST /demo/shops/{shopId}/coupon-batches`
+
+Tạo lô mã dùng một lần (seller). _(Create a batch of single-use codes (seller))_
+
+- Xác thực: Header `x-demo-session`
+
+**Tham số**:
+
+| Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|---|
+| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+
+**Body** (`application/json`, bắt buộc):
+
+| Trường | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|
+| `title` | có | string | 1-100 chars |
+| `discount` | có | object \\| object |  |
+| `minSpendVnd` |  | integer | 1..2,000,000,000 |
+| `startAt` |  | string (date-time) | ISO datetime (business clock); default now |
+| `endAt` | có | string (date-time) | ISO datetime |
+| `audience` |  | string: `ALL`, `NEW` | default ALL |
+| `quantity` | có | integer [min 1, max 500] | 1..500 |
+
+Ví dụ:
+
+```json
+{
+  "title": "Loyalty Diamond 30%",
+  "discount": {
+    "type": "PERCENT_OFF",
+    "percentage": 30
+  },
+  "endAt": "2026-12-20T00:00:00.000Z",
+  "quantity": 100
+}
+```
+
+**Phản hồi**:
+
+- `201`: The batch and its codes.
+- `400`: Body/query failed zod validation (`message: "Validation failed"` plus `issues: [{path, message}]`). (unknown fields such as promoCode or redemptionLimit are rejected; quantity outside 1..500; endAt not after startAt).
+- `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
+- `403`: The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.
+- `409`: Could not generate unique codes after 3 attempts; retry.
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "batch": {
+    "id": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+    "title": "Loyalty Diamond 30%",
+    "status": "ONGOING",
+    "discountType": "PERCENT_OFF",
+    "amountOffVnd": null,
+    "percentage": 30,
+    "maxDiscountVnd": null,
+    "discountText": "30% off",
+    "minSpendVnd": null,
+    "audience": "ALL",
+    "quantity": 100,
+    "redeemed": 0,
+    "startAt": "2026-11-20T00:00:00.000Z",
+    "endAt": "2026-12-20T00:00:00.000Z",
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  "codes": [
+    {
+      "id": "7700123456789013",
+      "promoCode": "K7M2QX9PRT"
+    }
+  ]
+}
+```
+
+<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
+
+SELLER only. Creates `quantity` coupons in one transaction (all or none), each with its own generated 10-character code (letters and digits without 0/O/1/I, unique in the shop), `redemptionLimit = 1` and the same title, discount, window and audience. The codes are private: hidden from GET /coupons and the checkout voucher picker, a buyer must type one. SmartOmni reads them with Search Coupon List / Get Coupon. Cancelling an UNPAID order that used a code burns it (redemption returned AND code deactivated). Not a TikTok API: simulator data setup.
+
+</details>
+
+#### `GET /demo/shops/{shopId}/coupon-batches`
+
+Danh sách lô mã (seller). _(List code batches (seller))_
+
+- Xác thực: Header `x-demo-session`
+
+**Tham số**:
+
+| Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|---|
+| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+
+**Phản hồi**:
+
+- `200`: Batches.
+- `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
+- `403`: The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "items": [
+    {
+      "id": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+      "title": "Loyalty Diamond 30%",
+      "status": "ONGOING",
+      "discountType": "PERCENT_OFF",
+      "amountOffVnd": null,
+      "percentage": 30,
+      "maxDiscountVnd": null,
+      "discountText": "30% off",
+      "minSpendVnd": null,
+      "audience": "ALL",
+      "quantity": 100,
+      "redeemed": 3,
+      "startAt": "2026-11-20T00:00:00.000Z",
+      "endAt": "2026-12-20T00:00:00.000Z",
+      "createdAt": "2026-11-20T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
+
+SELLER only. Batches of the shop, newest first, with the number of codes and of used codes.
+
+</details>
+
+#### `GET /demo/shops/{shopId}/coupon-batches/{batchId}`
+
+Chi tiết lô mã kèm từng mã (seller). _(Read a code batch with its codes (seller))_
+
+- Xác thực: Header `x-demo-session`
+
+**Tham số**:
+
+| Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|---|
+| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+| `batchId` | path | có | string | Batch id (`id` of a batch view). |
+
+**Phản hồi**:
+
+- `200`: Batch and codes.
+- `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
+- `403`: The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.
+- `404`: Unknown coupon batch (or a batch of another shop).
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "batch": {
+    "id": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+    "title": "Loyalty Diamond 30%",
+    "status": "ONGOING",
+    "discountType": "PERCENT_OFF",
+    "amountOffVnd": null,
+    "percentage": 30,
+    "maxDiscountVnd": null,
+    "discountText": "30% off",
+    "minSpendVnd": null,
+    "audience": "ALL",
+    "quantity": 100,
+    "redeemed": 3,
+    "startAt": "2026-11-20T00:00:00.000Z",
+    "endAt": "2026-12-20T00:00:00.000Z",
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  "codes": [
+    {
+      "id": "7700123456789013",
+      "promoCode": "K7M2QX9PRT",
+      "redeemedCount": 1,
+      "status": "ONGOING"
+    },
+    {
+      "id": "7700123456789014",
+      "promoCode": "HV4N8WZ3EA",
+      "redeemedCount": 0,
+      "status": "DEACTIVATED"
+    }
+  ]
+}
+```
+
+<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
+
+SELLER only. The batch and every code with its own status and redemption count (a burned or single deactivated code is DEACTIVATED).
+
+</details>
+
+#### `PATCH /demo/shops/{shopId}/coupon-batches/{batchId}`
+
+Tắt cả lô mã (seller). _(Deactivate a code batch (seller))_
+
+- Xác thực: Header `x-demo-session`
+
+**Tham số**:
+
+| Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|---|
+| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+| `batchId` | path | có | string | Batch id (`id` of a batch view). |
+
+**Body** (`application/json`, bắt buộc):
+
+| Trường | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|
+| `deactivated` | có | boolean: `true` | must be true |
+
+Ví dụ:
+
+```json
+{
+  "deactivated": true
+}
+```
+
+**Phản hồi**:
+
+- `200`: Batch and codes after the change.
+- `400`: Body/query failed zod validation (`message: "Validation failed"` plus `issues: [{path, message}]`).
+- `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
+- `403`: The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.
+- `404`: Unknown coupon batch.
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "batch": {
+    "id": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+    "title": "Loyalty Diamond 30%",
+    "status": "DEACTIVATED",
+    "discountType": "PERCENT_OFF",
+    "amountOffVnd": null,
+    "percentage": 30,
+    "maxDiscountVnd": null,
+    "discountText": "30% off",
+    "minSpendVnd": null,
+    "audience": "ALL",
+    "quantity": 100,
+    "redeemed": 3,
+    "startAt": "2026-11-20T00:00:00.000Z",
+    "endAt": "2026-12-20T00:00:00.000Z",
+    "createdAt": "2026-11-20T00:00:00.000Z"
+  },
+  "codes": [
+    {
+      "id": "7700123456789013",
+      "promoCode": "K7M2QX9PRT",
+      "redeemedCount": 1,
+      "status": "DEACTIVATED"
+    }
+  ]
+}
+```
+
+<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
+
+SELLER only. Body must be exactly `{ "deactivated": true }`: every code of the batch becomes DEACTIVATED (checkout answers coupon_deactivated). Repeating it is harmless. To switch off one code only, use PATCH /coupons/{couponId}.
 
 </details>
 
@@ -4464,15 +4774,47 @@ Tổng quan coupon. _(Coupon overview)_
 | Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|---|
 | `shopId` | query |  | string | Internal shop id (UUID, the `id` returned by GET /test-admin/shops). |
+| `batchId` | query |  | string | Only the codes of this batch (`batchId` of a code, or `id` of a /demo coupon batch). |
+| `after` | query |  | string | Cursor: the `next` value of the previous page. |
+| `limit` | query |  | integer [min 1, max 500] | Page size 1..500 (default 200); anything else answers 400. |
 
 **Phản hồi**:
 
 - `200`: Coupons.
+- `400`: `limit` not an integer in 1..500, or `after` not a valid cursor.
 - `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "items": [
+    {
+      "id": "7600000000000001",
+      "title": "Loyalty Diamond 30%",
+      "promoCode": "K7M2QX9PRT",
+      "status": "ONGOING",
+      "redeemedCount": 1,
+      "redemptionLimit": 1,
+      "startAt": "2026-10-01T00:00:00.000Z",
+      "endAt": "2026-12-31T00:00:00.000Z",
+      "batchId": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+      "usages": [
+        {
+          "orderId": "5800000000000001",
+          "discountVnd": 77400,
+          "at": "2026-10-02T08:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "next": ""
+}
+```
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Read-only list of up to 200 coupons (oldest first by seq), optionally for one shop. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING.
+Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).
 
 </details>
 
@@ -5364,6 +5706,69 @@ Ví dụ:
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
 Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule "points only after N days since completion" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and still ON_HOLD. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.
+
+</details>
+
+#### `POST /test-admin/scenarios/loyalty-vouchers`
+
+Tạo các lô voucher loyalty (dữ liệu test). _(Create loyalty voucher batches)_
+
+- Xác thực: Header `x-test-admin-token`
+
+**Body** (`application/json`, bắt buộc):
+
+| Trường | Bắt buộc | Kiểu | Mô tả |
+|---|---|---|---|
+| `shopId` | có | string [minLength 1] | Internal shop id |
+| `quantityPerTier` |  | integer [min 1, max 500] | Codes per tier |
+| `validDays` |  | integer [min 1, max 365] | Validity from now (business clock) |
+| `tiers` |  | object[] |  |
+
+Ví dụ:
+
+```json
+{
+  "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
+  "quantityPerTier": 20,
+  "validDays": 30
+}
+```
+
+**Phản hồi**:
+
+- `201`: Created batches (201 Created).
+- `400`: Validation failed (zod): body `{ statusCode: 400, message: "Validation failed", issues: [{path, message}] }`. (e.g. percentage outside 1..100, quantityPerTier outside 1..500, unknown field).
+- `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
+- `404`: Unknown shop.
+- `409`: Could not generate unique codes after 3 attempts; retry.
+
+Ví dụ phản hồi thành công:
+
+```json
+{
+  "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
+  "batches": [
+    {
+      "tier": "Diamond",
+      "batchId": "0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b",
+      "title": "Loyalty Diamond 30%",
+      "percentage": 30,
+      "startAt": "2026-11-20T00:00:00.000Z",
+      "endAt": "2026-12-20T00:00:00.000Z",
+      "codes": [
+        {
+          "id": "7700123456789013",
+          "promoCode": "K7M2QX9PRT"
+        }
+      ]
+    }
+  ]
+}
+```
+
+<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
+
+Creates one batch of single-use PERCENT_OFF codes per tier (default Silver 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).
 
 </details>
 

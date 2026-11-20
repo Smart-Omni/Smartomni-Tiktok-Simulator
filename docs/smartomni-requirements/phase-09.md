@@ -2,10 +2,29 @@
 
 Status: **BLOCKED** for this work (the SmartOmni platform repo is reference only). The simulator side of steps 1-4 is Phase 09a (coupon data, read API, checkout discount). Steps 5-11 below belong to SmartOmni; 09b adds only the simulator-side data they rely on.
 
-## Step 5 - lock the unverified voucher-creation API
-- `promotion.coupon_create` is `unsupported` in `contracts/manifest.json`: no coupon-creation endpoint is verified for VN (the OAS has none; `/promotion/202309/activities` is a promotion-activity API and must NOT be substituted).
-- SmartOmni must return a clear "not supported / not verified" message for "Admin issues a voucher through the API" and must never email a code as if it had been created. The simulator proves the other half: signed `POST/PUT/PATCH/DELETE` on any `/promotion/...` path other than coupon search returns the router's plain 404 (`tiktok-coupons.e2e-spec.ts`).
-- Reading coupons (`POST /promotion/202406/coupons/search`, `GET /promotion/202406/coupons/{id}`, scope placeholder `sim.promotion.read`) proves nothing about the right to create or audit them.
+## Step 5 - loyalty vouchers from pre-created code batches (Phase 09c)
+SmartOmni never creates a coupon through the API: `promotion.coupon_create` stays `unsupported` + `LOCKED` in `contracts/manifest.json` (the OAS has none; `/promotion/202309/activities` is a promotion-activity API and must NOT be substituted). SmartOmni must still return a clear "not supported" message for "Admin creates a voucher through the API" and never email a code as if it had been created. Signed `POST/PUT/PATCH/DELETE` on any `/promotion/...` path other than coupon search returns the router's plain 404 (`tiktok-coupons.e2e-spec.ts`).
+
+Instead, like on the real TikTok Shop, the seller creates a **batch of single-use codes** on the Seller Center beforehand (simulator: Seller Center > Vouchers > Code batches, or `POST /test-admin/scenarios/loyalty-vouchers` for test data). Every code is its own coupon with `usage_limits.redemption_limit = 1`; codes of one batch share the title, discount and validity. Batch codes are private: buyers never see them in the shop and must type the code SmartOmni gave them.
+
+SmartOmni flow:
+1. **Staff configure tier -> batch** by title (e.g. Diamond -> `Loyalty Diamond 30%`). The percentages are SmartOmni configuration, not simulator rules.
+2. **Pull the codes** with `POST /promotion/202406/coupons/search` (`title_keyword` = the batch title, case-insensitive "contains"; `status: ["ONGOING"]`; `page_size=100`, follow `next_page_token`). Store `coupon_id` + `promo_code`. Pull again when the pool of free codes runs low (the seller can add a new batch with the same title).
+3. **Customer claims** -> hand out one code not handed out yet. Who received which code, and the issue/claim dates, are SmartOmni data (the simulator has no claim concept; `claimed_count` = `redeemed_count`).
+4. **Track usage** with `GET /promotion/202406/coupons/{coupon_id}`, `usage_stats.redeemed_count` and `status` (Search has no `usage_stats`):
+
+   | `status` | `redeemed_count` | Meaning | SmartOmni |
+   |---|---|---|---|
+   | `ONGOING` | 0 | Free / handed out, not used yet | Keep polling if handed out |
+   | `ONGOING` | 1 | Used in an order | Stop polling, mark used |
+   | `DEACTIVATED` | 0 or 1 | Burned (an UNPAID order using it was cancelled) or switched off by the seller | Stop polling, never hand out again |
+   | `EXPIRED` | 0 or 1 | Expired | Stop polling |
+   | `NOT_START` | 0 | Not started | Do not hand out yet |
+
+   Every state other than "free" is final, so the set of codes to poll only shrinks. Poll only codes handed out and not final; filter expired/deactivated codes in bulk with Search `status: ["EXPIRED", "DEACTIVATED"]`. `status` stays `ONGOING` after use (the OAS has no "used up" status).
+5. **Orders do not say which code was used** (Order Detail has no coupon field). Loyalty does not need it: points come from `sub_total` after discount; the discount itself is in `seller_discount` / `subtotal_deduction_seller`. `voucher_deduction_seller` is a discount type code in the OAS, not an amount.
+
+Decisions and the full contract: `DECISIONS.md` section Phase 09c. Reading coupons (scope placeholder `sim.promotion.read`) proves nothing about the right to create or audit them.
 
 ## Steps 6-11 (loyalty / Customer Portal) - see 09b
 Order data SmartOmni needs: shop/connection, source status, completion time, payable product amount after discount (`payment.sub_total`, with `seller_discount`, shipping and tax as separate components), tax and shipping excluded from points. Claim endpoint, 15-day rule, one-time claim by constraint, tiers (Standard <500, Silver >=500, Platinum >=1000, Diamond >=1500) and the Customer Portal account are SmartOmni work.

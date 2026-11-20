@@ -97,7 +97,7 @@ React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). 
 | `/account/orders`, `/account/messages` | My orders (tabs, tracking, cancel, return) and chat with the shop | buyer |
 | `/seller-center` | Seller Center home: to-do counts, business overview (mock), shop, latest orders | seller |
 | `/seller-center/orders`, `/orders/:id` | Manage orders (arrange shipment, print label, simulate carrier, cancel) and order detail | seller |
-| `/seller-center/returns`, `/products`, `/vouchers`, `/messages` | Returns & refunds, products + stock history, vouchers, buyer chat | seller |
+| `/seller-center/returns`, `/products`, `/vouchers`, `/messages` | Returns & refunds, products + stock history, vouchers (tabs Vouchers and Code batches: single-use code batches for SmartOmni loyalty), buyer chat | seller |
 | `/seller-center/products/new`, `/products/:id/edit` | Product page: title/description, up to 9 uploaded images (first is the main one), category by level or search, brand, attributes generated from the category (required ones starred), package weight/dimensions, variants on create | seller |
 | `/console` | Test Console (unchanged) | developers |
 | `/seller/authorize` | OAuth consent page for SmartOmni (unchanged) | seller |
@@ -234,6 +234,7 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 | 07b Aftersale | return search/records/approve/reject, cancellation search/approve/reject, reject reasons, eligibility | Partial returns never change the order status; return window `RETURN_WINDOW_DAYS` (15, business clock) is a test rule; `rma_202604` is not served. |
 | 08 Conversations | list/messages/detail/send (TEXT only, 202309), `NEW_MESSAGE`/`NEW_CONVERSATION` events | Send 202606 and image upload return 501. A conversation flag can drop the send response (indeterminate send). |
 | 09a Coupons | `POST /promotion/202406/coupons/search`, `GET .../coupons/{id}`; Seller creates coupons only via `/demo`; checkout applies a code to the product subtotal | No create-voucher route exists on the TikTok router (locked). |
+| 09c Voucher batches | Seller Center creates batches of 1-500 single-use 10-character codes (`/demo/shops/:shopId/coupon-batches`, `POST /test-admin/scenarios/loyalty-vouchers`); SmartOmni pulls them with Search Coupon List / Get Coupon; an UNPAID cancel burns the code | Still no create-voucher API; batch codes are hidden from buyers; see DECISIONS Phase 09c. |
 | 09b Loyalty data | `POST /test-admin/scenarios/loyalty-orders` creates orders around the 15-day boundary with the business clock | Points and claims are SmartOmni's job. |
 
 ## Connecting SmartOmni (only the base URL and credentials change)
