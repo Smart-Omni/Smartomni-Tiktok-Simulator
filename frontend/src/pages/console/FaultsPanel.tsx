@@ -66,14 +66,14 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
       </div>
       <AsyncState {...faults} onRetry={faults.reload} isEmpty={(d) => d.items.length === 0} emptyText="No active faults.">
         {(d) => (
-          <table>
+          <div className="scroll"><table>
             <thead><tr><th>Target</th><th>Kind</th><th>Match</th><th>Params</th><th>Uses left</th><th>Scope</th><th /></tr></thead>
             <tbody>
               {d.items.map((f) => (
                 <tr key={f.id}><td>{f.target}</td><td>{f.kind}</td><td>{f.pathMatch ?? '(any)'}</td><td><code>{JSON.stringify(f.params)}</code></td><td>{f.remaining ?? 'unlimited'}</td><td>{f.shopId ? 'shop' : 'all'}</td><td><button onClick={() => remove(f.id)}>Remove</button></td></tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </AsyncState>
     </div>

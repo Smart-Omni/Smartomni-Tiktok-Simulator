@@ -20,7 +20,15 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .app .admin-nav button[aria-current=page] { background:#171717; color:#fff; }
 .admin-sidebar-note { display:flex; align-items:center; gap:9px; border-top:1px solid var(--line); padding:18px 8px 0; margin-top:auto; color:var(--muted); font-size:10px; }
 .admin-sidebar-note strong { color:var(--fg); font-weight:500; }
-.admin-workspace { min-width:0; min-height:0; height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.admin-workspace { min-width:0; min-height:0; height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:auto; scrollbar-width:thin; scrollbar-color:#c8c8c8 transparent; }
+.admin-workspace::-webkit-scrollbar { width:6px; height:6px; }
+.admin-workspace::-webkit-scrollbar-track { background:transparent; }
+.admin-workspace::-webkit-scrollbar-thumb { background:#c8c8c8; border-radius:999px; }
+.admin-workspace::-webkit-scrollbar-thumb:hover { background:#999; }
+.admin-workspace::-webkit-scrollbar-button { display:none; width:0; height:0; }
+@supports selector(::-webkit-scrollbar) {
+  .admin-workspace { scrollbar-width:auto; scrollbar-color:auto; }
+}
 .admin-context-bar { min-height:96px; margin:0 34px; padding:22px 0; border-bottom:1px solid #d7d7d7; display:flex; justify-content:space-between; align-items:center; gap:20px; }
 .admin-workspace-welcome { display:flex; flex-direction:column; gap:5px; }
 .admin-workspace-welcome strong { font-size:17px; font-weight:500; letter-spacing:-.4px; }
@@ -193,3 +201,10 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-page-info p:last-child { margin-bottom:0; }
 .admin-connection-details { margin:16px 0; font-size:11px; color:#777; }
 .admin-connection-details summary { cursor:pointer; }
+.admin-heading-actions,#admin-page-actions,.admin-inline-actions { display:flex; align-items:center; gap:12px; }
+.admin-heading-actions { margin-left:auto; }
+#admin-page-actions:empty { display:none; }
+.admin-inline-actions { justify-content:flex-end; margin-bottom:20px; }
+.app .admin-console .admin-icon-action { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+.app .admin-console .admin-panel .scroll:first-child { margin-top:0; }
+.admin-panel table { border-radius:16px; overflow:hidden; }

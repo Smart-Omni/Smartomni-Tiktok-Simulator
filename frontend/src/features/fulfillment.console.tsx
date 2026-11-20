@@ -31,7 +31,7 @@ export function FulfillmentPanel({ shopId }: { shopId: string }) {
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (
-          <table>
+          <div className="scroll"><table>
             <thead><tr><th>Order</th><th>Buyer</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {d.items.map((o) => (
@@ -46,7 +46,7 @@ export function FulfillmentPanel({ shopId }: { shopId: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </AsyncState>
     </div>

@@ -35,7 +35,7 @@ export function InventoryHistoryView({ data }: { data: InventoryHistory }) {
       )}
       <h3>Update Inventory API calls</h3>
       {data.attempts.length === 0 ? <div className="state state-empty">SmartOmni has not called Update Inventory yet.</div> : (
-        <table>
+        <div className="scroll"><table>
           <thead><tr><th>#</th><th>Product</th><th>Outcome</th><th className="num">SKUs</th><th>Request</th><th>When</th></tr></thead>
           <tbody>
             {data.attempts.map((a) => (
@@ -49,7 +49,7 @@ export function InventoryHistoryView({ data }: { data: InventoryHistory }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

@@ -22,7 +22,7 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
     <div>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No coupons for this shop.">
         {(d) => (
-          <table>
+          <div className="scroll"><table>
             <thead><tr><th>Code</th><th>Title</th><th>Status</th><th>Used</th><th>From</th><th>Until</th></tr></thead>
             <tbody>
               {d.items.map((c) => (
@@ -36,7 +36,7 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </AsyncState>
     </div>

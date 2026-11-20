@@ -4,6 +4,8 @@ import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
 import { PaginatedList } from '../components/console/PaginatedList';
+import { PageActions } from '../components/console/PageActions';
+import { Plus } from 'lucide-react';
 
 interface AdminConversation {
   id: string;
@@ -36,11 +38,11 @@ export function ChatPanel({ shopId }: { shopId: string }) {
   const post = (path: string, body: unknown) => api(`/test-admin/chat/conversations/${path}`, { method: 'POST', body });
   return (
     <div>
-      <div className="row-wrap">
-        <button onClick={() => void run('Created an unlinked conversation.', () => api('/test-admin/chat/conversations', { method: 'POST', body: { shopId, unknownBuyerNickname: 'unlinked_user', text: 'Hello from an unknown TikTok user' } }))} disabled={!shopId}>
-          New conversation
+      <PageActions>
+        <button className="admin-primary admin-icon-action" onClick={() => void run('Created an unlinked conversation.', () => api('/test-admin/chat/conversations', { method: 'POST', body: { shopId, unknownBuyerNickname: 'unlinked_user', text: 'Hello from an unknown TikTok user' } }))} disabled={!shopId}>
+          <Plus size={14} aria-hidden="true" />New conversation
         </button>
-      </div>
+      </PageActions>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No conversations. Seed the shops first.">
         {(d) => (

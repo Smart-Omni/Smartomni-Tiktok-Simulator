@@ -101,7 +101,7 @@ export function ConsolePage() {
           </label><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
         </div>
         <div className="admin-content">
-          <header className="admin-page-heading"><h1>{screen.title}</h1><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></header>
+          <header className="admin-page-heading"><h1>{screen.title}</h1><div className="admin-heading-actions"><div id="admin-page-actions" /><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></div></header>
           {shops.error ? <div className="state state-error" role="alert">Could not load shops: {shops.error.message}<button onClick={shops.reload}>Retry</button></div> : null}
           {tab === 'Status' && (
             <>

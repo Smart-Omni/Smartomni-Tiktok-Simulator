@@ -3,6 +3,7 @@ import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
 import { useAsync } from '../../lib/useAsync';
 import { statusTone } from '../../components/console/statusTone';
+import { PageActions } from '../../components/console/PageActions';
 
 interface TokenView {
   id: string;
@@ -35,9 +36,9 @@ export function TokensPanel({ shopId }: { shopId: string }) {
   return (
     <div>
       {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
-      <div className="row-wrap">
+      <PageActions>
         <button data-tone="warning" disabled={!shopId} onClick={() => void act('/test-admin/authorization-codes/expire', { shopId })}>Expire unused authorization codes</button>
-      </div>
+      </PageActions>
       <AsyncState {...tokens} onRetry={tokens.reload} isEmpty={(d) => d.items.length === 0} emptyText="No authorization for this shop yet. Connect it from SmartOmni (consent page: /seller/authorize).">
         {(d) => (
           <div>
