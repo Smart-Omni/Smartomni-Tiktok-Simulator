@@ -453,6 +453,9 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const replay = await http.post(`/test-admin/webhooks/${original.id}/replay`).set(admin).expect(201);
       expect(replay.body.payload).toEqual(original.payload);
       expect(replay.body.replayOfId).toBe(original.id);
+      // the replay keeps the subscribing app, so the worker signs it like the original
+      expect(original.appId).toBeTruthy();
+      expect(replay.body.appId).toBe(original.appId);
       expect(id).toBeTruthy();
     });
 

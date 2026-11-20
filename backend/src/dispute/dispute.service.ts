@@ -184,28 +184,17 @@ export class DisputeService {
         ...(input.adjustment || {}),
       };
 
-      // Resolve webhook target URL
-      targetUrl = input.webhook_url || input.webhookUrl;
-      if (!targetUrl) {
-        const sub = await this.prisma.webhookSubscription.findFirst({
-          where: { shopId: shopEntity.id, eventType: 'DISPUTE_STATUS_CHANGE' },
-        });
-        if (sub) {
-          targetUrl = sub.address;
-        } else {
-          const anySub = await this.prisma.webhookSubscription.findFirst({
-            where: { shopId: shopEntity.id },
-          });
-          if (anySub) {
-            targetUrl = anySub.address;
-          } else {
-            targetUrl =
-              process.env.SMARTOMNI_WEBHOOK_URL ||
-              process.env.SMARTOMNI_BE_WEBHOOK_URL ||
-              'http://localhost:8080/api/v1/integrations/tiktok/webhook';
-          }
-        }
-      }
+      // Resolve the subscribing app (its secret signs the delivery) and the webhook target URL
+      const sub =
+        (await this.prisma.webhookSubscription.findFirst({ where: { shopId: shopEntity.id, eventType: 'DISPUTE_STATUS_CHANGE' } })) ??
+        (await this.prisma.webhookSubscription.findFirst({ where: { shopId: shopEntity.id } }));
+      targetUrl =
+        input.webhook_url ||
+        input.webhookUrl ||
+        sub?.address ||
+        process.env.SMARTOMNI_WEBHOOK_URL ||
+        process.env.SMARTOMNI_BE_WEBHOOK_URL ||
+        'http://localhost:8080/api/v1/integrations/tiktok/webhook';
 
       // Build standard TikTok Webhook envelope
       const topic = 'DISPUTE_STATUS_CHANGE';
@@ -233,6 +222,7 @@ export class DisputeService {
       try {
         await this.queue.enqueue({
           shopId: shopEntity.id,
+          appId: sub?.appId ?? null,
           topic,
           payload: envelope as unknown as Prisma.InputJsonValue,
           targetUrl,

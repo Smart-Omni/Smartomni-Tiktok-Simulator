@@ -6,6 +6,8 @@ import { redactString } from '../common/redaction';
 
 export interface EnqueueInput {
   shopId: string;
+  /** App whose secret signs the delivery. Null/omitted = unsigned (ad-hoc /test-admin/webhooks jobs). */
+  appId?: string | null;
   topic: string;
   payload: Prisma.InputJsonValue;
   targetUrl: string;
@@ -61,6 +63,7 @@ export class WebhookQueueService {
     return this.prisma.webhookJob.create({
       data: {
         shopId: input.shopId,
+        appId: input.appId ?? null,
         topic: input.topic,
         payload: input.payload,
         targetUrl: input.targetUrl,
@@ -75,6 +78,7 @@ export class WebhookQueueService {
     const original = await this.prisma.webhookJob.findUniqueOrThrow({ where: { id: jobId } });
     return this.enqueue({
       shopId: original.shopId,
+      appId: original.appId, // a replay of a signed event must be signed too
       topic: original.topic,
       payload: original.payload as Prisma.InputJsonValue,
       targetUrl: original.targetUrl,
