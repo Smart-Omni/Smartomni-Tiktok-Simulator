@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { createHmac } from 'crypto';
 import { createServer, IncomingMessage, Server } from 'http';
 import { AddressInfo } from 'net';
 import request from 'supertest';
@@ -495,7 +496,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
 
   // ---------- signing ----------
   describe('webhook signature and address resolution', () => {
-    it('Authorization = lowercase hex HMAC-SHA256(app_secret, app_key + raw body) on a real HTTP delivery', async () => {
+    it('Authorization = hex HMAC-SHA256(app_secret, app_secret + path + timestamp + raw body) on a real HTTP delivery; timestamp header is real time', async () => {
       const received: { headers: IncomingMessage['headers']; body: string }[] = [];
       const server: Server = createServer((req, res) => {
         let body = '';
@@ -515,6 +516,8 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         const rhttp = request(real.getHttpServer());
         const rt = new TiktokTestClient(rhttp, real.get(APP_CONFIG));
         await resetToSeed(real, rp);
+        // business clock far ahead (as when a test releases ON_HOLD orders): the signed timestamp must still be real time
+        await rhttp.put('/test-admin/clock').set(admin).send({ advanceMs: 31 * 60_000 }).expect(200);
         const a = await rt.connect(0);
         await rt.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'ORDER_STATUS_CHANGE', address: `http://127.0.0.1:${port}/webhook` } }).expect(200);
         const buyer = await rt.buyerSession(0);
@@ -523,14 +526,19 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         expect(received).toHaveLength(1);
         const rc = real.get(APP_CONFIG);
         const timestamp = received[0].headers.timestamp as string;
-        const expected = webhookSignature(rc.seed.appSecret, '/webhook', timestamp, received[0].body);
+        const nowSec = Math.floor(Date.now() / 1000);
+        expect(Math.abs(Number(timestamp) - nowSec)).toBeLessThanOrEqual(5); // real time, not the business clock
+        const body = JSON.parse(received[0].body);
+        expect(body.timestamp - nowSec).toBeGreaterThan(30 * 60); // the envelope keeps business time
+        // independent re-derivation with the receiver's formula (SmartOmni WebhookHmacValidator), not via webhookSignature
+        const secret = rc.seed.appSecret;
+        const expected = createHmac('sha256', secret).update(secret + '/webhook' + timestamp + received[0].body).digest('hex');
         expect(received[0].headers.authorization).toBe(expected);
         expect(expected).toMatch(/^[0-9a-f]{64}$/);
         expect(received[0].headers.authorization).not.toBe(webhookSignature('wrong-secret', '/webhook', timestamp, received[0].body));
-        expect(JSON.parse(received[0].body)).toMatchObject({ type: 1, data: { order_status: 'UNPAID' } });
-        // independent re-derivation with the vector from contracts/signing
-        // vector check updated
+        expect(body).toMatchObject({ type: 1, data: { order_status: 'UNPAID' } });
       } finally {
+        await request(real.getHttpServer()).put('/test-admin/clock').set(admin).send({ reset: true });
         await real.close();
         await new Promise<void>((r) => server.close(() => r()));
       }

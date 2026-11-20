@@ -31,11 +31,12 @@ export function resolveTargetUrl(address: string, rewriteLocalhost: boolean, hos
 }
 
 /**
- * Webhook signature per TikTok OpenAPI & SmartOmni WebhookHmacValidator:
- * `Authorization` = lowercase hex HMAC-SHA256(app_secret, path + timestamp + raw_body).
+ * Webhook signature, matching SmartOmni `WebhookHmacValidator.validateTikTokWebhook` (TikTok's own rule is unverified, see DECISIONS.md):
+ * `Authorization` = lowercase hex HMAC-SHA256(key = app_secret, message = app_secret + path + timestamp + raw_body),
+ * where `path` is the pathname of the receiving URL and `timestamp` is the `timestamp` header (Unix seconds, real time).
  */
 export function webhookSignature(appSecret: string, path: string, timestamp: string | number, rawBody: string): string {
-  return createHmac('sha256', appSecret).update(`${path}${timestamp}${rawBody}`).digest('hex');
+  return createHmac('sha256', appSecret).update(`${appSecret}${path}${timestamp}${rawBody}`).digest('hex');
 }
 
 @Injectable()
@@ -60,7 +61,9 @@ export class FetchWebhookTransport extends WebhookTransport {
       } catch {
         path = '/webhook';
       }
-      const timestamp = String((job.payload as any)?.timestamp ?? Math.floor(Date.now() / 1000));
+      // Real send time, taken per attempt: receivers reject a skew above 5 minutes, so neither the business clock
+      // (which tests advance) nor the enqueue time (retries back off for minutes) may be used. payload.timestamp keeps business time.
+      const timestamp = String(Math.floor(Date.now() / 1000));
       const headers: Record<string, string> = {
         'content-type': 'application/json',
         'x-simulator-webhook-id': job.id,
