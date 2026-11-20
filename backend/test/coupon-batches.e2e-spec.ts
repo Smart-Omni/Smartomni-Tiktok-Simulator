@@ -7,7 +7,7 @@ import { CouponBatchService, CreateBatchInput } from '../src/coupons/coupon-batc
 import { PROMO_CODE_PATTERN } from '../src/coupons/coupon-rules';
 import { cryptoRandomInt, generatePromoCode, PROMO_CODE_ALPHABET } from '../src/coupons/promo-code';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { createApp, resetToSeed } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const DAY = 24 * 3_600_000;
@@ -201,6 +201,164 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       await cancel(buyer, order);
       expect(await prisma.coupon.findFirstOrThrow({ where: { promoCode: codes[0].promoCode } })).toMatchObject({ redeemedCount: 1, deactivated: false });
       expect(await prisma.couponUsage.count()).toBe(1);
+    });
+  });
+
+  describe('/demo coupon batches + TikTok Search/Get (Phase 2)', () => {
+    const SEARCH = '/promotion/202406/coupons/search';
+    const detailPath = (id: string) => `/promotion/202406/coupons/${id}`;
+    type Session = { token: string; shopId: string };
+    const createBatch = (seller: Session, over: Record<string, unknown> = {}) =>
+      http
+        .post(`/demo/shops/${seller.shopId}/coupon-batches`)
+        .set('x-demo-session', seller.token)
+        .send({ title: 'Loyalty Diamond 30%', discount: { type: 'PERCENT_OFF', percentage: 30 }, endAt: new Date(Date.now() + DAY).toISOString(), quantity: 3, ...over });
+    const search = (accessToken: string, body: Record<string, unknown> = {}, query: Record<string, string> = { page_size: '100' }) =>
+      t.call('POST', SEARCH, accessToken, { query, body }).expect(200);
+    const getCoupon = async (accessToken: string, id: string) => (await t.call('GET', detailPath(id), accessToken).expect(200)).body.data.coupon;
+    const batchDetail = async (seller: Session, id: string) => (await http.get(`/demo/shops/${seller.shopId}/coupon-batches/${id}`).set('x-demo-session', seller.token).expect(200)).body;
+
+    it('SmartOmni pulls every code of a batch with Search (pages of 100, case-insensitive title keyword); Get shows a single-use private coupon without batchId', async () => {
+      const { accessToken, seller } = await t.connect(0);
+      const created = await createBatch(seller, { quantity: 150 }).expect(201);
+      expect(created.body.codes).toHaveLength(150);
+      expect(created.body.batch).toMatchObject({ title: 'Loyalty Diamond 30%', quantity: 150, redeemed: 0, status: 'ONGOING', discountText: '30% off' });
+      await createBatch(seller, { title: 'Loyalty Silver 10%', discount: { type: 'PERCENT_OFF', percentage: 10 }, quantity: 2 }).expect(201);
+
+      const seen: string[] = [];
+      let token = '';
+      let pages = 0;
+      do {
+        const r = await search(accessToken, { title_keyword: 'diamond' }, { page_size: '100', ...(token ? { page_token: token } : {}) });
+        expect(r.body.data.total_count).toBe(150);
+        seen.push(...r.body.data.coupons.map((c: any) => c.promo_code));
+        token = r.body.data.next_page_token;
+        pages++;
+      } while (token);
+      expect(pages).toBe(2);
+      expect(seen).toHaveLength(150);
+      expect(new Set(seen)).toEqual(new Set(created.body.codes.map((c: any) => c.promoCode)));
+
+      const one = await getCoupon(accessToken, created.body.codes[0].id);
+      expect(one).toMatchObject({ promo_code: created.body.codes[0].promoCode, usage_limits: { redemption_limit: 1 }, display_channels: ['PRIVATE'], creation_source: 'SELLER_CENTER', usage_stats: { redeemed_count: 0 } });
+      expect(JSON.stringify(one)).not.toMatch(/batch/i);
+      expect(JSON.stringify((await search(accessToken)).body)).not.toMatch(/batch/i);
+    });
+
+    it('a code is used once; an UNPAID cancel burns it (redeemed 0 + DEACTIVATED) and checkout then answers coupon_deactivated', async () => {
+      const { accessToken, seller } = await t.connect(0);
+      const buyer = await t.buyerSession(0);
+      const buyer2 = await t.buyerSession(0, 1);
+      const { codes } = (await createBatch(seller, { quantity: 2 }).expect(201)).body;
+      const [used, burned] = codes;
+      await checkout(buyer, 'key-p2-000001', used.promoCode).expect(201);
+      expect((await getCoupon(accessToken, used.id)).usage_stats.redeemed_count).toBe(1);
+      const reuse = await checkout(buyer2, 'key-p2-000002', used.promoCode);
+      expect(reuse.status).toBe(400);
+      expect(reuse.body.code).toBe('coupon_exhausted');
+
+      const unpaid = (await checkout(buyer, 'key-p2-000003', burned.promoCode).expect(201)).body.order.id;
+      await cancel(buyer, unpaid);
+      expect(await getCoupon(accessToken, burned.id)).toMatchObject({ status: 'DEACTIVATED', usage_stats: { redeemed_count: 0 } });
+      const again = await checkout(buyer2, 'key-p2-000004', burned.promoCode.toLowerCase());
+      expect(again.status).toBe(400);
+      expect(again.body.code).toBe('coupon_deactivated');
+    });
+
+    it('batch codes are hidden from GET /coupons (buyer and seller) but a typed batch code still discounts the checkout', async () => {
+      const { seller } = await t.connect(0);
+      const buyer = await t.buyerSession(0);
+      await http
+        .post(`/demo/shops/${seller.shopId}/coupons`)
+        .set('x-demo-session', seller.token)
+        .send({ title: 'Public', promoCode: 'PUBLIC0001', discount: { type: 'AMOUNT_OFF', amountVnd: 10000 }, endAt: new Date(Date.now() + DAY).toISOString() })
+        .expect(201);
+      const { codes } = (await createBatch(seller).expect(201)).body;
+      const list = async (s: Session) => (await http.get(`/demo/shops/${s.shopId}/coupons`).set('x-demo-session', s.token).expect(200)).body.items.map((c: any) => c.promoCode);
+      expect(await list(buyer)).toEqual(['PUBLIC0001']);
+      expect(await list(seller)).toEqual(['PUBLIC0001']);
+      await checkout(buyer, 'key-p2-000010', codes[0].promoCode).expect(201);
+      const usage = await prisma.couponUsage.findFirstOrThrow({ include: { order: true } });
+      // 2 x 129000 = 258000, 30% => 77400 (shipping and tax are never discounted)
+      expect(usage.discountVnd).toBe(77400);
+      expect(usage.order.sellerDiscount).toBe(77400);
+    });
+
+    it('deactivating a batch switches off every code (Search DEACTIVATED, checkout coupon_deactivated); repeat ok; unknown batch 404', async () => {
+      const { accessToken, seller } = await t.connect(0);
+      const buyer = await t.buyerSession(0);
+      const { batch, codes } = (await createBatch(seller).expect(201)).body;
+      const patch = (id: string, body: unknown) => http.patch(`/demo/shops/${seller.shopId}/coupon-batches/${id}`).set('x-demo-session', seller.token).send(body as object);
+      const res = await patch(batch.id, { deactivated: true }).expect(200);
+      expect(res.body.batch.status).toBe('DEACTIVATED');
+      expect(res.body.codes.every((c: any) => c.status === 'DEACTIVATED')).toBe(true);
+      await patch(batch.id, { deactivated: true }).expect(200);
+      await patch(batch.id, { deactivated: false }).expect(400);
+      await patch('unknown', { deactivated: true }).expect(404);
+      const off = (await search(accessToken, { status: ['DEACTIVATED'] })).body.data.coupons.map((c: any) => c.promo_code);
+      expect(off.sort()).toEqual(codes.map((c: any) => c.promoCode).sort());
+      const r = await checkout(buyer, 'key-p2-000020', codes[0].promoCode);
+      expect(r.body.code).toBe('coupon_deactivated');
+
+      const list = await http.get(`/demo/shops/${seller.shopId}/coupon-batches`).set('x-demo-session', seller.token).expect(200);
+      expect(list.body.items).toEqual([expect.objectContaining({ id: batch.id, status: 'DEACTIVATED', quantity: 3, redeemed: 0 })]);
+      expect((await batchDetail(seller, batch.id)).codes.map((c: any) => c.promoCode)).toEqual(codes.map((c: any) => c.promoCode));
+      await http.get(`/demo/shops/${seller.shopId}/coupon-batches/unknown`).set('x-demo-session', seller.token).expect(404);
+    });
+
+    it('a single code of a batch can still be switched off through PATCH /coupons/:couponId', async () => {
+      const { seller } = await t.connect(0);
+      const { batch, codes } = (await createBatch(seller).expect(201)).body;
+      await http.patch(`/demo/shops/${seller.shopId}/coupons/${codes[0].id}`).set('x-demo-session', seller.token).send({ deactivated: true }).expect(200);
+      const detail = await batchDetail(seller, batch.id);
+      expect(detail.codes.map((c: any) => c.status)).toEqual(['DEACTIVATED', 'ONGOING', 'ONGOING']);
+      expect(detail.batch.status).toBe('ONGOING');
+    });
+
+    it('validates the batch body: no promoCode/redemptionLimit, quantity 1-500', async () => {
+      const { seller } = await t.connect(0);
+      await createBatch(seller, { promoCode: 'MYCODE01' }).expect(400);
+      await createBatch(seller, { redemptionLimit: 2 }).expect(400);
+      await createBatch(seller, { quantity: 0 }).expect(400);
+      await createBatch(seller, { quantity: 501 }).expect(400);
+      expect((await createBatch(seller, { quantity: 500 }).expect(201)).body.codes).toHaveLength(500);
+    });
+
+    it('POST /coupons without promoCode generates a 10-character code; a bad typed code is still rejected', async () => {
+      const { seller } = await t.connect(0);
+      const post = (over: Record<string, unknown>) =>
+        http
+          .post(`/demo/shops/${seller.shopId}/coupons`)
+          .set('x-demo-session', seller.token)
+          .send({ title: 'Auto', discount: { type: 'AMOUNT_OFF', amountVnd: 10000 }, endAt: new Date(Date.now() + DAY).toISOString(), ...over });
+      expect((await post({}).expect(201)).body.promoCode).toMatch(GENERATED);
+      expect((await post({ promoCode: '' }).expect(201)).body.promoCode).toMatch(GENERATED);
+      expect((await post({ promoCode: 'abc12345' }).expect(201)).body.promoCode).toBe('ABC12345');
+      await post({ promoCode: 'ABC12345' }).expect(409);
+      await post({ promoCode: 'bad!' }).expect(400);
+    });
+
+    it('a buyer or the seller of another shop cannot use the batch routes (403)', async () => {
+      const { seller } = await t.connect(0);
+      const other = await t.sellerSession(1);
+      const buyer = await t.buyerSession(0);
+      const { batch } = (await createBatch(seller).expect(201)).body;
+      const body = { title: 'x', discount: { type: 'AMOUNT_OFF', amountVnd: 1 }, endAt: new Date(Date.now() + DAY).toISOString(), quantity: 1 };
+      for (const s of [buyer, other]) {
+        await http.get(`/demo/shops/${seller.shopId}/coupon-batches`).set('x-demo-session', s.token).expect(403);
+        await http.get(`/demo/shops/${seller.shopId}/coupon-batches/${batch.id}`).set('x-demo-session', s.token).expect(403);
+        await http.post(`/demo/shops/${seller.shopId}/coupon-batches`).set('x-demo-session', s.token).send(body).expect(403);
+        await http.patch(`/demo/shops/${seller.shopId}/coupon-batches/${batch.id}`).set('x-demo-session', s.token).send({ deactivated: true }).expect(403);
+      }
+    });
+
+    it('a SHOP reset deletes the batch codes too', async () => {
+      const { seller } = await t.connect(0);
+      await createBatch(seller, { quantity: 5 }).expect(201);
+      const admin = { 'x-test-admin-token': ADMIN_TOKEN };
+      const plan = (await http.post('/test-admin/reset/prepare').set(admin).send({ scope: 'SHOP', shopId: seller.shopId }).expect(201)).body;
+      await http.post('/test-admin/reset').set(admin).send({ scope: 'SHOP', shopId: seller.shopId, confirmationToken: plan.confirmationToken }).expect(201);
+      expect(await prisma.coupon.count({ where: { shopId: seller.shopId } })).toBe(0);
     });
   });
 });

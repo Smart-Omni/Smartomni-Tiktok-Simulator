@@ -210,6 +210,52 @@ const couponExample = {
   audience: 'ALL',
 };
 
+const CouponStatusEnum = ['NOT_START', 'ONGOING', 'EXPIRED', 'DEACTIVATED'];
+const CouponBatchView: Json = obj({
+  id: str('Batch id (UUID). Internal to the simulator: never part of a TikTok response.'),
+  title: str('Shared by every code of the batch'),
+  status: str('DEACTIVATED only when every code is deactivated; otherwise derived from the shared window and the business clock', { enum: CouponStatusEnum }),
+  discountType: str(undefined, { enum: ['AMOUNT_OFF', 'PERCENT_OFF'] }),
+  amountOffVnd: int(undefined, { nullable: true }),
+  percentage: int(undefined, { nullable: true }),
+  maxDiscountVnd: int(undefined, { nullable: true }),
+  discountText: str(undefined, { example: '30% off' }),
+  minSpendVnd: int(undefined, { nullable: true }),
+  audience: str(undefined, { enum: ['ALL', 'NEW'] }),
+  quantity: int('Number of codes'),
+  redeemed: int('Codes used in an order (each code is single-use)'),
+  startAt: str(undefined, { format: 'date-time' }),
+  endAt: str(undefined, { format: 'date-time' }),
+  createdAt: str(undefined, { format: 'date-time' }),
+});
+const batchExample = {
+  id: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b',
+  title: 'Loyalty Diamond 30%',
+  status: 'ONGOING',
+  discountType: 'PERCENT_OFF',
+  amountOffVnd: null,
+  percentage: 30,
+  maxDiscountVnd: null,
+  discountText: '30% off',
+  minSpendVnd: null,
+  audience: 'ALL',
+  quantity: 100,
+  redeemed: 3,
+  startAt: '2026-11-20T00:00:00.000Z',
+  endAt: '2026-12-20T00:00:00.000Z',
+  createdAt: '2026-11-20T00:00:00.000Z',
+};
+const BatchCode: Json = obj({ id: str('Coupon marketplace id (the `coupon_id` of the TikTok API)'), promoCode: str('10 characters from ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), redeemedCount: int('0 or 1'), status: str(undefined, { enum: CouponStatusEnum }) });
+const BatchDetail: Json = obj({ batch: CouponBatchView, codes: arr(BatchCode) }, ['batch', 'codes']);
+const batchDetailExample = {
+  batch: batchExample,
+  codes: [
+    { id: '7700123456789013', promoCode: 'K7M2QX9PRT', redeemedCount: 1, status: 'ONGOING' },
+    { id: '7700123456789014', promoCode: 'HV4N8WZ3EA', redeemedCount: 0, status: 'DEACTIVATED' },
+  ],
+};
+const batchId = { name: 'batchId', description: 'Batch id (`id` of a batch view).', example: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b' };
+
 const AftersaleView: Json = obj({
   id: str('Marketplace request id (cancel_id / return_id)'),
   orderId: str(),
@@ -1272,7 +1318,7 @@ Object.assign(paths, {
     get: op({
       tag: 'Demo Coupons',
       summary: 'List coupons',
-      description: 'Both roles. Seller: every coupon of the shop with status, counters and discount details. Buyer: only coupons usable right now (ONGOING on the business clock, not exhausted, and for audience NEW only if the buyer has no earlier non-cancelled order), with the code shown so it can be typed at checkout.',
+      description: 'Both roles. Codes of a batch (POST /coupon-batches) are never listed here: they are private and a buyer must type a code received from SmartOmni; the seller reads them per batch. Seller: every single voucher of the shop with status, counters and discount details. Buyer: only single vouchers usable right now (ONGOING on the business clock, not exhausted, and for audience NEW only if the buyer has no earlier non-cancelled order), with the code shown so it can be typed at checkout.',
       handler: 'CouponsDemoController.list',
       security: SESSION,
       pathParams: [shopId],
@@ -1294,7 +1340,7 @@ Object.assign(paths, {
     post: op({
       tag: 'Demo Coupons',
       summary: 'Create a coupon (seller)',
-      description: 'SELLER only. Stores a coupon (code upper-cased; `startAt` defaults to the current business time). Not a TikTok API: simulator data setup. Duplicate code in the shop => 409. `endAt` must be after `startAt` when both are given.',
+      description: 'SELLER only. Stores a single voucher (code upper-cased; `startAt` defaults to the current business time). `promoCode` is optional: left out or empty, a unique 10-character code is generated (letters and digits without 0/O/1/I). Not a TikTok API: simulator data setup. Duplicate typed code in the shop => 409. `endAt` must be after `startAt` when both are given.',
       handler: 'CouponsDemoController.create',
       security: SESSION,
       pathParams: [shopId],
@@ -1302,7 +1348,7 @@ Object.assign(paths, {
         schema: obj(
           {
             title: str('1-100 chars'),
-            promoCode: str('6-12 letters or digits', { pattern: '^[A-Za-z0-9]{6,12}$' }),
+            promoCode: str('Optional; 6-12 letters or digits. Omitted or empty => generated.', { pattern: '^([A-Za-z0-9]{6,12})?$' }),
             discount: {
               oneOf: [
                 obj({ type: str(undefined, { enum: ['AMOUNT_OFF'] }), amountVnd: int('1..2,000,000,000') }, ['type', 'amountVnd']),
@@ -1315,7 +1361,7 @@ Object.assign(paths, {
             redemptionLimit: int('1..1,000,000'),
             audience: str('default ALL (REPEAT_CUSTOMERS is not modelled)', { enum: ['ALL', 'NEW'] }),
           },
-          ['title', 'promoCode', 'discount', 'endAt'],
+          ['title', 'discount', 'endAt'],
         ),
         example: { title: 'Giam 10%', promoCode: 'SALE10', discount: { type: 'PERCENT_OFF', percentage: 10, maxDiscountVnd: 30000 }, minSpendVnd: 100000, endAt: '2026-12-31T00:00:00.000Z', redemptionLimit: 100, audience: 'ALL' },
       },
@@ -1350,6 +1396,77 @@ Object.assign(paths, {
       },
       ok: { description: 'Updated coupon.', schema: CouponSeller, example: { ...couponExample, status: 'DEACTIVATED' } },
       errors: { 400: `${VALIDATION} Or endAt not after startAt / redemptionLimit below redeemed count.`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown coupon.' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/coupon-batches': {
+    post: op({
+      tag: 'Demo Coupons',
+      summary: 'Create a batch of single-use codes (seller)',
+      description:
+        'SELLER only. Creates `quantity` coupons in one transaction (all or none), each with its own generated 10-character code (letters and digits without 0/O/1/I, unique in the shop), `redemptionLimit = 1` and the same title, discount, window and audience. The codes are private: hidden from GET /coupons and the checkout voucher picker, a buyer must type one. SmartOmni reads them with Search Coupon List / Get Coupon. Cancelling an UNPAID order that used a code burns it (redemption returned AND code deactivated). Not a TikTok API: simulator data setup.',
+      handler: 'CouponsDemoController.createBatch',
+      security: SESSION,
+      pathParams: [shopId],
+      body: {
+        schema: obj(
+          {
+            title: str('1-100 chars'),
+            discount: {
+              oneOf: [
+                obj({ type: str(undefined, { enum: ['AMOUNT_OFF'] }), amountVnd: int('1..2,000,000,000') }, ['type', 'amountVnd']),
+                obj({ type: str(undefined, { enum: ['PERCENT_OFF'] }), percentage: int('1..100', { minimum: 1, maximum: 100 }), maxDiscountVnd: int('1..2,000,000,000; cap') }, ['type', 'percentage']),
+              ],
+            },
+            minSpendVnd: int('1..2,000,000,000'),
+            startAt: str('ISO datetime (business clock); default now', { format: 'date-time' }),
+            endAt: str('ISO datetime', { format: 'date-time' }),
+            audience: str('default ALL', { enum: ['ALL', 'NEW'] }),
+            quantity: int('1..500', { minimum: 1, maximum: 500 }),
+          },
+          ['title', 'discount', 'endAt', 'quantity'],
+        ),
+        example: { title: 'Loyalty Diamond 30%', discount: { type: 'PERCENT_OFF', percentage: 30 }, endAt: '2026-12-20T00:00:00.000Z', quantity: 100 },
+      },
+      ok: { description: 'The batch and its codes.', schema: obj({ batch: CouponBatchView, codes: arr(obj({ id: str('Coupon marketplace id'), promoCode: str() })) }, ['batch', 'codes']), example: { batch: { ...batchExample, redeemed: 0 }, codes: [{ id: '7700123456789013', promoCode: 'K7M2QX9PRT' }] } },
+      status: 201,
+      errors: { 400: `${VALIDATION} (unknown fields such as promoCode or redemptionLimit are rejected; quantity outside 1..500; endAt not after startAt).`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 409: 'Could not generate unique codes after 3 attempts; retry.' },
+      errorShape: 'nest',
+    }),
+    get: op({
+      tag: 'Demo Coupons',
+      summary: 'List code batches (seller)',
+      description: 'SELLER only. Batches of the shop, newest first, with the number of codes and of used codes.',
+      handler: 'CouponsDemoController.listBatches',
+      security: SESSION,
+      pathParams: [shopId],
+      ok: { description: 'Batches.', schema: obj({ items: arr(CouponBatchView) }, ['items']), example: { items: [batchExample] } },
+      errors: { 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}` },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/coupon-batches/{batchId}': {
+    get: op({
+      tag: 'Demo Coupons',
+      summary: 'Read a code batch with its codes (seller)',
+      description: 'SELLER only. The batch and every code with its own status and redemption count (a burned or single deactivated code is DEACTIVATED).',
+      handler: 'CouponsDemoController.getBatch',
+      security: SESSION,
+      pathParams: [shopId, batchId],
+      ok: { description: 'Batch and codes.', schema: BatchDetail, example: batchDetailExample },
+      errors: { 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown coupon batch (or a batch of another shop).' },
+      errorShape: 'nest',
+    }),
+    patch: op({
+      tag: 'Demo Coupons',
+      summary: 'Deactivate a code batch (seller)',
+      description: 'SELLER only. Body must be exactly `{ "deactivated": true }`: every code of the batch becomes DEACTIVATED (checkout answers coupon_deactivated). Repeating it is harmless. To switch off one code only, use PATCH /coupons/{couponId}.',
+      handler: 'CouponsDemoController.updateBatch',
+      security: SESSION,
+      pathParams: [shopId, batchId],
+      body: { schema: obj({ deactivated: { ...bool('must be true'), enum: [true] } }, ['deactivated']), example: { deactivated: true } },
+      ok: { description: 'Batch and codes after the change.', schema: BatchDetail, example: { batch: { ...batchExample, status: 'DEACTIVATED' }, codes: [{ id: '7700123456789013', promoCode: 'K7M2QX9PRT', redeemedCount: 1, status: 'DEACTIVATED' }] } },
+      errors: { 400: VALIDATION, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown coupon batch.' },
       errorShape: 'nest',
     }),
   },
