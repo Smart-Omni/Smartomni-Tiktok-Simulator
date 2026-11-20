@@ -1,3 +1,4 @@
+import { ShopFooter } from '@/components/shop/ShopFooter';
 import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PackageSearch, Store, Truck } from 'lucide-react';
@@ -181,7 +182,7 @@ function CancelDialog({ order, onClose, onConfirm }: { order: Order; onClose: ()
             Keep order
           </Button>
           <Button
-            className="bg-buyer text-white hover:bg-buyer/90"
+            className="!bg-[#171717] text-white hover:!bg-[#333333] !rounded-lg"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -281,7 +282,7 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
             Cancel
           </Button>
           <Button
-            className="bg-buyer text-white hover:bg-buyer/90"
+            className="!bg-[#171717] text-white hover:!bg-[#333333] !rounded-lg"
             disabled={busy || items.length === 0}
             onClick={async () => {
               setBusy(true);
@@ -373,7 +374,7 @@ function OrderCard({
     switch (a) {
       case 'pay':
         return (
-          <Button key={a} size="sm" className="bg-buyer px-4 text-white hover:bg-buyer/90" onClick={() => onAction(a)}>
+          <Button key={a} size="sm" className="!bg-[#171717] px-4 text-white hover:!bg-[#333333] !rounded-lg" onClick={() => onAction(a)}>
             Pay now
           </Button>
         );
@@ -423,7 +424,7 @@ function OrderCard({
       </ul>
       <div className="flex justify-end gap-2 border-t border-line-soft pt-3 text-sm">
         <span className="text-muted-foreground">Total</span>
-        <span className="font-bold text-buyer">{shopPrice(order.amounts.totalVnd)}</span>
+        <span className="orders-total">{shopPrice(order.amounts.totalVnd)}</span>
       </div>
       <footer className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col text-sm">
@@ -501,13 +502,15 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">My orders</h1>
-      <Tabs value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
-        <TabsList className="mb-5 h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+      <div className="orders-workspace">
+      <Tabs orientation="vertical" className="orders-status-sidebar !flex !flex-col !gap-0" value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
+        <h2>Order status</h2>
+        <TabsList aria-label="Order status" className="orders-status-tabs !flex !h-auto !w-full !flex-col !items-stretch !justify-start !rounded-none !bg-transparent !p-0">
           {orderTabs.map((t) => (
             <TabsTrigger
               key={t.key}
               value={t.key}
-              className="h-9 flex-none rounded-full border border-line bg-white px-4 text-ink data-[state=active]:border-ink data-[state=active]:bg-ink data-[state=active]:text-white data-[state=active]:shadow-none"
+              className="orders-status-tab !h-auto !w-full !flex-none !justify-start !rounded-md !bg-transparent !shadow-none data-[state=active]:!bg-[#171717] data-[state=active]:!text-white"
             >
               {t.label} ({count(t.key)})
             </TabsTrigger>
@@ -515,7 +518,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="transaction-grid">
         <div className="flex min-w-0 flex-col gap-4">
           {shown.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line py-14 text-center">
@@ -534,6 +537,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
         <aside className="self-start lg:sticky lg:top-20">
           <TrackingPanel buyer={buyer} order={tracked} />
         </aside>
+      </div>
       </div>
 
       {dialog?.kind === 'cancel' ? (
@@ -573,5 +577,5 @@ function Orders({ buyer }: { buyer: DemoSession }) {
 export function OrdersPage() {
   const { buyer } = useAuth();
   // the route is guarded by RequireRole BUYER
-  return buyer ? <Orders key={buyer.sessionToken} buyer={buyer} /> : null;
+  return buyer ? <div className="buyer-transaction-page buyer-orders-page"><nav className="transaction-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span aria-current="page">My orders</span></nav><div className="transaction-content"><Orders key={buyer.sessionToken} buyer={buyer} /></div><ShopFooter /></div> : null;
 }

@@ -1,4 +1,20 @@
 /* Buyer homepage */
+.buyer-orders-page article { border:1px solid #e5e5e5; border-radius:12px !important; box-shadow:none !important; --tw-ring-shadow:0 0 #0000; }
+.buyer-orders-page article > header { padding-bottom:14px; }
+.buyer-orders-page article > footer { padding-top:4px; }
+.buyer-orders-page article button { border-radius:7px; font-size:12px; }
+.buyer-orders-page article [aria-pressed=true] { border-color:#777; }
+.buyer-orders-page .orders-total { color:#171717; font-size:17px; font-weight:600; }
+.orders-workspace { display:grid; grid-template-columns:160px minmax(0,1fr); align-items:start; gap:24px; }
+.orders-status-sidebar { padding:18px 12px; background:#fff; border:1px solid #e5e5e5; border-radius:12px; }
+.orders-status-sidebar h2 { margin:0 10px 16px; font-size:13px; font-weight:600; }
+.buyer-orders-page .orders-status-tabs { width:100%; height:auto; gap:4px; margin:0; border:0; }
+.buyer-orders-page .orders-status-tab { flex:none; min-height:36px; padding:8px 10px; border:0; font-size:11px; font-weight:400; color:#777; box-shadow:none; }
+.buyer-orders-page .orders-status-tab[data-state=active] { font-weight:600; box-shadow:none; }
+.buyer-orders-page .transaction-grid { grid-template-columns:minmax(0,1fr) 250px; gap:18px; }
+@media(max-width:1200px) { .buyer-orders-page .transaction-grid { grid-template-columns:1fr; } .buyer-orders-page .transaction-grid > aside { position:static; } }
+@media(max-width:650px) { .orders-workspace { grid-template-columns:1fr; gap:18px; } .buyer-orders-page .orders-status-tabs { flex-direction:row !important; overflow-x:auto; } }
+.buyer-orders-page .orders-status-tab:hover { color:#171717; background:#eaeaea; }
 .buyer-transaction-page { padding-top:0; }
 .transaction-breadcrumb { display:flex; gap:10px; align-items:center; padding:22px 0; font-size:11px; color:#999; }
 .transaction-breadcrumb [aria-current] { color:#333; }

@@ -163,7 +163,7 @@ function AccountPill() {
 export function ShopLayout() {
   const location = useLocation();
   const pathname = location.pathname;
-  const home = pathname === '/' || pathname.startsWith('/product/') || pathname === '/cart' || pathname === '/checkout';
+  const home = pathname === '/' || pathname.startsWith('/product/') || pathname === '/cart' || pathname === '/checkout' || pathname === '/account/orders';
   const { buyer } = useAuth();
   return (
     <div className={cn("min-h-screen font-sans text-[15px] text-ink", home ? "buyer-home-shell" : "bg-white")}>
