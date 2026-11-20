@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Send, Store } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: 
  * unsupported types are labelled instead of faked, a SELLER cannot reply when can_send_message is false, and a
  * BUYER without a conversation starts one through POST chat/messages.
  */
-export function ChatThread({ session, conversationId, onSent }: { session: DemoSession; conversationId: string | undefined; onSent: () => void }) {
+export function ChatThread({ session, conversationId, onSent, appearance, shopName }: { session: DemoSession; conversationId: string | undefined; onSent: () => void; appearance?: 'storefront'; shopName?: string }) {
   const buyer = session.role === 'BUYER';
   const thread = useAsync(() => (conversationId ? getConversationMessages(session, conversationId) : Promise.resolve(undefined)), [session.sessionToken, conversationId], 3000);
   const [text, setText] = useState('');
@@ -52,11 +52,11 @@ export function ChatThread({ session, conversationId, onSent }: { session: DemoS
   const title = buyer ? 'Chat with the shop' : thread.data?.conversation.buyerNickname;
 
   return (
-    <section aria-label="Chat thread" className="flex h-full min-h-[480px] flex-col">
-      <header className="border-b border-line-soft px-5 py-3 font-semibold">{title ?? <Skeleton className="h-5 w-32" />}</header>
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto bg-surface-2 px-5 py-4">
+    <section aria-label="Chat thread" className={cn('flex h-full flex-col', appearance === 'storefront' ? 'storefront-thread' : 'min-h-[480px]')}>
+      <header className="chat-thread-header border-b border-line-soft px-5 py-3 font-semibold">{appearance === 'storefront' ? <><span className="chat-shop-avatar"><Store size={19} /></span><span>{shopName ?? 'Shop'}<small>Shop conversation</small></span></> : title ?? <Skeleton className="h-5 w-32" />}</header>
+      <div className="chat-message-area flex flex-1 flex-col gap-2 overflow-y-auto bg-surface-2 px-5 py-4">
         {!conversationId ? (
-          <p className="m-auto text-sm text-muted-foreground">Say hello to start a conversation.</p>
+          <div className="chat-empty m-auto text-center text-sm text-muted-foreground">{appearance === 'storefront' && <MessageSquare size={27} aria-hidden />}<p>Say hello to start a conversation.</p></div>
         ) : thread.loading && !thread.data ? (
           <Skeleton className="h-10 w-2/3" />
         ) : thread.error && !thread.data ? (
@@ -74,7 +74,7 @@ export function ChatThread({ session, conversationId, onSent }: { session: DemoS
                   <span className="text-[11px] text-muted-2">
                     {m.roleLabel} · {time(m.at)}
                   </span>
-                  <span className={cn('rounded-2xl px-3.5 py-2 text-sm', mine ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-white ring-1 ring-line-soft')}>
+                  <span className={cn('chat-bubble rounded-2xl px-3.5 py-2 text-sm', mine ? cn('chat-bubble-mine rounded-br-sm', appearance !== 'storefront' && 'bg-primary text-primary-foreground') : 'rounded-bl-sm bg-white ring-1 ring-line-soft')}>
                     {m.supported ? m.text : <em>[unsupported message type {m.type}]</em>}
                   </span>
                 </li>
@@ -93,9 +93,9 @@ export function ChatThread({ session, conversationId, onSent }: { session: DemoS
           {error}
         </p>
       ) : null}
-      <form onSubmit={send} className="flex items-center gap-2 border-t border-line-soft p-3">
-        <Input aria-label="Message" placeholder="Type a text message" maxLength={2000} value={text} disabled={!canSendHere} onChange={(e) => setText(e.target.value)} className="h-10 rounded-full" />
-        <Button type="submit" size="icon" aria-label="Send" disabled={!canSend} className="size-10">
+      <form onSubmit={send} className="chat-composer flex items-center gap-2 border-t border-line-soft p-3">
+        <Input aria-label="Message" placeholder="Type a text message" maxLength={2000} value={text} disabled={!canSendHere} onChange={(e) => setText(e.target.value)} className={appearance === 'storefront' ? '!h-11 !rounded-[10px] !text-xs' : 'h-10 rounded-full'} />
+        <Button type="submit" size="icon" aria-label="Send" disabled={!canSend} className={appearance === 'storefront' ? '!size-11 !rounded-[10px] !bg-[#171717] !text-white disabled:!bg-[#eaeaea] disabled:!text-[#999] disabled:!opacity-100' : 'size-10'}>
           <Send />
         </Button>
       </form>

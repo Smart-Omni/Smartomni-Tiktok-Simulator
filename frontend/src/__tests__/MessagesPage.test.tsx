@@ -59,8 +59,7 @@ describe('Buyer messages', () => {
 
   it('starts a conversation with the shop through POST chat/messages', async () => {
     renderPage();
-    expect(await screen.findByRole('note')).toHaveProperty('textContent', 'Supported message types: TEXT. Not simulated: IMAGE, VIDEO.');
-    const thread = screen.getByRole('region', { name: 'Chat thread' });
+    const thread = await screen.findByRole('region', { name: 'Chat thread' });
     expect(within(thread).getByText('Say hello to start a conversation.')).toBeTruthy();
     const send = within(thread).getByRole('button', { name: 'Send' }) as HTMLButtonElement;
     fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: '   ' } });
@@ -73,7 +72,7 @@ describe('Buyer messages', () => {
   it('chats with the shop picked in ?shop= and sends the message to that shop', async () => {
     renderPage('/?shop=shop-2');
     const thread = await screen.findByRole('region', { name: 'Chat thread' });
-    expect((screen.getByRole('combobox', { name: 'Shop' }) as HTMLSelectElement).value).toBe('shop-2');
+    expect((await screen.findByRole('button', { name: 'Pottery Shop' })).getAttribute('aria-pressed')).toBe('true');
     fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Hi Pottery' } });
     fireEvent.click(within(thread).getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([{ url: '/demo/shops/shop-2/chat/messages', method: 'POST', body: { text: 'Hi Pottery' } }]));
@@ -88,5 +87,18 @@ describe('Buyer messages', () => {
     fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Thanks' } });
     fireEvent.click(within(thread).getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([{ url: `${base}/chat/conversations/c1/messages`, method: 'POST', body: { text: 'Thanks' } }]));
+  });
+
+  it('filters shops and clears the previous draft when switching shops', async () => {
+    renderPage();
+    const thread = await screen.findByRole('region', { name: 'Chat thread' });
+    fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Draft for Mộc Lan' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search shops' }), { target: { value: 'pottery' } });
+    expect(screen.queryByRole('button', { name: 'Mộc Lan Shop' })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pottery Shop' }));
+    await waitFor(() => expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe(''));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), { target: { value: 'Hi new shop' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([{ url: '/demo/shops/shop-2/chat/messages', method: 'POST', body: { text: 'Hi new shop' } }]));
   });
 });
