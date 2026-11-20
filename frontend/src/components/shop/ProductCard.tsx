@@ -25,8 +25,9 @@ export function ProductImage({ product, className }: { product: EnrichedProduct;
 
 export function ProductCard({ product, className, compact = false }: { product: EnrichedProduct; className?: string; compact?: boolean }) {
   if (compact) return <Link to={productPath(product)} className="buyer-product-card">
-    <div className="buyer-product-photo"><ProductImage product={product} className="aspect-[4/5] rounded-none" /></div>
+    <div className="buyer-product-photo"><ProductImage product={product} className="aspect-[4/5] rounded-none" />{product.discountPct > 0 && <span className="buyer-product-discount">-{product.discountPct}%</span>}</div>
     <div className="buyer-product-info"><h3>{product.title}</h3><strong>{shopPrice(product.minPriceVnd)}</strong>
+      <div className="buyer-product-rating" aria-label={`Rated ${product.rating.toFixed(1)} out of 5`}><Star size={12} fill="currentColor" aria-hidden="true" /><span>{product.rating.toFixed(1)}</span><span className="buyer-product-rating-max">/ 5</span></div>
     </div>
   </Link>;
   return (
