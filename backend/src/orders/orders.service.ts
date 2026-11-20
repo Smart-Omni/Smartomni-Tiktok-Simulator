@@ -318,8 +318,9 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
       await tx.orderLine.updateMany({ where: { orderId }, data: { displayStatus: to } });
       if (to === 'CANCELLED') {
         await this.releaseStock(tx, current);
-        // Phase 09a: an UNPAID order gives its coupon redemption back (exactly once); after payment the redemption stays used
-        if (current.status === 'UNPAID') await releaseCouponForOrder(tx, orderId);
+        // Phase 09a: an UNPAID order gives its coupon redemption back (exactly once); after payment the redemption stays used.
+        // Phase 09c (Q8): a code of a batch is burned (deactivated) at the same time, so it never goes back to the pool.
+        if (current.status === 'UNPAID') await releaseCouponForOrder(tx, orderId, now);
       }
       await tx.orderAudit.create({ data: { orderId, fromStatus: current.status, toStatus: to, actor, note: opts.note ?? '', at: now } });
       const updated = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: orderInclude });

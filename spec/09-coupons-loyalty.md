@@ -70,3 +70,16 @@ Baseline: POST /promotion/202406/coupons/search, GET /promotion/202406/coupons/{
 - Bằng chứng: `backend/test/loyalty-scenarios.e2e-spec.ts` 3 test pass (thời điểm hoàn tất đúng biên, DELIVERED/ON_HOLD không hoàn tất, tiền tách thành phần, clock được khôi phục và API ký vẫn hoạt động, thiếu token admin 401).
 - BLOCKED (repo platform chỉ để tham khảo): bước 6 (lưu dữ liệu đơn cho loyalty), 7 (claim Customer Portal theo tài khoản đã xác thực + tenant), 8 (claim một lần bằng constraint, kiểm 15 ngày), 9 (tính `floor(sub_total / 1000)`, pending reconciliation), 10 (hạng Standard/Silver/Platinum/Diamond), và các tiêu chí tương ứng. Chi tiết yêu cầu: `docs/smartomni-requirements/phase-09.md` mục 09b.
 - Ngày hoàn thành: chưa (PARTIAL).
+
+### 09c - Lô mã dùng một lần (voucher loyalty) - simulator side
+
+- Plan: `docs/voucher-issuance-plan.md`. Branch `feature/voucher-batches` (chưa push, chưa PR).
+- Đã làm:
+  - Migration `20261125000000_coupon_batch` (`Coupon.batchId` + index); bộ sinh mã 10 ký tự `backend/src/coupons/promo-code.ts`; `CouponBatchService` (tạo lô 1-500 mã trong một transaction, kiểm trùng trong shop, retry tối đa 3 lần; list/get/deactivate), chỉ `DemoModule` và `TestAdminModule` import.
+  - Hủy đơn UNPAID dùng mã lô: hoàn lượt **và** tắt mã (đốt mã) trong cùng transaction; voucher lẻ giữ 09a-5.
+  - `/demo/shops/:shopId/coupon-batches` (POST, GET, GET `:batchId`, PATCH `{deactivated:true}`), chỉ seller của shop. `GET /coupons` ẩn mã lô với cả buyer và seller. `POST /coupons` không có `promoCode` thì tự sinh mã. Search Coupon List lọc `title_keyword` không phân biệt hoa thường.
+  - `POST /test-admin/scenarios/loyalty-vouchers` (Silver 10 / Platinum 20 / Diamond 30); `GET /test-admin/coupons` thêm `batchId`, phân trang `after`/`limit`/`next`, `usages` (đơn đã dùng mã).
+  - Seller Center: tab **Code batches** (tạo lô, bảng lô, View codes, Copy all, Download CSV, Deactivate); ô Code của New voucher thành tùy chọn; Seller Home thêm "Code batches: n active". Test Console tab Coupons: cột Batch, Used in order, lọc theo lô, Load more, nút tạo lô loyalty.
+  - Tài liệu: `DECISIONS.md` mục Phase 09c, `docs/smartomni-requirements/phase-09.md` Step 5, `docs/api-reference.md` (7.8, 8.7, 9), `docs/openapi.json`.
+- Bằng chứng: backend `test/coupon-batches.e2e-spec.ts` (generator, service, đốt mã, `/demo`, Search/Get, `/test-admin`); toàn bộ backend 27 suites pass; frontend Vitest (`SellerCenterPages.test.tsx`, `SellerHome.test.tsx`) pass; e2e `e2e/tests/phase09c-voucher-batches.spec.ts` (xem kết quả trong commit `test(e2e)`).
+- Chưa làm (phía SmartOmni, xem `docs/smartomni-requirements/phase-09.md`): map tier -> lô, giao mã cho khách, ghi ngày phát/claim, poll Get Coupon.

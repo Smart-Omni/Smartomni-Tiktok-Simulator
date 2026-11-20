@@ -580,7 +580,7 @@ export const paths: PathsFragment = {
           {
             status: arr(str('', { enum: ['NOT_START', 'ONGOING', 'EXPIRED', 'DEACTIVATED'] })),
             display_type: arr(str('', { enum: ['REGULAR', 'LIVE', 'CREATOR_EXCLUSIVE', 'CHAT', 'PROMO_CODE'] })),
-            title_keyword: str('substring match on title', { minLength: 1, maxLength: 100 }),
+            title_keyword: str('case-insensitive substring match on title (simulator choice; the OAS does not say)', { minLength: 1, maxLength: 100 }),
           },
           [],
           { description: 'Arrays hold at most 20 strings. Unknown fields -> 400.', additionalProperties: false },

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   CanActivate,
   Controller,
@@ -26,6 +27,7 @@ import { APP_CONFIG, AppConfig } from '../config/config';
 import { FaultService } from '../faults/fault.service';
 import { historyOf } from '../demo/inventory.controller';
 import { couponStatus } from '../coupons/coupon-rules';
+import { CouponsModule } from '../coupons/coupons.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { ChatModule } from '../chat/chat.module';
 import { ChatAdminController, ChatAdminGuard } from './chat-admin.controller';
@@ -194,12 +196,26 @@ export class TestAdminController {
 
   // ---- Phase 09a: coupons (read-only overview for the Test Console) ----
 
+  /**
+   * Phase 09c: filter by batch and page with a `seq` cursor (`after`, `limit` 1-500). `usages` links a code to the orders that used it: that
+   * link exists ONLY here (DECISIONS 09c-Q10), so tests and the Test Console can check which code went into which order.
+   */
   @Get('coupons')
-  async listCoupons(@Query('shopId') shopId?: string) {
+  async listCoupons(@Query('shopId') shopId?: string, @Query('batchId') batchId?: string, @Query('after') after?: string, @Query('limit') limit?: string) {
+    const take = limit === undefined || limit === '' ? 200 : Number(limit);
+    if (!Number.isInteger(take) || take < 1 || take > 500) throw new BadRequestException('limit must be an integer between 1 and 500');
+    const cursor = after === undefined || after === '' ? undefined : Number(after);
+    if (cursor !== undefined && (!Number.isInteger(cursor) || cursor < 0)) throw new BadRequestException('after must be the `next` value of a previous page');
     const now = this.businessClock.now();
-    const rows = await this.prisma.coupon.findMany({ where: shopId ? { shopId } : {}, orderBy: { seq: 'asc' }, take: 200 });
+    const rows = await this.prisma.coupon.findMany({
+      where: { ...(shopId ? { shopId } : {}), ...(batchId ? { batchId } : {}), ...(cursor !== undefined ? { seq: { gt: cursor } } : {}) },
+      orderBy: { seq: 'asc' },
+      take: take + 1,
+      include: { usages: { orderBy: { createdAt: 'asc' }, include: { order: { select: { externalId: true } } } } },
+    });
+    const page = rows.slice(0, take);
     return {
-      items: rows.map((c) => ({
+      items: page.map((c) => ({
         id: c.externalId,
         title: c.title,
         promoCode: c.promoCode,
@@ -208,7 +224,10 @@ export class TestAdminController {
         redemptionLimit: c.redemptionLimit,
         startAt: c.startAt.toISOString(),
         endAt: c.endAt.toISOString(),
+        batchId: c.batchId,
+        usages: c.usages.map((u) => ({ orderId: u.order.externalId, discountVnd: u.discountVnd, at: u.createdAt.toISOString() })),
       })),
+      next: rows.length > take ? String(page[page.length - 1].seq) : '',
     };
   }
 
@@ -467,5 +486,5 @@ export class TestAdminController {
   }
 }
 
-@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule, FulfillmentModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController, SandboxAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
+@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule, FulfillmentModule, CouponsModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController, SandboxAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
 export class TestAdminModule {}
