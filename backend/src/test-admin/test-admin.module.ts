@@ -26,6 +26,7 @@ import { APP_CONFIG, AppConfig } from '../config/config';
 import { FaultService } from '../faults/fault.service';
 import { historyOf } from '../demo/inventory.controller';
 import { couponStatus } from '../coupons/coupon-rules';
+import { CouponsModule } from '../coupons/coupons.module';
 import { OAuthModule } from '../oauth/oauth.module';
 import { ChatModule } from '../chat/chat.module';
 import { ChatAdminController, ChatAdminGuard } from './chat-admin.controller';
@@ -467,5 +468,5 @@ export class TestAdminController {
   }
 }
 
-@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule, FulfillmentModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController, SandboxAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
+@Module({ imports: [OAuthModule, OrdersModule, ChatModule, AftersaleModule, FulfillmentModule, CouponsModule], controllers: [TestAdminController, ChatAdminController, LoyaltyAdminController, SandboxAdminController], providers: [TestAdminGuard, ChatAdminGuard, AdminTokenGuard, TokenAdminService] })
 export class TestAdminModule {}

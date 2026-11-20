@@ -100,12 +100,19 @@ export async function recordCouponUsage(tx: Prisma.TransactionClient, applied: A
 /**
  * Gives the redemption back when an order is cancelled BEFORE payment. Exactly once: the usage row is deleted first and the counter
  * is decremented only if that delete removed a row, so a repeated cancel can never return it twice. After payment the redemption stays used.
+ * Phase 09c (Q8): a code of a batch (batchId set) is also deactivated ("burned") in the same UPDATE, at business time `now`: a single-use
+ * code already handed to one customer must not go back to the pool. A single voucher (batchId NULL) keeps the 09a-5 rule and is untouched.
  */
-export async function releaseCouponForOrder(tx: Prisma.TransactionClient, orderId: string): Promise<void> {
+export async function releaseCouponForOrder(tx: Prisma.TransactionClient, orderId: string, now: Date): Promise<void> {
   const usage = await tx.couponUsage.findFirst({ where: { orderId } });
   if (!usage) return;
   const removed = await tx.couponUsage.deleteMany({ where: { id: usage.id } });
   if (removed.count === 1) {
-    await tx.$executeRaw`UPDATE "Coupon" SET "redeemedCount" = GREATEST("redeemedCount" - 1, 0) WHERE id = ${usage.couponId}`;
+    await tx.$executeRaw`
+      UPDATE "Coupon" SET
+        "redeemedCount" = GREATEST("redeemedCount" - 1, 0),
+        "deactivated" = CASE WHEN "batchId" IS NOT NULL THEN true ELSE "deactivated" END,
+        "updatedAt" = CASE WHEN "batchId" IS NOT NULL THEN ${now} ELSE "updatedAt" END
+      WHERE id = ${usage.couponId}`;
   }
 }
