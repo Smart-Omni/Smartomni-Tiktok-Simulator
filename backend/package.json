@@ -17,7 +17,7 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "seed": "node dist/seed-cli.js",
-    "openapi:export": "node dist/openapi-export.js"
+    "openapi:export": "npm run build && node dist/openapi-export.js"
   },
   "dependencies": {
     "@nestjs/common": "10.4.22",

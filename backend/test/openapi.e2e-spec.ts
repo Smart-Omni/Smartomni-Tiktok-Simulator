@@ -1,4 +1,6 @@
 import { INestApplication } from '@nestjs/common';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import request from 'supertest';
 import { buildOpenApiDocument } from '../src/openapi/build-document';
 import { setupSwagger } from '../src/openapi/swagger';
@@ -33,6 +35,11 @@ describe('OpenAPI document', () => {
     const registered = registeredRoutes(app).filter((r) => !/ \/api-docs/.test(r));
     expect(registered.filter((r) => !documented.includes(r))).toEqual([]);
     expect(documented.filter((r) => !registered.includes(r))).toEqual([]);
+  });
+
+  it('docs/openapi.json is up to date with the source (re-run `npm run openapi:export` after route changes)', () => {
+    const exported = JSON.parse(readFileSync(join(__dirname, '..', '..', 'docs', 'openapi.json'), 'utf8'));
+    expect(exported).toEqual(JSON.parse(JSON.stringify(buildOpenApiDocument())));
   });
 
   it('every operation has a summary, a response and declared security (or is explicitly public)', () => {
