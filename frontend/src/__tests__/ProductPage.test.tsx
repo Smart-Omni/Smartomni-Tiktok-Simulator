@@ -77,6 +77,15 @@ describe('ProductPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('switches information tabs with keyboard and retains review filters', async () => {
+    renderProduct('mock-1');
+    const info = await screen.findByRole('tab', { name: 'Product information' });
+    fireEvent.keyDown(info, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Ratings & reviews' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('group', { name: 'Filter reviews' })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Ratings & reviews' }), { key: 'Home' });
+    expect(screen.getByRole('tabpanel', { name: 'Product information' })).toBeTruthy();
+  });
   it('changes the price with the selected SKU', async () => {
     renderProduct('mock-1');
     expect((await screen.findByTestId('price')).textContent).toBe('₫129.000');

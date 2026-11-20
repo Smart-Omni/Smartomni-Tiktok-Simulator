@@ -5,11 +5,11 @@ import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
 import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
+import { ShopFooter } from '@/components/shop/ShopFooter';
 import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DevMock } from '@/components/ui/mock-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -26,7 +26,7 @@ const soldOut = (s: Sku) => !s.available || s.stock <= 0;
 
 function Breadcrumb({ shopName, title }: { shopName?: string; title: string }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-5 inline-flex h-9 max-w-full items-center gap-1.5 rounded-full bg-surface px-4 text-sm text-muted-foreground">
+    <nav aria-label="Breadcrumb" className="detail-breadcrumb">
       <Link to="/" className="hover:text-ink">
         Home
       </Link>
@@ -45,15 +45,14 @@ function Breadcrumb({ shopName, title }: { shopName?: string; title: string }) {
 }
 
 function Gallery({ product }: { product: EnrichedProduct }) {
-  // real images from the backend; fall back to the single imageUrl, padded with mock color tiles only when there is just one
+  // Use available product images, falling back to the primary image.
   const urls = product.images?.length ? product.images : [product.imageUrl];
   const real = urls.map((imageUrl) => ({ ...product, imageUrl }));
-  const tiles = real.length > 1 ? [] : [1, 2, 3].map((i) => ({ ...product, imageUrl: '', imageBg: imageBackgrounds[(imageBackgrounds.indexOf(product.imageBg) + i) % imageBackgrounds.length] }));
-  const images = [...real, ...tiles];
+  const images = real;
   const [index, setIndex] = useState(0);
   return (
-    <div className="flex flex-col gap-3">
-      <ProductImage product={images[index]} className="rounded-card" />
+    <div className="detail-gallery">
+      <ProductImage product={images[index]} className="rounded-none" />
       <div className="flex gap-2" role="group" aria-label="Product images">
         {images.map((img, i) => (
           <button
@@ -62,9 +61,9 @@ function Gallery({ product }: { product: EnrichedProduct }) {
             aria-label={`Image ${i + 1}`}
             aria-pressed={i === index}
             onClick={() => setIndex(i)}
-            className={cn('w-[72px] cursor-pointer rounded-lg border-2 p-0.5', i === index ? 'border-buyer' : 'border-transparent hover:border-line')}
+            className="detail-thumbnail"
           >
-            <ProductImage product={img} className="rounded-md" />
+            <ProductImage product={img} className="rounded-none" />
           </button>
         ))}
       </div>
@@ -223,10 +222,12 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="detail-buybox">
+      <h1>{product.title}</h1>
+      <p className="detail-rating"><Stars value={product.rating} /><span>{product.rating.toFixed(1)} / 5</span><span>· {compactCount(product.sold)} sold</span></p>
       <div className="flex flex-wrap items-baseline gap-2">
         {product.discountPct > 0 ? <span className="rounded bg-buyer-soft px-1.5 text-sm font-bold text-buyer">-{product.discountPct}%</span> : null}
-        <span className="text-3xl font-bold text-buyer" data-testid="price">
+        <span className="detail-price" data-testid="price">
           {shopPrice(price)}
         </span>
         {product.discountPct > 0 ? <span className="text-sm text-muted-2 line-through">{shopPrice(originalPrice(price, product.discountPct))}</span> : null}
@@ -234,7 +235,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
       <div className="flex flex-wrap gap-2">
         {product.trending ? <Badge className="rounded bg-ink text-white">Trending</Badge> : null}
       </div>
-      <h1 className="text-xl font-semibold leading-snug">{product.title}</h1>
+      {product.description && <p className="detail-summary">{product.description}</p>}
       {shop ? (
         <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
           <span>
@@ -247,12 +248,6 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
           ) : null}
         </p>
       ) : null}
-      <p className="flex items-center gap-2 text-sm">
-        <Star className="size-4 fill-star text-star" aria-hidden />
-        <span className="font-semibold">{product.rating.toFixed(1)}</span>
-        <span className="h-3.5 w-px bg-line" aria-hidden />
-        <span className="text-muted-foreground">{compactCount(product.sold)} sold</span>
-      </p>
 
       <VariantTiles label={product.skus[0]?.attributeName || 'Variant'} skus={product.skus} value={skuId} onChange={pick} />
 
@@ -264,10 +259,10 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
         </div>
       </div>
 
-      <div className="mt-2 flex flex-col gap-2.5">
+      <div className="detail-purchase-actions">
         <Button
           size="lg"
-          className="h-12 bg-buyer text-base text-white hover:bg-buyer/90"
+          className="!h-11 !rounded-none !bg-ink text-sm text-white hover:!bg-ink/90"
           disabled={!sku || busy}
           onClick={async () => {
             if (sku && shop && (await addToCart())) navigate('/checkout', { state: { items: [{ shopId: shop.id, skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
@@ -278,7 +273,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
         <Button
           size="lg"
           variant="outline"
-          className="h-12 border-ink text-base"
+          className="!h-11 !rounded-none border-ink text-sm"
           disabled={!sku || busy}
           onClick={async () => {
             if (await addToCart()) toast.success('Added to cart', { action: { label: 'View cart', onClick: () => navigate('/cart') } });
@@ -395,28 +390,34 @@ export function ProductPage() {
 
   const { product, shop } = detail.data;
   return (
-    <div>
+    <div className="product-detail">
       <Breadcrumb shopName={shop?.name} title={product.title} />
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="flex min-w-0 flex-col gap-10">
-          <Gallery key={product.id} product={product} />
-          <DevMock className="p-4">
-            <Reviews />
-          </DevMock>
-          {product.description ? (
-            <section aria-labelledby="description" className="flex flex-col gap-2">
-              <h2 id="description" className="text-lg font-bold">
-                Description
-              </h2>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{product.description}</p>
-            </section>
-          ) : null}
-        </div>
-        {/* below the 64px sticky header */}
-        <aside className="self-start lg:sticky lg:top-20">
-          <BuyBox key={product.id} product={product} shop={shop} />
-        </aside>
+      <div className="detail-main">
+        <Gallery key={product.id} product={product} />
+        <aside><BuyBox key={product.id} product={product} shop={shop} /></aside>
       </div>
+      <DetailInformation key={product.id} product={product} />
+      <ShopFooter />
     </div>
   );
+}
+
+function DetailInformation({ product }: { product: EnrichedProduct }) {
+  const [tab, setTab] = useState<'info' | 'reviews'>('info');
+  return <section className="detail-information">
+    <div role="tablist" aria-label="Product information" className="detail-tabs" onKeyDown={(event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 'info' : event.key === 'End' ? 'reviews' : tab === 'info' ? 'reviews' : 'info';
+      setTab(next);
+      event.currentTarget.querySelector<HTMLButtonElement>(`#detail-${next}-tab`)?.focus();
+    }}>
+      <button id="detail-info-tab" type="button" role="tab" tabIndex={tab === 'info' ? 0 : -1} aria-selected={tab === 'info'} aria-controls="detail-info-panel" onClick={() => setTab('info')}>Product information</button>
+      <button id="detail-reviews-tab" type="button" role="tab" tabIndex={tab === 'reviews' ? 0 : -1} aria-selected={tab === 'reviews'} aria-controls="detail-reviews-panel" onClick={() => setTab('reviews')}>Ratings & reviews</button>
+    </div>
+    {tab === 'info' ? <div id="detail-info-panel" role="tabpanel" aria-labelledby="detail-info-tab" className="detail-tab-panel">
+      <h2>Product details</h2><p>{product.description || 'No product description available.'}</p>
+      <dl><div><dt>Variants</dt><dd>{product.skus.length}</dd></div><div><dt>Price range</dt><dd>{shopPrice(product.minPriceVnd)}{product.maxPriceVnd !== product.minPriceVnd ? ` – ${shopPrice(product.maxPriceVnd)}` : ''}</dd></div></dl>
+    </div> : <div id="detail-reviews-panel" role="tabpanel" aria-labelledby="detail-reviews-tab" className="detail-tab-panel"><span className="detail-demo-label">Demo reviews</span><Reviews /></div>}
+  </section>;
 }

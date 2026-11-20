@@ -161,7 +161,9 @@ function AccountPill() {
 
 /** Buyer shell for /, /product/:id, /cart, /checkout and /account/*. */
 export function ShopLayout() {
-  const home = useLocation().pathname === '/';
+  const location = useLocation();
+  const pathname = location.pathname;
+  const home = pathname === '/' || pathname.startsWith('/product/');
   const { buyer } = useAuth();
   return (
     <div className={cn("min-h-screen font-sans text-[15px] text-ink", home ? "buyer-home-shell" : "bg-white")}>
@@ -175,7 +177,7 @@ export function ShopLayout() {
                 <span aria-hidden="true">|</span>
                 <Link to="/seller-center">Seller Center</Link>
                 <span aria-hidden="true">|</span>
-                {buyer ? <BuyerMenu buyer={buyer} /> : <><Link to={loginUrl('/')}>Sign in</Link><span aria-hidden="true">|</span><Link to={loginUrl('/')}>Sign up</Link></>}
+                {buyer ? <BuyerMenu buyer={buyer} /> : <><Link to={loginUrl(pathname + location.search)}>Sign in</Link><span aria-hidden="true">|</span><Link to={loginUrl(pathname + location.search)}>Sign up</Link></>}
               </div>
             </div>
             <div className="buyer-home-primary">
