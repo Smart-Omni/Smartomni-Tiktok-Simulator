@@ -65,7 +65,8 @@ export class FetchWebhookTransport extends WebhookTransport {
       // (which tests advance) nor the enqueue time (retries back off for minutes) may be used. payload.timestamp keeps business time.
       const timestamp = String(Math.floor(Date.now() / 1000));
       const headers: Record<string, string> = {
-        'content-type': 'application/json',
+        // explicit charset: the signature covers the UTF-8 bytes, so the receiver must decode the body as UTF-8 (Vietnamese chat text)
+        'content-type': 'application/json; charset=utf-8',
         'x-simulator-webhook-id': job.id,
         'x-simulator-attempt': String(ctx.attemptNo),
         'timestamp': timestamp,

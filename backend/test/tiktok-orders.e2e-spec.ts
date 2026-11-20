@@ -8,7 +8,7 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { resolveTargetUrl, webhookSignature, WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
+import { FetchWebhookTransport, resolveTargetUrl, webhookSignature, WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
 import { conformErrors, loadFixture } from './contract';
 import { ADMIN_TOKEN, createApp, FakeTime, FakeTransport, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
@@ -540,6 +540,36 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       } finally {
         await request(real.getHttpServer()).put('/test-admin/clock').set(admin).send({ reset: true });
         await real.close();
+        await new Promise<void>((r) => server.close(() => r()));
+      }
+    });
+
+    it('a non-ASCII payload verifies when the receiver decodes the body as UTF-8 text (as SmartOmni does), and the charset is declared', async () => {
+      const received: { headers: IncomingMessage['headers']; raw: Buffer }[] = [];
+      const server: Server = createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          received.push({ headers: req.headers, raw: Buffer.concat(chunks) });
+          res.end('ok');
+        });
+      });
+      await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+      try {
+        const appRow = await prisma.app.findFirstOrThrow();
+        const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1/integrations/tiktok/webhooks`;
+        const payload = { type: 14, shop_id: '7000000000000000001', timestamp: 1700000000, data: { content: 'Chào shop, áo còn size M không ạ? 👕' } };
+        const transport = new FetchWebhookTransport(prisma, { ...cfg, webhook: { ...cfg.webhook, rewriteLocalhost: false } } as AppConfig);
+        const job = { id: 'job-utf8', appId: appRow.id, payload, targetUrl: url, requestId: null } as unknown as Parameters<FetchWebhookTransport['send']>[0];
+        await transport.send(job, { attemptNo: 1, timeoutMs: 5000 });
+        expect(received).toHaveLength(1);
+        expect(received[0].headers['content-type']).toBe('application/json; charset=utf-8');
+        const text = received[0].raw.toString('utf8'); // what a Spring `@RequestBody String` holds once decoded as UTF-8
+        const ts = received[0].headers.timestamp as string;
+        const expected = createHmac('sha256', appRow.appSecret).update(appRow.appSecret + '/api/v1/integrations/tiktok/webhooks' + ts + text, 'utf8').digest('hex');
+        expect(received[0].headers.authorization).toBe(expected);
+        expect(JSON.parse(text).data.content).toBe(payload.data.content);
+      } finally {
         await new Promise<void>((r) => server.close(() => r()));
       }
     });
