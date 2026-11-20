@@ -83,7 +83,7 @@ function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
       <a href="#catalog">Shop deals <ArrowRight size={16} /></a>
     </div>
   </section>
-    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div className="buyer-sale-products-heading"><h2>Sale picks</h2></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
+    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
       <div className="buyer-flash-image"><ProductImage product={p} className="rounded-none" /><span>-{p.discountPct}%</span></div>
       <div className="buyer-flash-product-info"><strong>{p.title}</strong><div className="buyer-flash-prices"><b>{shopPrice(p.minPriceVnd)}</b><del>{shopPrice(p.originalPriceVnd)}</del></div></div>
     </Link>)}</div><div className="buyer-sale-products-action"><a href="#catalog">View products</a></div></section>}
