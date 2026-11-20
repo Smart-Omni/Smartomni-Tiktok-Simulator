@@ -80,7 +80,7 @@ function SearchPill({ wide = false }: { wide?: boolean }) {
   };
   return (
     <form role="search" onSubmit={submit} className={cn("flex h-10 w-full items-center gap-2 rounded-full bg-surface px-4 focus-within:ring-2 focus-within:ring-ring/40", wide ? "max-w-none" : "max-w-[360px]")}>
-      <Search className="size-4 shrink-0 text-muted-foreground" />
+      {!wide && <Search className="size-4 shrink-0 text-muted-foreground" />}
       <input
         type="search"
         value={q}
@@ -89,6 +89,7 @@ function SearchPill({ wide = false }: { wide?: boolean }) {
         aria-label="Search products"
         className="h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-2"
       />
+      {wide && <button type="submit" aria-label="Search" className="buyer-home-search-button"><Search size={20} /></button>}
     </form>
   );
 }
@@ -166,8 +167,27 @@ export function ShopLayout() {
     <div className={cn("min-h-screen font-sans text-[15px] text-ink", home ? "buyer-home-shell" : "bg-white")}>
       {!home && <Rail />}
       <div className={cn('min-h-screen', home ? 'buyer-home-frame' : 'pl-[76px]')}>
-        {home ? <header className="buyer-home-header"><Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link><div className="buyer-home-toplinks"><Link to="/console"><ShieldCheck size={16} />Test console</Link>{buyer ? <BuyerMenu buyer={buyer} /> : <Link to={loginUrl("/")} className="buyer-home-signin">Sign in / Sign up</Link>}</div></header> : null}
-        <div className={cn(home ? "buyer-home-search" : "sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur")}><SearchPill wide={home} />{home ? <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={18} />Cart</Link> : <AccountPill />}</div>
+        {home ? (
+          <header className="buyer-home-header">
+            <div className="buyer-home-utility">
+              <div className="buyer-home-toplinks">
+                <Link to="/seller-center">Seller Center</Link>
+                <Link to="/console"><ShieldCheck size={14} />Test control</Link>
+              </div>
+              {buyer ? <BuyerMenu buyer={buyer} /> : <Link to={loginUrl('/')} className="buyer-home-signin">Sign in / Sign up</Link>}
+            </div>
+            <div className="buyer-home-primary">
+              <Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link>
+              <SearchPill wide />
+              <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={20} />Cart</Link>
+            </div>
+          </header>
+        ) : (
+          <div className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur">
+            <SearchPill />
+            <AccountPill />
+          </div>
+        )}
         <main className={home ? "buyer-home-main" : "px-6 pb-12"}>
           <Outlet />
         </main>
