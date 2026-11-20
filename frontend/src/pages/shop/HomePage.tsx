@@ -12,7 +12,7 @@ import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
-const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
+const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-7';
 const BEST_SELLERS_PAGE = 10;
 
 /** Products with a 4★+ rating and a discount, biggest discount first. */
@@ -24,11 +24,11 @@ export const search = (items: EnrichedProduct[], q: string) => {
   return items.filter((p) => normalizeTitle(p.title).includes(term));
 };
 
-function Section({ id, title, action, children }: { id: string; title: ReactNode; action?: ReactNode; children: ReactNode }) {
+function Section({ id, title, action, hideTitle = false, children }: { id: string; title: ReactNode; action?: ReactNode; hideTitle?: boolean; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="mt-8 first:mt-2">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <h2 id={id} className="text-xl font-bold tracking-tight text-ink">
+      <div className={hideTitle && !action ? 'sr-only' : 'mb-3 flex flex-wrap items-center gap-3'}>
+        <h2 id={id} className={hideTitle ? 'sr-only' : 'text-xl font-bold tracking-tight text-ink'}>
           {title}
         </h2>
         {action ? <div className="ml-auto flex items-center gap-2">{action}</div> : null}
@@ -47,7 +47,7 @@ function ArrowButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disable
   );
 }
 
-/** One row of cards (5 / 3 / 2 visible) scrolled a page at a time with the arrow buttons. */
+/** One row of cards scrolled a page at a time with the arrow buttons. */
 function DealsRow({ items }: { items: EnrichedProduct[] }) {
   const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
 
@@ -55,6 +55,7 @@ function DealsRow({ items }: { items: EnrichedProduct[] }) {
     <Section
       id="deals"
       title="Deals on 4★+ products for you"
+      hideTitle
       action={
         <>
           <ArrowButton dir="prev" disabled={edges.start} onClick={() => page(-1)} />
@@ -67,7 +68,7 @@ function DealsRow({ items }: { items: EnrichedProduct[] }) {
           <ProductCard
             key={productPath(p)}
             product={p}
-            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]"
+            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-2.25rem)/4)] lg:basis-[calc((100%-4.5rem)/7)]"
           />
         ))}
       </div>
@@ -78,7 +79,7 @@ function DealsRow({ items }: { items: EnrichedProduct[] }) {
 function BestSellers({ items }: { items: EnrichedProduct[] }) {
   const [shown, setShown] = useState(BEST_SELLERS_PAGE);
   return (
-    <Section id="best-sellers" title="Best sellers">
+    <Section id="best-sellers" title="Best sellers" hideTitle>
       <div className={GRID}>
         {items.slice(0, shown).map((p) => <ProductCard key={productPath(p)} product={p} />)}
       </div>
@@ -164,7 +165,7 @@ export function HomePage() {
     <>
       <FlashSaleBanner items={products.data ?? []} />
       <HomeNavigation signedIn={!!buyer} />
-      <div className="buyer-products-area"><div className="buyer-section-heading"><h2>Products</h2></div><CategoryRow />
+      <div className="buyer-products-area"><CategoryRow />
       <Products state={products} q={q} category={category} /></div>
       <footer className="buyer-home-footer"><strong>TikTok SHOP SIMULATOR</strong><Link to="/console">Test console</Link></footer>
     </>

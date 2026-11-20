@@ -7,12 +7,12 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-home-toplinks { display:flex; align-items:center; gap:22px; font-size:12px; }
 .buyer-home-toplinks > a { display:flex; align-items:center; gap:8px; }
 .buyer-home-signin { padding:8px 14px; border-radius:999px; background:#171717; color:#fff; }
-.buyer-home-search { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,520px) minmax(0,1fr); align-items:center; gap:10px; padding:12px var(--buyer-gutter); background:#f2f2f2; }
-.buyer-home-search form { grid-column:2; width:100%; max-width:520px; height:36px; border:1px solid #e7e7e7; background:#fff; }
+.buyer-home-search { display:flex; justify-content:center; align-items:center; gap:10px; padding:12px var(--buyer-gutter); background:#f2f2f2; }
+.buyer-home-search form { flex:0 1 520px; min-width:0; width:100%; max-width:520px; height:36px; border:1px solid #e7e7e7; background:#fff; }
 .buyer-home-cart { display:flex; align-items:center; justify-content:center; gap:9px; min-width:88px; height:36px; padding:0 12px; border-radius:999px; background:#fff; font-size:11px; }
-.buyer-home-search .buyer-home-cart { grid-column:3; justify-self:end; }
+.buyer-home-search .buyer-home-cart { flex:none; }
 .buyer-home-main { padding:0 var(--buyer-gutter) 24px; }
-.buyer-home-section { margin-bottom:12px; }
+.buyer-home-section { margin-bottom:24px; }
 .buyer-section-heading { display:flex; align-items:baseline; gap:14px; margin-bottom:9px; }
 .buyer-section-heading h2 { margin:0; font-size:15px; font-weight:600; letter-spacing:-.5px; }
 .buyer-actions-row { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:8px; }
@@ -25,7 +25,7 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-unavailable,.buyer-collection-tile { cursor:default; }
 .buyer-collection-tile .buyer-tile-circle { width:min(100%,46px); background:#f2f2f2; }
 .buyer-collection-tile strong { max-width:160px; font-size:10px; font-weight:550; }
-.buyer-flash-banner { display:grid; grid-template-columns:minmax(180px,.55fr) minmax(0,1.45fr); gap:12px; align-items:center; min-height:116px; margin:12px 0; padding:14px 18px; border-radius:16px; background:#fff; color:#171717; }
+.buyer-flash-banner { display:grid; grid-template-columns:minmax(180px,.55fr) minmax(0,1.45fr); gap:12px; align-items:center; min-height:116px; margin:24px 0; padding:14px 18px; border-radius:16px; background:#fff; color:#171717; }
 .buyer-flash-kicker { font-size:9px; letter-spacing:1.7px; color:#777; }
 .buyer-flash-banner h2 { margin:5px 0 8px; font-size:22px; letter-spacing:-1px; }
 .buyer-flash-banner a { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:600; }
@@ -33,13 +33,16 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-flash-preview a { display:flex; flex-direction:column; justify-content:space-between; min-height:82px; padding:10px; border-radius:10px; background:#f2f2f2; }
 .buyer-flash-preview span { font-size:10px; color:#666; }
 .buyer-flash-preview strong { font-size:11px; line-height:1.3; font-weight:500; }
-.buyer-products-area { margin-top:16px; }
+.buyer-products-area { margin-top:24px; }
 .buyer-category-list { display:flex; gap:8px; overflow-x:auto; padding:1px 0 10px; scrollbar-width:thin; scrollbar-color:#d5d5d5 transparent; }
 .buyer-category-list a { flex-shrink:0; padding:9px 16px; border-radius:999px; background:#fff; color:#555; font-size:11px; }
 .buyer-category-list a[aria-current=true] { background:#171717; color:#fff; }
 .buyer-products-area section[aria-labelledby] { margin-top:20px; }
 .buyer-products-area section[aria-labelledby] > div:first-child h2 { font-size:16px; font-weight:600; }
-.buyer-products-area .group { padding:10px; border-radius:16px; background:#fff; }
+.buyer-products-area .group { padding:6px; border-radius:14px; background:#fff; }
+.buyer-products-area .group h3 { font-size:12px; }
+.buyer-products-area .group .text-base { font-size:13px; }
+.buyer-products-area .group .text-xs { font-size:10px; }
 .buyer-home-footer { display:flex; justify-content:space-between; gap:20px; margin-top:36px; padding:24px 0 0; border-top:1px solid #dedede; color:#777; font-size:11px; }
 .buyer-home-footer strong { color:#222; }
 @media(max-width:1100px) { .buyer-actions-row { grid-template-columns:repeat(6,minmax(0,1fr)); } .buyer-collections-row { grid-template-columns:repeat(5,minmax(0,1fr)); } }
