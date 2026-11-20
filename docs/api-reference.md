@@ -315,10 +315,10 @@ Bảng chuyển trạng thái là mô hình của simulator (OAS chỉ liệt k�
 
 | Đồng hồ | Dùng cho | Điều khiển được? |
 |---|---|---|
-| **BusinessClock** | Mốc thời gian nghiệp vụ: tạo/cập nhật đơn, hạn giữ đơn, hạn trả hàng (`RETURN_WINDOW_DAYS`, mặc định 15), timestamp trong webhook | Có: `PUT /test-admin/clock` (`setTo`, `advanceMs`, `freeze`, `reset`). Offset lưu trong DB nên không mất khi restart. |
+| **BusinessClock** | Mốc thời gian nghiệp vụ: tạo/cập nhật đơn, hạn giữ đơn, hạn trả hàng (`RETURN_WINDOW_DAYS`, mặc định 15), trường `timestamp` trong payload webhook | Có: `PUT /test-admin/clock` (`setTo`, `advanceMs`, `freeze`, `reset`). Offset lưu trong DB nên không mất khi restart. |
 | **AuthClock** | Hạn token, auth code, cửa sổ `timestamp` khi ký | Không, luôn là giờ thật |
 
-Lease và lịch gửi lại của worker webhook cũng dùng giờ thật.
+Lease, lịch gửi lại của worker webhook và header `timestamp` (phần được ký) của webhook cũng dùng giờ thật.
 
 ### 6.4. Webhook
 
@@ -336,7 +336,7 @@ Lease và lịch gửi lại của worker webhook cũng dùng giờ thật.
 }
 ```
 
-`timestamp` lấy theo BusinessClock. Giá trị `type` theo topic (`backend/src/webhooks/webhook-emitter.service.ts`). Chỉ `type` 1 là đã đối chiếu được với nguồn; các giá trị khác chưa xác minh:
+Trường `timestamp` trong payload lấy theo BusinessClock (thời điểm nghiệp vụ của sự kiện). Giá trị `type` theo topic (`backend/src/webhooks/webhook-emitter.service.ts`). Chỉ `type` 1 là đã đối chiếu được với nguồn; các giá trị khác chưa xác minh:
 
 | Topic thực sự được phát | `type` | Nguồn phát |
 |---|---|---|
@@ -357,18 +357,18 @@ Lease và lịch gửi lại của worker webhook cũng dùng giờ thật.
 
 | Header | Giá trị |
 |---|---|
-| `Content-Type` | `application/json` |
-| `Authorization` | `hex(HMAC-SHA256(app_secret, path + timestamp + raw_body))`, chữ thường. `path` là pathname của URL nhận (nếu không parse được thì là `/webhook`), `timestamp` giống header `timestamp`. |
-| `timestamp` | Bằng trường `timestamp` trong envelope |
+| `Content-Type` | `application/json; charset=utf-8` |
+| `Authorization` | `hex(HMAC-SHA256(key = app_secret, message = app_secret + path + timestamp + raw_body))`, chữ thường. `path` là pathname của URL nhận (nếu không parse được thì là `/webhook`), `timestamp` là giá trị header `timestamp`. |
+| `timestamp` | Unix giây theo **giờ thật**, lấy lại ở **mỗi lần gửi** (kể cả lần thử lại). Có thể khác trường `timestamp` trong payload. |
 | `x-simulator-webhook-id` | id của job |
 | `x-simulator-attempt` | Số thứ tự lần gửi, bắt đầu từ 1 |
 | `x-request-id` | Request đã gây ra sự kiện (nếu có) |
 
-> **Lưu ý:** `README.md` (mục "Orders and webhooks") và `docs/curl-samples.md` vẫn mô tả công thức cũ `HMAC-SHA256(app_secret, app_key + raw_body)`. Công thức đó đã bị thay ở commit `593e223`; hãy dùng công thức trong bảng trên.
+> Công thức này khớp đúng với `WebhookHmacValidator.validateTikTokWebhook` của SmartOmni. SmartOmni đọc chữ ký từ `Authorization` (hoặc `X-Tts-Signature`), `timestamp` từ header `Timestamp` (hoặc `X-Tts-Timestamp`, cuối cùng là trường trong payload), và từ chối nếu `timestamp` lệch quá 5 phút so với giờ thật. Vì header dùng giờ thật tại lúc gửi, việc tua BusinessClock hay backoff khi thử lại không làm webhook bị từ chối. Công thức thật của TikTok vẫn chưa xác minh; xem `DECISIONS.md` (D9).
 >
-> `timestamp` (cũng là một phần của chữ ký) lấy theo **BusinessClock**. Sau khi tua đồng hồ bằng `PUT /test-admin/clock`, bên nhận nào kiểm tra độ tươi của `timestamp` theo giờ thật sẽ từ chối sự kiện.
+> Ví dụ đối chiếu: `app_secret = test_app_secret_not_real`, `path = /api/v1/integrations/tiktok/webhooks`, `timestamp = 1700000000`, body `{"type":1}` cho chữ ký `97ff15714618f19054b070b26bf08a4a9db4f01878bbc41a4a4fd31b94c41391`.
 
-Chỉ job gắn với một app (tức phát từ đăng ký webhook) mới có header `Authorization`. Job tạo tay qua `POST /test-admin/webhooks`, job tranh chấp và job gửi lại bằng `/test-admin/webhooks/{jobId}/replay` **không được ký**.
+Chỉ job gắn với một app mới có header `Authorization`. Sự kiện phát từ đăng ký webhook luôn được ký. Job gửi lại bằng `/test-admin/webhooks/{jobId}/replay` giữ nguyên app của job gốc nên cũng được ký. Webhook tranh chấp được ký khi shop có đăng ký webhook (ưu tiên đăng ký `DISPUTE_STATUS_CHANGE`). Nếu không có đăng ký nào, webhook tranh chấp gửi tới `SMARTOMNI_WEBHOOK_URL`, hoặc mặc định `http://localhost:8080/api/v1/integrations/tiktok/webhooks`, và **không được ký**. Chỉ job tạo tay qua `POST /test-admin/webhooks` là luôn không ký.
 
 **Giao nhận.**
 
@@ -396,7 +396,7 @@ Luật lỗi tạo bằng `POST /test-admin/faults` với `target`, `kind`, `pat
 
 `DROP` và `DUPLICATE` với `target: API` không có tác dụng. Ba kind cuối chỉ được handler cập nhật tồn kho xử lý.
 
-**Hạn chế hiện tại:** với `target: API`, luật `HTTP_ERROR` và `DELAY` có `shopId` **không bao giờ khớp**. Middleware áp lỗi chạy trước guard xác thực, nên lúc đó chưa biết shop của request; chỉ luật có `shopId: null` (mọi shop) có tác dụng. Ba kind tồn kho không bị ảnh hưởng vì handler tồn kho truyền shop trực tiếp.
+Với `target: API`, shop của request được xác định từ header `x-tts-access-token` (chỉ để so khớp luật; xác thực vẫn do guard làm sau đó). Luật có `shopId` chỉ áp cho request mang token của shop đó; request không có token, hoặc token lạ, chỉ khớp luật `shopId: null`.
 
 ### 6.6. Reset, seed và dữ liệu mẫu
 
