@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusPanel } from './console/StatusPanel';
@@ -55,6 +55,7 @@ const SCOPE_NOTES: Record<string, string> = {
 };
 
 export function ConsolePage() {
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<string>('Status');
   const extra = consoleTabs();
   const [shopId, setShopId] = useState<string>('');
@@ -63,12 +64,15 @@ export function ConsolePage() {
   const selected = list.find((s) => s.id === shopId)?.id ?? list[0]?.id ?? '';
   const currentShop = list.find((s) => s.id === selected);
   const screen = SCREENS.find((s) => s.label === tab) ?? { title: tab, description: 'Simulator test controls.' };
-  const select = (label: string) => setTab(label);
+  const select = (label: string) => {
+    setTab(label);
+    if (workspaceRef.current) workspaceRef.current.scrollTop = 0;
+  };
 
   return (
     <div className="admin-console">
       <aside className="admin-sidebar">
-        <div className="admin-sidebar-brand"><span className="admin-brand-mark"><ShieldCheck size={20} /></span><div>SmartOmni<small>SHOP SIMULATOR</small></div></div>
+        <div className="admin-sidebar-brand"><span className="admin-brand-mark"><ShieldCheck size={20} /></span><div>TikTok<small>SHOP SIMULATOR</small></div></div>
         <nav className="admin-nav" aria-label="Test Console navigation">
           {GROUPS.map((group) => (
             <div className="admin-nav-group" key={group.label}>
@@ -86,7 +90,7 @@ export function ConsolePage() {
         </nav>
         <div className="admin-sidebar-note"><FlaskConical size={16} /><span>Simulation environment<br /><strong>Test data only</strong></span></div>
       </aside>
-      <div className="admin-workspace">
+      <div className="admin-workspace" ref={workspaceRef}>
         <div className="admin-context-bar">
           <div className="admin-workspace-welcome"><strong>Your testing workspace</strong><span>Manage your shops, scenarios and integrations.</span></div>
           <div className="admin-header-actions"><label className="admin-shop-picker"><Store size={15} />
