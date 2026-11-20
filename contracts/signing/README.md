@@ -27,9 +27,11 @@ sign = lowercase_hex(HMAC_SHA256(key = app_secret, message = StringToSign))
 - The official Common Parameters page (timestamp unit/tolerance, `version` param, whether `shop_id` can replace `shop_cipher`) was not read.
 - Whether `shop_cipher` is needed for a Vietnamese local shop (the OAS says it is optional; incorrect responses are described for cross-border shops).
 
-## Webhook signing (SECONDARY - unchanged)
+## Webhook signing
 
-Source: Hookdeck TikTok Shop webhook guide (https://hookdeck.com/webhooks/skills/tiktok-shop-webhooks.md). Not in the OAS.
+**What the simulator sends (since DECISIONS.md D9):** the rule SmartOmni's `WebhookHmacValidator.validateTikTokWebhook` verifies, `lowercase_hex(HMAC_SHA256(key = app_secret, message = app_secret + path + timestamp + raw_body))`, with `path` = pathname of the receiving URL and `timestamp` = the `timestamp` header (real send time, Unix seconds). Implemented by the 4-argument `signWebhook` in `sign.ts`. TikTok's real rule is still unverified.
+
+**Secondary source (kept for reference; the vector in `test-vectors.json` follows it, through the 3-argument `signWebhook`).** Source: Hookdeck TikTok Shop webhook guide (https://hookdeck.com/webhooks/skills/tiktok-shop-webhooks.md). Not in the OAS.
 
 - Header `Authorization` (no `Bearer` prefix).
 - `lowercase_hex(HMAC_SHA256(key = app_secret, message = app_key + raw_request_body))`, computed on the raw bytes before JSON parsing; compare in constant time.

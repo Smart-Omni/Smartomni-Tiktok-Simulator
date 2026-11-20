@@ -203,4 +203,13 @@ export class OAuthService {
     if (row.accessExpiresAt.getTime() <= this.clock.now().getTime()) throw new TiktokFault(401, 'token_expired', 'access token has expired');
     return row;
   }
+
+  /**
+   * Shop of an access token WITHOUT authenticating it (no expiry/revocation/signature check), or null.
+   * Only for matching shop-scoped fault rules, which run before the guard; never use it to authorize anything.
+   */
+  async shopIdOfAccessToken(rawAccess: string): Promise<string | null> {
+    const row = await this.prisma.token.findUnique({ where: { accessTokenHash: hashToken(rawAccess) }, select: { shopId: true } });
+    return row?.shopId ?? null;
+  }
 }
