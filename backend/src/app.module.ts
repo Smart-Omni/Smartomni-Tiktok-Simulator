@@ -13,6 +13,7 @@ import { StartupSeeder } from './seed/startup-seeder';
 import { TestAdminModule } from './test-admin/test-admin.module';
 import { TiktokFaultMiddleware, TiktokModule } from './tiktok/tiktok.module';
 import { MediaModule } from './media/media.module';
+import { OAuthModule } from './oauth/oauth.module';
 import { DisputeModule } from './dispute/dispute.module';
 import { WebhookQueueService } from './webhooks/webhook-queue.service';
 import { FetchWebhookTransport, SystemWorkerTime, WebhookTransport, WebhookWorkerService, WorkerTime } from './webhooks/webhook-worker.service';
@@ -46,6 +47,8 @@ export class CoreModule {}
     DemoModule,
     TestAdminModule,
     TiktokModule,
+    // TiktokFaultMiddleware is resolved in this module's context and needs OAuthService to match shop-scoped fault rules
+    OAuthModule,
     MediaModule,
     DisputeModule,
     // Three separate routers. TikTok-shaped paths stay at the root (exact contract paths), /demo and /test-admin are namespaced.

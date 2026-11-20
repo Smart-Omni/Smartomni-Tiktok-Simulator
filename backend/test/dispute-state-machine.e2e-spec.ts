@@ -65,7 +65,7 @@ describe('Dispute State Machine and Webhook Trigger', () => {
           status: 'DISPUTE_APPROVED',
           reason: 'Valid proof provided; approved for compensation',
           compensation_amount: 150000,
-          webhook_url: 'http://localhost:8080/api/v1/integrations/tiktok/webhook',
+          webhook_url: 'http://localhost:8080/api/v1/integrations/tiktok/webhooks',
         })
         .expect(200);
 
@@ -94,7 +94,7 @@ describe('Dispute State Machine and Webhook Trigger', () => {
       expect(jobs.length).toBeGreaterThan(0);
 
       const job = jobs[jobs.length - 1];
-      expect(job.targetUrl).toBe('http://localhost:8080/api/v1/integrations/tiktok/webhook');
+      expect(job.targetUrl).toBe('http://localhost:8080/api/v1/integrations/tiktok/webhooks');
 
       const payload = job.payload as any;
       expect(payload.type).toBe(15);
@@ -105,6 +105,34 @@ describe('Dispute State Machine and Webhook Trigger', () => {
 
       // Verify envelope conformity against official TikTok webhook JSON schema
       expect(conformErrors('webhook-envelope.json', payload)).toEqual([]);
+    });
+
+    it('a DISPUTE_APPROVED webhook carries the subscribing app, so the worker signs it', async () => {
+      const shop = await prisma.shop.findFirstOrThrow({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
+      const appRow = await prisma.app.findFirstOrThrow();
+      const now = new Date();
+      await prisma.webhookSubscription.create({
+        data: { shopId: shop.id, appId: appRow.id, eventType: 'DISPUTE_STATUS_CHANGE', address: 'http://localhost:9/hook', createdAt: now, updatedAt: now },
+      });
+      await http
+        .post('/api/v2/simulator/dispute/trigger')
+        .send({ dispute_id: 'disp_test_signed', order_id: 'order_789', shop_id: shop.id, status: 'DISPUTE_APPROVED' })
+        .expect(200);
+      const job = await prisma.webhookJob.findFirstOrThrow({ where: { topic: 'DISPUTE_STATUS_CHANGE' }, orderBy: { createdAt: 'desc' } });
+      expect(job.appId).toBe(appRow.id);
+      expect(job.targetUrl).toBe('http://localhost:9/hook');
+    });
+
+    it('without a subscription or webhook_url, falls back to the SmartOmni TikTok webhook endpoint (plural /webhooks)', async () => {
+      if (process.env.SMARTOMNI_WEBHOOK_URL || process.env.SMARTOMNI_BE_WEBHOOK_URL) return; // an explicit env override wins
+      await http
+        .post('/api/v2/simulator/dispute/trigger')
+        .send({ dispute_id: 'disp_test_fallback', order_id: 'order_790', status: 'DISPUTE_APPROVED' })
+        .expect(200);
+      const job = await prisma.webhookJob.findFirstOrThrow({ where: { topic: 'DISPUTE_STATUS_CHANGE' }, orderBy: { createdAt: 'desc' } });
+      // SmartOmni maps @RequestMapping("/api/v1/integrations/tiktok") + @PostMapping("/webhooks")
+      expect(job.targetUrl).toBe('http://localhost:8080/api/v1/integrations/tiktok/webhooks');
+      expect(job.appId).toBeNull(); // no subscribing app: unsigned
     });
 
     it('transitions DISPUTE_PENDING_REVIEW -> DISPUTE_REJECTED without compensation webhook', async () => {

@@ -1,13 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { createHmac } from 'crypto';
 import { createServer, IncomingMessage, Server } from 'http';
 import { AddressInfo } from 'net';
 import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { resolveTargetUrl, webhookSignature, WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
+import { FetchWebhookTransport, resolveTargetUrl, webhookSignature, WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
 import { conformErrors, loadFixture } from './contract';
 import { ADMIN_TOKEN, createApp, FakeTime, FakeTransport, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
@@ -453,7 +454,22 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const replay = await http.post(`/test-admin/webhooks/${original.id}/replay`).set(admin).expect(201);
       expect(replay.body.payload).toEqual(original.payload);
       expect(replay.body.replayOfId).toBe(original.id);
+      // the replay keeps the subscribing app, so the worker signs it like the original
+      expect(original.appId).toBeTruthy();
+      expect(replay.body.appId).toBe(original.appId);
       expect(id).toBeTruthy();
+    });
+
+    it('an API fault rule scoped to one shop hits that shop only, and is consumed once', async () => {
+      const a = await t.connect(0);
+      const b = await t.connect(1);
+      const search = (token: string) => t.call('POST', SEARCH, token, { query: { page_size: '10' }, body: {} });
+      const rule = await http.post('/test-admin/faults').set(admin).send({ shopId: shopAId, target: 'API', kind: 'HTTP_ERROR', pathMatch: '/order/', remaining: 1, params: { status: 503 } }).expect(201);
+      await search(b.accessToken).expect(200); // shop B: rule does not match
+      expect((await prisma.faultRule.findUniqueOrThrow({ where: { id: rule.body.id } })).remaining).toBe(1);
+      await search(a.accessToken).expect(503); // shop A: rule matches
+      expect((await prisma.faultRule.findUniqueOrThrow({ where: { id: rule.body.id } })).remaining).toBe(0);
+      await search(a.accessToken).expect(200); // exhausted
     });
 
     it('DROP and DUPLICATE faults behave as documented', async () => {
@@ -480,7 +496,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
 
   // ---------- signing ----------
   describe('webhook signature and address resolution', () => {
-    it('Authorization = lowercase hex HMAC-SHA256(app_secret, app_key + raw body) on a real HTTP delivery', async () => {
+    it('Authorization = hex HMAC-SHA256(app_secret, app_secret + path + timestamp + raw body) on a real HTTP delivery; timestamp header is real time', async () => {
       const received: { headers: IncomingMessage['headers']; body: string }[] = [];
       const server: Server = createServer((req, res) => {
         let body = '';
@@ -500,6 +516,8 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         const rhttp = request(real.getHttpServer());
         const rt = new TiktokTestClient(rhttp, real.get(APP_CONFIG));
         await resetToSeed(real, rp);
+        // business clock far ahead (as when a test releases ON_HOLD orders): the signed timestamp must still be real time
+        await rhttp.put('/test-admin/clock').set(admin).send({ advanceMs: 31 * 60_000 }).expect(200);
         const a = await rt.connect(0);
         await rt.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'ORDER_STATUS_CHANGE', address: `http://127.0.0.1:${port}/webhook` } }).expect(200);
         const buyer = await rt.buyerSession(0);
@@ -508,15 +526,50 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         expect(received).toHaveLength(1);
         const rc = real.get(APP_CONFIG);
         const timestamp = received[0].headers.timestamp as string;
-        const expected = webhookSignature(rc.seed.appSecret, '/webhook', timestamp, received[0].body);
+        const nowSec = Math.floor(Date.now() / 1000);
+        expect(Math.abs(Number(timestamp) - nowSec)).toBeLessThanOrEqual(5); // real time, not the business clock
+        const body = JSON.parse(received[0].body);
+        expect(body.timestamp - nowSec).toBeGreaterThan(30 * 60); // the envelope keeps business time
+        // independent re-derivation with the receiver's formula (SmartOmni WebhookHmacValidator), not via webhookSignature
+        const secret = rc.seed.appSecret;
+        const expected = createHmac('sha256', secret).update(secret + '/webhook' + timestamp + received[0].body).digest('hex');
         expect(received[0].headers.authorization).toBe(expected);
         expect(expected).toMatch(/^[0-9a-f]{64}$/);
         expect(received[0].headers.authorization).not.toBe(webhookSignature('wrong-secret', '/webhook', timestamp, received[0].body));
-        expect(JSON.parse(received[0].body)).toMatchObject({ type: 1, data: { order_status: 'UNPAID' } });
-        // independent re-derivation with the vector from contracts/signing
-        // vector check updated
+        expect(body).toMatchObject({ type: 1, data: { order_status: 'UNPAID' } });
       } finally {
+        await request(real.getHttpServer()).put('/test-admin/clock').set(admin).send({ reset: true });
         await real.close();
+        await new Promise<void>((r) => server.close(() => r()));
+      }
+    });
+
+    it('a non-ASCII payload verifies when the receiver decodes the body as UTF-8 text (as SmartOmni does), and the charset is declared', async () => {
+      const received: { headers: IncomingMessage['headers']; raw: Buffer }[] = [];
+      const server: Server = createServer((req, res) => {
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          received.push({ headers: req.headers, raw: Buffer.concat(chunks) });
+          res.end('ok');
+        });
+      });
+      await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+      try {
+        const appRow = await prisma.app.findFirstOrThrow();
+        const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/v1/integrations/tiktok/webhooks`;
+        const payload = { type: 14, shop_id: '7000000000000000001', timestamp: 1700000000, data: { content: 'Chào shop, áo còn size M không ạ? 👕' } };
+        const transport = new FetchWebhookTransport(prisma, { ...cfg, webhook: { ...cfg.webhook, rewriteLocalhost: false } } as AppConfig);
+        const job = { id: 'job-utf8', appId: appRow.id, payload, targetUrl: url, requestId: null } as unknown as Parameters<FetchWebhookTransport['send']>[0];
+        await transport.send(job, { attemptNo: 1, timeoutMs: 5000 });
+        expect(received).toHaveLength(1);
+        expect(received[0].headers['content-type']).toBe('application/json; charset=utf-8');
+        const text = received[0].raw.toString('utf8'); // what a Spring `@RequestBody String` holds once decoded as UTF-8
+        const ts = received[0].headers.timestamp as string;
+        const expected = createHmac('sha256', appRow.appSecret).update(appRow.appSecret + '/api/v1/integrations/tiktok/webhooks' + ts + text, 'utf8').digest('hex');
+        expect(received[0].headers.authorization).toBe(expected);
+        expect(JSON.parse(text).data.content).toBe(payload.data.content);
+      } finally {
         await new Promise<void>((r) => server.close(() => r()));
       }
     });

@@ -74,7 +74,17 @@ describe('TikTok OpenAPI 202602 / 202309 / 202606 Upgrade & Dispute State Machin
   // BƯỚC 1: Webhook HMAC & Event Types
   // =========================================================================
   describe('Step 1: Webhook HMAC & Event Types', () => {
-    it('computes HMAC signature conforming to HMAC-SHA256(secret, path + timestamp + rawBody)', () => {
+    it('matches SmartOmni WebhookHmacValidator: HMAC-SHA256(key = secret, secret + path + timestamp + rawBody), hex', () => {
+      // Fixed vector computed with the receiver's formula (SmartOmni validateTikTokWebhook), NOT with webhookSignature,
+      // so a drift on either side fails here.
+      const secret = 'test_app_secret_not_real';
+      const path = '/api/v1/integrations/tiktok/webhooks';
+      const expected = '97ff15714618f19054b070b26bf08a4a9db4f01878bbc41a4a4fd31b94c41391';
+      expect(webhookSignature(secret, path, '1700000000', '{"type":1}')).toBe(expected);
+      expect(signWebhook(path, '1700000000', secret, '{"type":1}')).toBe(expected);
+    });
+
+    it('service and contract helper agree, and a wrong secret does not verify', () => {
       const secret = 'test-secret-123';
       const path = '/api/v1/webhook';
       const timestamp = '1730000000';
