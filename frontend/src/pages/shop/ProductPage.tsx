@@ -238,7 +238,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
       <div className="detail-purchase-actions">
         <Button
           size="lg"
-          className="!h-11 !rounded-lg !bg-ink text-sm text-white hover:!bg-ink/90"
+          className="detail-buy-now !bg-[#171717] !text-white hover:!bg-[#333333]"
           disabled={!sku || busy}
           onClick={async () => {
             if (sku && shop && (await addToCart())) navigate('/checkout', { state: { items: [{ shopId: shop.id, skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
@@ -249,7 +249,7 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
         <Button
           size="lg"
           variant="outline"
-          className="!h-11 !rounded-lg border-ink text-sm"
+          className="detail-add-cart !bg-white !text-[#222222] hover:!bg-[#f7f7f7]"
           disabled={!sku || busy}
           onClick={async () => {
             if (await addToCart()) toast.success('Added to cart', { action: { label: 'View cart', onClick: () => navigate('/cart') } });

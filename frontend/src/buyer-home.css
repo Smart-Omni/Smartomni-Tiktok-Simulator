@@ -29,6 +29,12 @@ body:has(.product-detail) .buyer-home-shell { background:#fff; }
 .detail-main > aside { min-width:0; }
 .detail-buybox a { color:#333; text-decoration:underline; text-underline-offset:3px; }
 .detail-purchase-actions { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px; }
+.detail-purchase-actions button { height:44px !important; padding:0 18px; border-radius:8px !important; font-size:12px; font-weight:500; letter-spacing:.2px; box-shadow:none; transition:background .18s,border-color .18s,box-shadow .18s; }
+.detail-purchase-actions .detail-buy-now { border:1px solid #171717; background:#171717; color:#fff; }
+.detail-purchase-actions .detail-buy-now:hover:not(:disabled) { background:#333; border-color:#333; box-shadow:0 3px 10px #00000012; }
+.detail-purchase-actions .detail-add-cart { border:1px solid #d8d8d8; background:#fff; color:#222; }
+.detail-purchase-actions .detail-add-cart:hover:not(:disabled) { border-color:#222; background:#f7f7f7; }
+.detail-purchase-actions button:focus-visible { outline:2px solid #777; outline-offset:3px; }
 .detail-information { max-width:var(--detail-width); margin:36px auto; border:1px solid #e7e7e7; border-radius:12px; overflow:hidden; }
 .detail-tabs { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid #e7e7e7; }
 .detail-tabs button { padding:17px; background:#fafafa; border:0; border-bottom:2px solid transparent; color:#888; font-size:12px; cursor:pointer; }
