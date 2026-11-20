@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, UserRound, type LucideIcon } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -171,15 +171,30 @@ export function ShopLayout() {
           <header className="buyer-home-header">
             <div className="buyer-home-utility">
               <div className="buyer-home-toplinks">
+                <Link to="/console">Test Console</Link>
+                <span aria-hidden="true">|</span>
                 <Link to="/seller-center">Seller Center</Link>
-                <Link to="/console"><ShieldCheck size={14} />Test Console</Link>
               </div>
-              {buyer ? <BuyerMenu buyer={buyer} /> : <div className="buyer-home-auth"><Link to={loginUrl('/')} className="buyer-home-signin">Sign in</Link><Link to={loginUrl('/')} className="buyer-home-signup">Sign up</Link></div>}
             </div>
             <div className="buyer-home-primary">
               <Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link>
               <SearchPill wide />
-              <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={20} />Cart</Link>
+              <div className="buyer-header-actions">
+                <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={22} /><span>Cart</span></Link>
+                {buyer ? <BuyerMenu buyer={buyer} /> : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="buyer-home-account"><UserRound size={22} /><span>Account</span></button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-44">
+                      <DropdownMenuLabel>Account</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild><Link to={loginUrl('/')}>Sign in</Link></DropdownMenuItem>
+                      <DropdownMenuItem asChild><Link to={loginUrl('/')}>Sign up</Link></DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
           </header>
         ) : (
