@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, Star } from 'lucide-react';
-import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
 import { toast } from 'sonner';
 import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
@@ -160,27 +159,16 @@ function Reviews() {
 }
 
 function VariantTiles({ label, skus, value, onChange }: { label: string; skus: Sku[]; value: string | undefined; onChange: (id: string) => void }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-semibold">{label}</span>
-      <RadioGroupPrimitive.Root value={value} onValueChange={onChange} aria-label={label} className="detail-variant-track">
-        {skus.map((s) => (
-          <RadioGroupPrimitive.Item
-            key={s.id}
-            value={s.id}
-            disabled={soldOut(s)}
-            className={cn(
-              'h-9 shrink-0 cursor-pointer rounded-lg border border-line bg-white px-3.5 text-sm text-ink',
-              'hover:border-ink data-[state=checked]:border-buyer data-[state=checked]:bg-buyer-soft data-[state=checked]:font-semibold data-[state=checked]:text-buyer-ink',
-              'disabled:cursor-not-allowed disabled:border-line-soft disabled:bg-surface-2 disabled:text-muted-2 disabled:line-through',
-            )}
-          >
-            {s.name}
-          </RadioGroupPrimitive.Item>
-        ))}
-      </RadioGroupPrimitive.Root>
-    </div>
-  );
+  const available = skus.filter((sku) => !soldOut(sku));
+  const index = Math.max(0, available.findIndex((sku) => sku.id === value));
+  const selected = available[index];
+  const progress = available.length > 1 ? index / (available.length - 1) * 100 : 0;
+  return <div className="detail-variant-slider">
+    <div className="detail-variant-slider-heading"><label htmlFor="product-variant-slider">{label}</label><strong>{selected?.name ?? 'Out of stock'}</strong></div>
+    <input id="product-variant-slider" type="range" aria-label={label} aria-valuetext={selected?.name ?? 'Out of stock'} min={0} max={Math.max(1, available.length - 1)} step={1} value={index} disabled={available.length < 2} onChange={(event) => { const next = available[Number(event.target.value)]; if (next) onChange(next.id); }} style={{ background: `linear-gradient(to right, #222 ${progress}%, #e5e5e5 ${progress}%)` }} />
+    <div className="detail-variant-slider-labels">{available.map((sku, i) => <button key={sku.id} type="button" aria-pressed={value === sku.id} onClick={() => onChange(sku.id)}>{sku.name}<span aria-hidden="true">{i + 1}</span></button>)}</div>
+    {skus.some(soldOut) && <p className="detail-variant-unavailable">Out of stock: {skus.filter(soldOut).map((sku) => sku.name).join(', ')}</p>}
+  </div>;
 }
 
 function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef }) {

@@ -89,19 +89,20 @@ describe('ProductPage', () => {
   it('changes the price with the selected SKU', async () => {
     renderProduct('mock-1');
     expect((await screen.findByTestId('price')).textContent).toBe('₫129.000');
-    expect(screen.getByRole('radio', { name: 'White / M' }).getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('radio', { name: 'Black / M' }));
+    expect(screen.getByRole('button', { name: 'White / M' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.change(screen.getByRole('slider', { name: 'Variant' }), { target: { value: '1' } });
     expect(screen.getByTestId('price').textContent).toBe('₫135.000');
     expect(screen.getByText('12 available')).toBeTruthy();
   });
 
-  it('does not let a sold-out SKU be selected', async () => {
+  it('excludes sold-out variants from the slider choices', async () => {
     renderProduct('mock-1');
-    const soldOut = await screen.findByRole('radio', { name: 'White / L' });
-    expect((soldOut as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(soldOut);
-    expect(soldOut.getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('radio', { name: 'White / M' }).getAttribute('aria-checked')).toBe('true');
+    const slider = await screen.findByRole('slider', { name: 'Variant' });
+    expect(slider.getAttribute('max')).toBe('1');
+    expect(screen.queryByRole('button', { name: 'White / L' })).toBeNull();
+    expect(screen.getByText('Out of stock: White / L')).toBeTruthy();
+    fireEvent.change(slider, { target: { value: '1' } });
+    expect(slider.getAttribute('aria-valuetext')).toBe('Black / M');
   });
 
   it('sends a guest who adds to cart to sign in and come back', async () => {
@@ -119,7 +120,7 @@ describe('ProductPage', () => {
   it('adds to a buyer cart on top of what is already there, with the stepper capped by stock', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderProduct('7500T', 'shop-2');
-    expect(await screen.findByRole('radio', { name: 'Trắng / M' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Trắng / M' })).toBeTruthy();
     expect(await screen.findByText('Mộc Lan Shop', { selector: 'span.font-semibold' })).toBeTruthy();
     const plus = screen.getByRole('button', { name: 'Increase quantity' }) as HTMLButtonElement;
     fireEvent.click(plus);
@@ -137,7 +138,7 @@ describe('ProductPage', () => {
   it('Buy now adds the line and opens checkout with it preselected', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderProduct('7500T', 'shop-2');
-    fireEvent.click(await screen.findByRole('radio', { name: 'Đen / M' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Đen / M' }));
     fireEvent.click(screen.getByRole('button', { name: 'Buy now' }));
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/checkout'));
     expect(lastState).toEqual({ items: [{ shopId: 'shop-2', skuId: 'sku-bm', quantity: 1 }] });

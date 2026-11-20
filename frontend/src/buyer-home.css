@@ -14,6 +14,19 @@ body:has(.product-detail) .buyer-home-shell { background:#fff; }
 .detail-summary { margin:0; padding:15px 0; border-block:1px solid #eee; font-size:12px; line-height:1.75; color:#666; }
 .detail-buybox [role=radiogroup] button { border-radius:0; font-size:12px; }
 .detail-main > aside { min-width:0; }
+.detail-variant-slider { padding:4px 0; }
+.detail-variant-slider-heading { display:flex; justify-content:space-between; gap:12px; margin-bottom:18px; font-size:12px; }
+.detail-variant-slider-heading strong { font-weight:500; }
+.detail-variant-slider input { appearance:none; display:block; width:100%; height:4px; margin:10px 0 16px; border-radius:999px; cursor:pointer; }
+.detail-variant-slider input::-webkit-slider-thumb { appearance:none; width:16px; height:16px; border:3px solid #fff; border-radius:50%; background:#222; box-shadow:0 0 0 1px #222; }
+.detail-variant-slider input::-moz-range-thumb { width:12px; height:12px; border:2px solid #fff; border-radius:50%; background:#222; box-shadow:0 0 0 1px #222; }
+.detail-variant-slider input:focus-visible { outline:2px solid #777; outline-offset:7px; }
+.detail-variant-slider input:disabled { opacity:.4; cursor:default; }
+.detail-variant-slider-labels { display:flex; justify-content:space-between; gap:10px; }
+.detail-variant-slider-labels button { padding:0; border:0; background:none; color:#999; font-size:10px; cursor:pointer; }
+.detail-variant-slider-labels button[aria-pressed=true] { color:#222; font-weight:600; }
+.detail-variant-slider-labels span { display:none; }
+.detail-variant-unavailable { margin:12px 0 0; color:#999; font-size:10px; }
 .detail-variant-track { display:flex; flex-wrap:nowrap; gap:8px; max-width:100%; overflow-x:auto; padding:2px 2px 10px; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:#999 #eee; }
 .detail-variant-track > button { flex:none; white-space:nowrap; scroll-snap-align:start; }
 .detail-variant-track::-webkit-scrollbar { height:5px; }
