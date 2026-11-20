@@ -3,14 +3,14 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-home-shell { --buyer-gutter:clamp(36px,7.5vw,144px); width:100%; min-height:100vh; border-radius:0; overflow:hidden; background:#f2f2f2; color:#202020; }
 .buyer-home-frame { min-height:inherit; }
 .buyer-home-header { padding:0 var(--buyer-gutter); background:#141414; color:#fff; }
-.buyer-home-utility { display:flex; align-items:center; justify-content:space-between; min-height:34px; border-bottom:1px solid #383838; }
-.buyer-home-primary { display:grid; grid-template-columns:220px minmax(0,1fr) auto; align-items:center; gap:28px; min-height:92px; }
+.buyer-home-utility { display:flex; align-items:center; justify-content:space-between; min-height:34px; }
+.buyer-home-primary { display:grid; grid-template-columns:220px minmax(0,1fr) auto; align-items:center; gap:24px; min-height:86px; padding:8px 0 16px; }
 .buyer-home-brand { color:#fff; font-size:16px; font-weight:700; letter-spacing:-.7px; white-space:nowrap; }
 .buyer-home-toplinks { display:flex; align-items:center; gap:22px; font-size:11px; }
 .buyer-home-toplinks > a { display:flex; align-items:center; gap:8px; }
 .buyer-home-signin { color:#fff; font-size:11px; font-weight:600; }
-.buyer-home-primary form { width:100%; height:44px; padding:4px 4px 4px 16px; border-radius:4px; background:#fff; color:#171717; }
-.buyer-home-search-button { display:grid; place-items:center; flex:none; width:54px; height:38px; border-radius:3px; background:#242424; color:#fff; }
+.buyer-home-primary form { width:100%; height:44px; padding:4px 4px 4px 18px; border-radius:999px; background:#fff; color:#171717; }
+.buyer-home-search-button { display:grid; place-items:center; flex:none; width:48px; height:36px; border-radius:999px; background:#242424; color:#fff; }
 .buyer-home-cart { display:flex; align-items:center; justify-content:center; gap:9px; color:#fff; font-size:12px; }
 .buyer-home-main { padding:0 var(--buyer-gutter) 24px; }
 .buyer-home-section { margin-bottom:24px; }
