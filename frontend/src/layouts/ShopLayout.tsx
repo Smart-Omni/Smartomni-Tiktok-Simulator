@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { loginUrl } from '@/components/RequireRole';
 import { useAuth } from '@/lib/auth';
-import { getMe } from '@/lib/endpoints';
+import { getMe, getMarketplaceCart } from '@/lib/endpoints';
 import type { DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
@@ -130,6 +130,16 @@ function BuyerMenu({ buyer }: { buyer: DemoSession }) {
   );
 }
 
+function HeaderCart({ buyer }: { buyer: DemoSession | null }) {
+  const cart = useAsync(() => buyer ? getMarketplaceCart(buyer) : Promise.resolve(null), [buyer?.sessionToken]);
+  useEffect(() => {
+    window.addEventListener('shop-cart-updated', cart.reload);
+    return () => window.removeEventListener('shop-cart-updated', cart.reload);
+  }, [cart.reload]);
+  const count = buyer ? cart.data?.shops?.reduce((sum, group) => sum + group.items.reduce((n, item) => n + item.quantity, 0), 0) ?? 0 : 0;
+  return <Link to="/cart" className="buyer-header-cart" aria-label={`Cart (${count})`}><ShoppingCart size={23} /><span className="buyer-cart-count">{count > 99 ? '99+' : count}</span></Link>;
+}
+
 function AccountPill() {
   const { buyer } = useAuth();
   const location = useLocation();
@@ -183,6 +193,7 @@ export function ShopLayout() {
             <div className="buyer-home-primary">
               <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><span>TikTok</span><small>SHOP SIMULATOR</small></Link>
               <SearchPill wide />
+              <HeaderCart buyer={buyer ?? null} />
             </div>
           </header>
         ) : (

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Star } from 'lucide-react';
+import { ShoppingBag, Star, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ProductPurchase } from './ProductPurchase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { compactCount, shopPrice } from '@/lib/format';
 import { productPath } from '@/lib/links';
@@ -24,12 +26,15 @@ export function ProductImage({ product, className }: { product: EnrichedProduct;
 }
 
 export function ProductCard({ product, className, compact = false }: { product: EnrichedProduct; className?: string; compact?: boolean }) {
-  if (compact) return <Link to={productPath(product)} className="buyer-product-card">
+  const [open, setOpen] = useState(false);
+  if (compact) return <div className="buyer-product-tile"><Link to={productPath(product)} className="buyer-product-card">
     <div className="buyer-product-photo"><ProductImage product={product} className="aspect-[4/5] rounded-none" />{product.discountPct > 0 && <span className="buyer-product-discount">-{product.discountPct}%</span>}</div>
     <div className="buyer-product-info"><h3>{product.title}</h3><strong>{shopPrice(product.minPriceVnd)}</strong>
       <div className="buyer-product-rating" aria-label={`Rated ${product.rating.toFixed(1)} out of 5`}><Star size={12} fill="currentColor" aria-hidden="true" /><span>{product.rating.toFixed(1)}</span><span className="buyer-product-rating-max">/ 5</span></div>
     </div>
-  </Link>;
+  </Link><button type="button" className="buyer-quick-add" aria-label={`Quick add ${product.title}`} onClick={() => setOpen(true)}><Plus size={19} /></button>
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="buyer-quick-dialog !max-w-[800px] !rounded-xl"><DialogTitle className="sr-only">Add {product.title} to cart</DialogTitle><div className="buyer-quick-content"><ProductImage product={product} className="rounded-lg" /><div><ProductPurchase key={productPath(product)} product={product} shop={product.shop} quick /><Link to={productPath(product)} className="buyer-quick-details">View details</Link></div></div></DialogContent></Dialog>
+  </div>;
   return (
     <Link to={productPath(product)} className={cn('group flex flex-col gap-2 rounded-xl p-1.5 transition-colors hover:bg-surface-2', className)}>
       <ProductImage product={product} />

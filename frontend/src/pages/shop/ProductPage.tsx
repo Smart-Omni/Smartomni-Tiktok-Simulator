@@ -1,27 +1,25 @@
+import { ProductPurchase } from '@/components/shop/ProductPurchase';
+import { Stars } from '@/components/shop/ProductStars';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Star, MessageCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { RadioGroup as RadioGroupPrimitive } from 'radix-ui';
+import { ChevronRight } from 'lucide-react';
 import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
 import { ShopFooter } from '@/components/shop/ShopFooter';
-import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { MAX_PER_LINE, type CheckoutState } from '@/lib/checkout';
-import { getCart, getMarketplaceProduct, inShop, listMarketplaceProducts, setCartItem } from '@/lib/endpoints';
+import { getMarketplaceProduct, listMarketplaceProducts } from '@/lib/endpoints';
 import { compactCount, shopPrice } from '@/lib/format';
 import { productPath } from '@/lib/links';
-import type { ShopRef, Sku } from '@/lib/types';
+import type { ShopRef } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
-import { defaultMockShop, enrichProduct, imageBackgrounds, mockCatalog, mockReviewSummary, normalizeTitle, originalPrice, type EnrichedProduct, type MockReview } from '@/mocks';
+import { defaultMockShop, enrichProduct, imageBackgrounds, mockCatalog, mockReviewSummary, normalizeTitle, type EnrichedProduct, type MockReview } from '@/mocks';
 
-const soldOut = (s: Sku) => !s.available || s.stock <= 0;
+
 
 function Breadcrumb({ shopName, title }: { shopName?: string; title: string }) {
   return (
@@ -78,16 +76,6 @@ const reviewFilters: { key: ReviewFilter; label: string }[] = [
   { key: 'photos', label: 'With photos' },
 ];
 const matches = (r: MockReview, f: ReviewFilter) => (f === 'all' ? true : f === 'photos' ? r.photos > 0 : r.rating === Number(f));
-
-function Stars({ value, className }: { value: number; className?: string }) {
-  return (
-    <span className={cn('inline-flex gap-0.5', className)} aria-label={`${value} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} className={cn('size-3.5', i <= Math.round(value) ? 'fill-star text-star' : 'text-line')} aria-hidden />
-      ))}
-    </span>
-  );
-}
 
 function Reviews() {
   const { score, total, distribution, reviews } = mockReviewSummary;
@@ -155,110 +143,6 @@ function Reviews() {
         ))}
       </ul>
     </section>
-  );
-}
-
-function VariantTiles({ label, skus, value, onChange }: { label: string; skus: Sku[]; value: string | undefined; onChange: (id: string) => void }) {
-  const selected = skus.find((sku) => sku.id === value);
-  return <div className="detail-variant-picker">
-    <div className="detail-variant-heading"><span>{label}</span><strong>{selected?.name ?? 'Out of stock'}</strong></div>
-    <RadioGroupPrimitive.Root aria-label={label} value={value} onValueChange={onChange} className="detail-variant-grid">
-      {skus.map((sku) => <RadioGroupPrimitive.Item key={sku.id} value={sku.id} disabled={soldOut(sku)} className="detail-variant-option" title={soldOut(sku) ? `${sku.name} — Out of stock` : sku.name}>{sku.name}</RadioGroupPrimitive.Item>)}
-    </RadioGroupPrimitive.Root>
-  </div>;
-}
-
-function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef }) {
-  const { buyer } = useAuth();
-  const navigate = useNavigate();
-  const [skuId, setSkuId] = useState(() => product.skus.find((s) => !soldOut(s))?.id);
-  const [qty, setQty] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const sku = product.skus.find((s) => s.id === skuId);
-  const price = sku?.priceVnd ?? product.minPriceVnd;
-  const max = sku ? Math.min(sku.stock, MAX_PER_LINE) : 0;
-
-  const pick = (id: string) => {
-    setSkuId(id);
-    const next = product.skus.find((s) => s.id === id);
-    if (next) setQty((q) => Math.max(1, Math.min(q, next.stock, MAX_PER_LINE)));
-  };
-
-  /** Adds `qty` on top of what is already in the cart (PUT cart/items sets the quantity). */
-  const addToCart = async (): Promise<boolean> => {
-    if (!buyer) {
-      navigate(loginUrl(productPath({ id: product.id, shop })));
-      return false;
-    }
-    if (!sku || !shop) return false;
-    setBusy(true);
-    try {
-      const seller = inShop(buyer, shop.id);
-      const cart = await getCart(seller);
-      const inCart = cart.items.find((i) => i.skuId === sku.id)?.quantity ?? 0;
-      await setCartItem(seller, sku.id, Math.min(MAX_PER_LINE, inCart + qty));
-      return true;
-    } catch (e) {
-      toast.error((e as Error).message);
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="detail-buybox">
-      <h1>{product.title}</h1>
-      <p className="detail-rating"><Stars value={product.rating} /><span>{product.rating.toFixed(1)} / 5</span></p>
-      <div className="detail-price-row">
-        {product.discountPct > 0 ? <span className="rounded bg-buyer-soft px-1.5 text-sm font-bold text-buyer">-{product.discountPct}%</span> : null}
-        <span className="detail-price" data-testid="price">
-          {shopPrice(price)}
-        </span>
-        {product.discountPct > 0 ? <span className="text-sm text-muted-2 line-through">{shopPrice(originalPrice(price, product.discountPct))}</span> : null}
-      </div>
-      {shop ? (
-        <div className="detail-shop-chat">
-            <Link to={buyer ? `/account/messages?shop=${encodeURIComponent(shop.id)}` : loginUrl(shop.id ? `/account/messages?shop=${encodeURIComponent(shop.id)}` : '/account/messages')}>
-              <MessageCircle size={15} aria-hidden="true" />Chat with shop
-            </Link>
-        </div>
-      ) : null}
-
-      <VariantTiles label={product.skus[0]?.attributeName || 'Variant'} skus={product.skus} value={skuId} onChange={pick} />
-
-      <div className="detail-quantity">
-        <span className="text-sm font-semibold">Quantity</span>
-        <div className="flex items-center gap-3">
-          <QuantityStepper value={qty} max={max} onChange={setQty} className="detail-quantity-stepper !rounded-md" />
-          <span className="detail-stock">{sku ? `${sku.stock} available` : 'Out of stock'}</span>
-        </div>
-      </div>
-
-      <div className="detail-purchase-actions">
-        <Button
-          size="lg"
-          className="detail-buy-now !bg-[#171717] !text-white hover:!bg-[#333333]"
-          disabled={!sku || busy}
-          onClick={async () => {
-            if (sku && shop && (await addToCart())) navigate('/checkout', { state: { items: [{ shopId: shop.id, skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
-          }}
-        >
-          Buy now
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          className="detail-add-cart !bg-white !text-[#222222] hover:!bg-[#f7f7f7]"
-          disabled={!sku || busy}
-          onClick={async () => {
-            if (await addToCart()) toast.success('Added to cart', { action: { label: 'View cart', onClick: () => navigate('/cart') } });
-          }}
-        >
-          Add to cart
-        </Button>
-      </div>
-    </div>
   );
 }
 
@@ -370,7 +254,7 @@ export function ProductPage() {
       <Breadcrumb shopName={shop?.name} title={product.title} />
       <div className="detail-main">
         <Gallery key={product.id} product={product} />
-        <aside><BuyBox key={product.id} product={product} shop={shop} /></aside>
+        <aside><ProductPurchase key={product.id} product={product} shop={shop} /></aside>
       </div>
       <DetailInformation key={product.id} product={product} />
       <ShopFooter />

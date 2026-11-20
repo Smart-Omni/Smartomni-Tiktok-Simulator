@@ -193,6 +193,7 @@ function Cart({ buyer }: { buyer: DemoSession }) {
     setPending((p) => new Set(p).add(key));
     try {
       const cart = await setCartItem(inShop(buyer, shopId), skuId, quantity);
+      window.dispatchEvent(new Event('shop-cart-updated'));
       setGroups((cur) => {
         const list = cur ?? [];
         const at = list.findIndex((g) => g.shop.id === shopId);

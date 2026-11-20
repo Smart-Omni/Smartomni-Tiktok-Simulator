@@ -421,6 +421,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
         else failed[g.shop.id] = { general: text };
       }
     }
+    window.dispatchEvent(new Event('shop-cart-updated'));
     setErrors({ shops: failed });
     setPlacing(false);
   };
