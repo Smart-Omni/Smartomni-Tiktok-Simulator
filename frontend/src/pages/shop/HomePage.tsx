@@ -75,18 +75,19 @@ function HomeNavigation({ signedIn }: { signedIn: boolean }) {
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
   const featured = deals(items).slice(0, 3);
   const maxDiscount = featured[0]?.discountPct;
-  return <section className="buyer-flash-banner" aria-label="Flash sale">
+  return <div className="buyer-sale-area"><section className="buyer-flash-banner" aria-label="Flash sale">
     <div className="buyer-flash-intro">
       <span className="buyer-flash-kicker"><Sparkles size={13} /> SELECTED DEALS</span>
       <h2>Flash<span>Sale.</span></h2>
       {maxDiscount ? <div className="buyer-flash-offer">UP TO <strong>{maxDiscount}%</strong> OFF</div> : null}
       <a href="#catalog">Shop deals <ArrowRight size={16} /></a>
     </div>
-    <div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
+  </section>
+    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div className="buyer-sale-products-heading"><h2>Sale picks</h2><a href="#catalog">View products <ArrowRight size={14} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
       <div className="buyer-flash-image"><ProductImage product={p} className="rounded-none" /><span>-{p.discountPct}%</span></div>
       <div className="buyer-flash-product-info"><strong>{p.title}</strong><div className="buyer-flash-prices"><b>{shopPrice(p.minPriceVnd)}</b><del>{shopPrice(p.originalPriceVnd)}</del></div></div>
-    </Link>)}</div>
-  </section>;
+    </Link>)}</div></section>}
+  </div>;
 }
 
 export function HomePage() {
