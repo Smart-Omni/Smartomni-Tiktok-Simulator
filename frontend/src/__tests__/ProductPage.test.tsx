@@ -121,7 +121,7 @@ describe('ProductPage', () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderProduct('7500T', 'shop-2');
     expect(await screen.findByRole('button', { name: 'Trắng / M' })).toBeTruthy();
-    expect(await screen.findByText('Mộc Lan Shop', { selector: 'span.font-semibold' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Chat with shop' })).toBeTruthy();
     const plus = screen.getByRole('button', { name: 'Increase quantity' }) as HTMLButtonElement;
     fireEvent.click(plus);
     expect((screen.getByRole('spinbutton', { name: 'Quantity' }) as HTMLInputElement).value).toBe('2');

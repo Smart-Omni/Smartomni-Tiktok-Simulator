@@ -1,13 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, Star } from 'lucide-react';
+import { ChevronRight, Star, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
 import { ShopFooter } from '@/components/shop/ShopFooter';
 import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
@@ -212,34 +211,25 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
   return (
     <div className="detail-buybox">
       <h1>{product.title}</h1>
-      <p className="detail-rating"><Stars value={product.rating} /><span>{product.rating.toFixed(1)} / 5</span><span>· {compactCount(product.sold)} sold</span></p>
-      <div className="flex flex-wrap items-baseline gap-2">
+      <p className="detail-rating"><Stars value={product.rating} /><span>{product.rating.toFixed(1)} / 5</span></p>
+      <div className="detail-price-row">
         {product.discountPct > 0 ? <span className="rounded bg-buyer-soft px-1.5 text-sm font-bold text-buyer">-{product.discountPct}%</span> : null}
         <span className="detail-price" data-testid="price">
           {shopPrice(price)}
         </span>
         {product.discountPct > 0 ? <span className="text-sm text-muted-2 line-through">{shopPrice(originalPrice(price, product.discountPct))}</span> : null}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {product.trending ? <Badge className="rounded bg-ink text-white">Trending</Badge> : null}
-      </div>
-      {product.description && <p className="detail-summary">{product.description}</p>}
       {shop ? (
-        <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-          <span>
-            Sold by <span className="font-semibold text-ink">{shop.name}</span>
-          </span>
-          {buyer ? (
-            <Link to={`/account/messages?shop=${encodeURIComponent(shop.id)}`} className="text-buyer hover:underline">
-              Chat with shop
+        <div className="detail-shop-chat">
+            <Link to={buyer ? `/account/messages?shop=${encodeURIComponent(shop.id)}` : loginUrl(shop.id ? `/account/messages?shop=${encodeURIComponent(shop.id)}` : '/account/messages')}>
+              <MessageCircle size={15} aria-hidden="true" />Chat with shop
             </Link>
-          ) : null}
-        </p>
+        </div>
       ) : null}
 
       <VariantTiles label={product.skus[0]?.attributeName || 'Variant'} skus={product.skus} value={skuId} onChange={pick} />
 
-      <div className="flex flex-col gap-2">
+      <div className="detail-quantity">
         <span className="text-sm font-semibold">Quantity</span>
         <div className="flex items-center gap-3">
           <QuantityStepper value={qty} max={max} onChange={setQty} />
