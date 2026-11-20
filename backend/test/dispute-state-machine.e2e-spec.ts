@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 import { conformErrors } from './contract';
 
 describe('Dispute State Machine and Webhook Trigger', () => {
@@ -21,8 +20,7 @@ describe('Dispute State Machine and Webhook Trigger', () => {
   });
 
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   describe('State Machine Transitions', () => {

@@ -3,7 +3,6 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { webhookSignature } from '../src/webhooks/webhook-worker.service';
 import {
   buildProductStatusChangeData,
@@ -12,7 +11,7 @@ import {
   buildUpcomingAuthExpirationData,
   WEBHOOK_TYPE,
 } from '../src/webhooks/webhook-emitter.service';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 import { signWebhook, verifyWebhook } from '../../contracts/signing/sign';
 
@@ -40,8 +39,7 @@ describe('TikTok OpenAPI 202602 / 202309 / 202606 Upgrade & Dispute State Machin
   });
 
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
   });
 

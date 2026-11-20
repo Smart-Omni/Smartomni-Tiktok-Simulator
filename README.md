@@ -90,14 +90,15 @@ React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). 
 
 | Route | Page | Who |
 |---|---|---|
-| `/` | Home: "Deals on 4★+ products", "Best sellers", search (`?q=`, client-side) | everyone (guests see the mock catalog) |
-| `/product/:id` | Product: variants (SKU), quantity, Add to cart / Buy now, ratings and reviews | everyone (real products need a buyer session) |
+| `/` | Home: products of every active shop (`GET /demo/catalog`) with the shop name, "Deals on 4★+ products", "Best sellers", search (`?q=`, client-side) | everyone (guests see the mock catalog) |
+| `/product/:shopId/:id` | Product of that shop: variants (SKU), quantity, Add to cart / Buy now, chat with the shop, ratings and reviews. `/product/:id` still works for links without a shop | everyone (real products need a buyer session) |
 | `/login` | Sign in as a demo buyer or seller (`?next=` return path, `&role=seller`) | everyone |
-| `/cart`, `/checkout` | Cart (optimistic quantities) and checkout with simulated payment | buyer |
+| `/cart`, `/checkout` | Cart grouped by shop (optimistic quantities) and checkout: one order per shop, one voucher field per shop, simulated payment of all of them | buyer |
 | `/account/orders`, `/account/messages` | My orders (tabs, tracking, cancel, return) and chat with the shop | buyer |
 | `/seller-center` | Seller Center home: to-do counts, business overview (mock), shop, latest orders | seller |
 | `/seller-center/orders`, `/orders/:id` | Manage orders (arrange shipment, print label, simulate carrier, cancel) and order detail | seller |
 | `/seller-center/returns`, `/products`, `/vouchers`, `/messages` | Returns & refunds, products + stock history, vouchers, buyer chat | seller |
+| `/seller-center/products/new`, `/products/:id/edit` | Product page: title/description, up to 9 uploaded images (first is the main one), category by level or search, brand, attributes generated from the category (required ones starred), package weight/dimensions, variants on create | seller |
 | `/console` | Test Console (unchanged) | developers |
 | `/seller/authorize` | OAuth consent page for SmartOmni (unchanged) | seller |
 
@@ -210,8 +211,9 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 * Search order is a monotonic internal sequence; `page_token` is an opaque cursor over it, so products added during an import appear on a later page and nothing is skipped or repeated. The last page returns `next_page_token: ""`.
 * `status` filter values come from the OAS (`ALL`, `DRAFT`, `PENDING`, `FAILED`, `ACTIVATE`, `SELLER_DEACTIVATED`, `PLATFORM_DEACTIVATED`, `FREEZE`, `DELETED`); `ALL` includes every status (whether real TikTok hides `DELETED` under `ALL` is unverified). Unsupported filters are rejected with a 400 test fault, never ignored.
 * Prices are strings in VND (`price.sale_price`), per SKU. Warehouse ids (`inventory[].warehouse_id`) match `GET /logistics/202309/warehouses` `id`.
-* Product writes exist only as `/demo` endpoints: the contract lists no verified product-write operation.
-* Buyer product link: `http://localhost:3090/product/<marketplace product id>` (opens in the buyer session's shop; a product of another shop shows "not available"). Old `/buyer/product/<id>` links redirect there.
+* Product writes from the Seller Center are `/demo` endpoints. They take the listing fields too (`categoryId`, `brandId`, `images`, `productAttributes`, `packageWeight`, `packageDimensions`) and check them with the same rules as the TikTok Create Product, plus every attribute the category marks required (DECISIONS DA-14). Category, attribute and brand data live in `backend/src/catalog-meta/` and are shared by both routers.
+* Product images: `POST /demo/shops/<shopId>/media/images` (seller session, multipart field `file`, JPEG/PNG/WebP up to 5 MB, checked by the bytes) stores the picture in PostgreSQL (`MediaAsset`) and returns `uri` (`sim-media/<id>`) plus a public `url` (`PUBLIC_API_BASE_URL/demo/media/images/<id>`). The storefront and TikTok Get Product `main_images` return these URLs.
+* Buyer product link: `http://localhost:3090/product/<shopId>/<marketplace product id>`. A buyer can browse, cart, order and chat with every active shop; the buyer's own shop is only the default at sign-in. Old `/buyer/product/<id>` and `/product/<id>` links still open.
 
 ## Orders and webhooks (Phase 05)
 

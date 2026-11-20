@@ -1,10 +1,9 @@
 import { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { FaultService } from '../src/faults/fault.service';
 import { WebhookQueueService } from '../src/webhooks/webhook-queue.service';
 import { WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
-import { cleanDb, createApp, FakeTime, FakeTransport } from './helpers';
+import { createApp, FakeTime, FakeTransport, resetToSeed } from './helpers';
 
 const OPTS = { leaseMs: 30_000, baseBackoffMs: 1_000, maxBackoffMs: 60_000 };
 
@@ -29,8 +28,7 @@ describe('durable webhook worker', () => {
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     shopId = (await prisma.shop.findFirstOrThrow()).id;
     transport.calls = [];
     transport.responses = [];

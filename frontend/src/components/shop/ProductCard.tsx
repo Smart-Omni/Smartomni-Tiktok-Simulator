@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingBag, Star } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { compactCount, shopPrice } from '@/lib/format';
+import { productPath } from '@/lib/links';
 import { cn } from '@/lib/utils';
 import type { EnrichedProduct } from '@/mocks';
 
@@ -24,7 +25,7 @@ export function ProductImage({ product, className }: { product: EnrichedProduct;
 
 export function ProductCard({ product, className }: { product: EnrichedProduct; className?: string }) {
   return (
-    <Link to={`/product/${encodeURIComponent(product.id)}`} className={cn('group flex flex-col gap-2 rounded-xl p-1.5 transition-colors hover:bg-surface-2', className)}>
+    <Link to={productPath(product)} className={cn('group flex flex-col gap-2 rounded-xl p-1.5 transition-colors hover:bg-surface-2', className)}>
       <ProductImage product={product} />
       <div className="flex flex-col gap-1 px-0.5">
         <h3 className="line-clamp-2 min-h-[2.6em] text-sm leading-[1.3] text-ink">{product.title}</h3>
@@ -34,6 +35,7 @@ export function ProductCard({ product, className }: { product: EnrichedProduct; 
             <span className="rounded bg-buyer-soft px-1 text-xs font-semibold text-buyer">-{product.discountPct}%</span>
           ) : null}
         </div>
+        {product.shop ? <p className="truncate text-xs text-muted-foreground">{product.shop.name}</p> : null}
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Star className="size-3.5 fill-star text-star" aria-hidden />
           <span className="font-semibold text-ink">{product.rating.toFixed(1)}</span>

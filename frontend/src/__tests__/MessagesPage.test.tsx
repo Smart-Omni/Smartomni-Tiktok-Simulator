@@ -27,6 +27,16 @@ describe('Buyer messages', () => {
         const method = init?.method ?? 'GET';
         calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
         if (method === 'POST') return json({}, 201);
+        if (url === '/demo/identities') {
+          return json({
+            sellers: [
+              { id: 's1', name: 'Seller One', shops: [{ id: 'shop-1', name: 'Mộc Lan Shop' }] },
+              { id: 's2', name: 'Seller Two', shops: [{ id: 'shop-2', name: 'Pottery Shop' }] },
+            ],
+            buyers: [],
+          });
+        }
+        if (url === '/demo/shops/shop-2/chat/conversations') return json({ supportedTypes: ['TEXT'], unsupported: 'IMAGE, VIDEO', items: [] });
         if (url === `${base}/chat/conversations`) return json({ supportedTypes: ['TEXT'], unsupported: 'IMAGE, VIDEO', items: conversations });
         if (url === `${base}/chat/conversations/c1/messages`) return json({ conversation, items: [msg('m1', 'BUYER', 'Is size L back?'), msg('m2', 'SHOP', 'Yes, today.')] });
         return json({ message: 'nope' }, 404);
@@ -38,9 +48,9 @@ describe('Buyer messages', () => {
     vi.unstubAllGlobals();
   });
 
-  const renderPage = () =>
+  const renderPage = (path = '/') =>
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
           <MessagesPage />
         </AuthProvider>
@@ -58,6 +68,15 @@ describe('Buyer messages', () => {
     fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Hello shop' } });
     fireEvent.click(send);
     await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([{ url: `${base}/chat/messages`, method: 'POST', body: { text: 'Hello shop' } }]));
+  });
+
+  it('chats with the shop picked in ?shop= and sends the message to that shop', async () => {
+    renderPage('/?shop=shop-2');
+    const thread = await screen.findByRole('region', { name: 'Chat thread' });
+    expect((screen.getByRole('combobox', { name: 'Shop' }) as HTMLSelectElement).value).toBe('shop-2');
+    fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Hi Pottery' } });
+    fireEvent.click(within(thread).getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([{ url: '/demo/shops/shop-2/chat/messages', method: 'POST', body: { text: 'Hi Pottery' } }]));
   });
 
   it('shows the conversation, own messages on the right, and replies in it', async () => {

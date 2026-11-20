@@ -7,7 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { MockBadge } from '@/components/ui/mock-badge';
 import { useAuth } from '@/lib/auth';
-import { listStorefrontProducts } from '@/lib/endpoints';
+import { productPath } from '@/lib/links';
+import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
@@ -67,7 +68,7 @@ function DealsRow({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) 
       <div ref={ref} onScroll={update} className="-mx-1.5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((p) => (
           <ProductCard
-            key={p.id}
+            key={productPath(p)}
             product={p}
             className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]"
           />
@@ -82,7 +83,7 @@ function BestSellers({ items, mock }: { items: EnrichedProduct[]; mock: boolean 
   return (
     <Section id="best-sellers" title="Best sellers" mock={mock}>
       <div className={GRID}>
-        {items.slice(0, shown).map((p) => <ProductCard key={p.id} product={p} />)}
+        {items.slice(0, shown).map((p) => <ProductCard key={productPath(p)} product={p} />)}
       </div>
       {shown < items.length ? (
         <div className="mt-6 flex justify-center">
@@ -115,7 +116,7 @@ function Results({ items, q, category, mock }: { items: EnrichedProduct[]; q: st
       }
     >
       {found.length ? (
-        <div className={GRID}>{found.map((p) => <ProductCard key={p.id} product={p} />)}</div>
+        <div className={GRID}>{found.map((p) => <ProductCard key={productPath(p)} product={p} />)}</div>
       ) : (
         <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line py-12 text-center">
           <p className="text-muted-foreground">{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p>
@@ -134,7 +135,7 @@ export function HomePage() {
   const q = params.get('q')?.trim() ?? '';
   const category = categoryBySlug(params.get('category')) ? params.get('category') : null;
   const products = useAsync<EnrichedProduct[]>(
-    () => (buyer ? listStorefrontProducts(buyer).then((r) => r.items.map(enrichProduct)) : Promise.resolve(mockCatalog)),
+    () => (buyer ? listMarketplaceProducts().then((items) => items.map(enrichProduct)) : Promise.resolve(mockCatalog)),
     [buyer?.sessionToken],
   );
   const mock = !buyer;
@@ -172,7 +173,7 @@ function Products({ state, q, category, mock }: { state: AsyncResult<EnrichedPro
 
   const items = state.data ?? [];
   if (!items.length) {
-    return <p className="mt-10 text-center text-muted-foreground">This shop has no products for sale yet.</p>;
+    return <p className="mt-10 text-center text-muted-foreground">No products are for sale yet.</p>;
   }
   if (q || category) return <Results items={items} q={q} category={category} mock={mock} />;
   const dealItems = deals(items);

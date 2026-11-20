@@ -3,8 +3,7 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const BAG = 'sim-sku-a-BAG-NAT'; // 99000
@@ -27,8 +26,7 @@ describe('OAS alignment P1: Update Price, Inventory Search, Delete / Recover Pro
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
     shopAId = (await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Mộc Lan' } } })).id;
     token = (await t.connect(0)).accessToken;

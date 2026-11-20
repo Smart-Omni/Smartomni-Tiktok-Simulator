@@ -1,17 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Plus, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ImageIcon, Pencil, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
-import { addSku, createProduct, deleteProduct, getCatalog, getInventoryHistory, patchProduct, patchSku } from '@/lib/endpoints';
+import { addSku, deleteProduct, getCatalog, getInventoryHistory, patchProduct, patchSku } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
 import type { Catalog, CatalogProduct, CatalogSku, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
@@ -105,7 +103,17 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   return (
     <SellerCard label={`Product ${p.externalId}`} className="p-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-base font-bold">{p.title}</h2>
+        {p.images?.[0] ? (
+          <img src={p.images[0].url} alt={`Main image of ${p.title}`} className="size-12 rounded-md object-cover ring-1 ring-line-soft" />
+        ) : (
+          <div aria-label="No image" className="flex size-12 items-center justify-center rounded-md bg-surface text-muted-foreground">
+            <ImageIcon className="size-5" />
+          </div>
+        )}
+        <div className="flex flex-col">
+          <h2 className="text-base font-bold">{p.title}</h2>
+          {p.categoryPath?.length ? <span className="text-xs text-muted-foreground">{p.categoryPath.map((c) => c.name).join(' > ')}</span> : null}
+        </div>
         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusTone(p.status))}>{humanize(p.status)}</span>
         <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
       </div>
@@ -123,7 +131,12 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
               </option>
             ))}
           </NativeSelect>
-          <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+          <Button asChild size="sm" variant="outline" className="ml-auto">
+            <Link to={`/seller-center/products/${encodeURIComponent(p.id)}/edit`}>
+              <Pencil /> Edit details
+            </Link>
+          </Button>
+          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setConfirmDelete(true)}>
             Delete
           </Button>
         </div>
@@ -183,62 +196,6 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Dialog>
       ) : null}
     </SellerCard>
-  );
-}
-
-function NewProductDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (body: Record<string, unknown>) => Promise<void> }) {
-  const [f, setF] = useState({ title: '', description: '', sellerSku: '', variant: '', price: '' });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-  const valid = f.title.trim() !== '' && f.sellerSku.trim() !== '' && f.variant.trim() !== '' && isWholeVnd(f.price);
-  const field = (key: keyof typeof f, label: string, extra: { inputMode?: 'numeric'; placeholder?: string } = {}) => (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={`new-product-${key}`}>{label}</Label>
-      <Input id={`new-product-${key}`} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} {...extra} />
-    </div>
-  );
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="theme-seller font-sans sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>New product</DialogTitle>
-          <DialogDescription>Stock starts at 0 in every warehouse; set it per variant afterwards.</DialogDescription>
-        </DialogHeader>
-        <form
-          className="grid gap-3 sm:grid-cols-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            setError(undefined);
-            try {
-              await onCreate({ title: f.title, description: f.description, skus: [{ sellerSku: f.sellerSku, name: f.variant, priceVnd: Number(f.price) }] });
-            } catch (err) {
-              setError((err as Error).message);
-              setBusy(false);
-            }
-          }}
-        >
-          <div className="sm:col-span-2">{field('title', 'Title')}</div>
-          <div className="sm:col-span-2">{field('description', 'Description')}</div>
-          {field('sellerSku', 'Seller SKU')}
-          {field('variant', 'First variant')}
-          {field('price', 'Price (VND)', { inputMode: 'numeric' })}
-          {error ? (
-            <Alert variant="destructive" className="sm:col-span-2">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-          <DialogFooter className="sm:col-span-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!valid || busy}>
-              Create product
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -346,7 +303,6 @@ function Products({ seller }: { seller: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const lowOnly = params.get('filter') === 'low-stock';
   const [tab, setTab] = useState('products');
-  const [creating, setCreating] = useState(false);
   const catalog = useAsync(() => getCatalog(seller), [seller.sessionToken, seller.shopId]);
 
   const run: Run = async (fn, done) => {
@@ -365,8 +321,10 @@ function Products({ seller }: { seller: DemoSession }) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">Products</h1>
-        <Button className="ml-auto" onClick={() => setCreating(true)}>
-          <Plus /> New product
+        <Button asChild className="ml-auto">
+          <Link to="/seller-center/products/new">
+            <Plus /> New product
+          </Link>
         </Button>
       </div>
       <Tabs value={tab} onValueChange={setTab} className="gap-4">
@@ -406,17 +364,6 @@ function Products({ seller }: { seller: DemoSession }) {
         </TabsContent>
       </Tabs>
 
-      {creating ? (
-        <NewProductDialog
-          onClose={() => setCreating(false)}
-          onCreate={async (body) => {
-            await createProduct(seller, body);
-            toast.success('Product created');
-            setCreating(false);
-            catalog.reload();
-          }}
-        />
-      ) : null}
     </div>
   );
 }

@@ -91,6 +91,7 @@ model Shop {
   buyers             Buyer[]
   warehouses         Warehouse[]
   products           Product[]
+  mediaAssets        MediaAsset[]
   scenarios          Scenario[]            @relation("ShopScenarios")
   tokens             Token[]
   authCodes          AuthorizationCode[]
@@ -810,4 +811,21 @@ model AftersaleRecord {
 
   @@unique([requestId, idempotencyKey])
   @@index([requestId, createdAt])
+}
+
+// Product image uploaded from the Seller Center or the TikTok Upload Product Image (DECISIONS DA-14). The bytes live in
+// PostgreSQL so they survive a redeploy without a disk; served publicly by GET /demo/media/images/{id}.
+model MediaAsset {
+  id        String   @id @default(uuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  // Detected from the bytes: image/jpeg, image/png or image/webp.
+  mimeType  String
+  bytes     Bytes
+  width     Int
+  height    Int
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([shopId, createdAt])
 }

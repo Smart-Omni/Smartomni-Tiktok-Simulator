@@ -90,6 +90,30 @@ const SkuSeller: Json = obj({
   stock: arr(obj({ warehouseId: str('Warehouse external id'), warehouseName: str(), quantity: int() })),
   totalStock: int(),
 });
+const AttributeValueRef: Json = obj({ id: str('Value id from the category attribute `values` (omit for a custom value)'), name: str('Value name (required for a custom value)') });
+const ProductAttributeStored: Json = obj({ id: str('Attribute id'), name: str('Attribute name (filled in from the category data)'), values: arr(AttributeValueRef) }, ['id', 'values']);
+const PackageWeight: Json = obj({ value: { type: 'number', exclusiveMinimum: 0 }, unit: str('default KILOGRAM', { enum: ['KILOGRAM', 'POUND'] }) }, ['value'], { nullable: true });
+const PackageDimensions: Json = obj(
+  { length: { type: 'number', exclusiveMinimum: 0 }, width: { type: 'number', exclusiveMinimum: 0 }, height: { type: 'number', exclusiveMinimum: 0 }, unit: str('default CENTIMETER', { enum: ['CENTIMETER', 'INCH'] }) },
+  ['length', 'width', 'height'],
+  { nullable: true },
+);
+/** Listing fields accepted by create and edit product (DECISIONS DA-14). */
+const ListingInput: Record<string, Json> = {
+  categoryId: str('Leaf category id from GET .../catalog/categories (AVAILABLE only)'),
+  brandId: str('Brand id from GET .../catalog/brands; null clears it', { nullable: true }),
+  images: { type: 'array', minItems: 1, maxItems: 9, items: str('`uri` returned by POST /demo/shops/{shopId}/media/images (this shop only); the first one is the main image') },
+  productAttributes: {
+    type: 'array',
+    maxItems: 100,
+    description: 'Attributes of the category only. Every attribute the category marks required needs a value; a single-selection attribute takes one value; a value without `id` is allowed only for customizable attributes. Changing the category without sending attributes clears them.',
+    items: obj({ id: str(), values: { type: 'array', minItems: 1, maxItems: 50, items: AttributeValueRef } }, ['id', 'values']),
+  },
+  packageWeight: PackageWeight,
+  packageDimensions: { ...PackageDimensions, description: 'Required when the category rules say `packageDimensionsRequired`. null clears it.' },
+};
+const LISTING_400 = 'Also: listing rules (one `message` joining every reason): unknown or non-leaf category, unknown brand, image not uploaded by this shop, missing required attribute, attribute or value not of the category, missing package dimensions.';
+
 const ProductSeller: Json = obj({
   id: str('Row id (UUID) used in the catalog PATCH/DELETE/skus paths'),
   externalId: str('Marketplace product id'),
@@ -97,6 +121,13 @@ const ProductSeller: Json = obj({
   description: str(),
   status: str(undefined, { enum: ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED', 'DELETED', 'PLATFORM_DEACTIVATED', 'FREEZE'] }),
   isNotForSale: bool(),
+  images: arr(obj({ uri: str(), url: str('Absolute image URL'), width: int(undefined, { nullable: true }), height: int(undefined, { nullable: true }) })),
+  categoryId: str(undefined, { nullable: true }),
+  categoryPath: arr(obj({ id: str(), name: str() })),
+  brandId: str(undefined, { nullable: true }),
+  productAttributes: arr(ProductAttributeStored),
+  packageWeight: PackageWeight,
+  packageDimensions: PackageDimensions,
   createdAt: str(undefined, { format: 'date-time' }),
   updatedAt: str(undefined, { format: 'date-time' }),
   skus: arr(SkuSeller),
@@ -108,6 +139,13 @@ const productSellerExample = {
   description: 'Cotton 100%',
   status: 'ACTIVATE',
   isNotForSale: false,
+  images: [{ uri: 'sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', url: 'http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', width: 800, height: 800 }],
+  categoryId: '100002',
+  categoryPath: [{ id: '100001', name: 'Thời trang & Phụ kiện' }, { id: '100002', name: 'Áo Nam' }],
+  brandId: 'brand_001',
+  productAttributes: [{ id: 'attr_material', name: 'Chất liệu', values: [{ name: 'Cotton' }] }],
+  packageWeight: { value: 0.3, unit: 'KILOGRAM' },
+  packageDimensions: null,
   createdAt: '2026-10-15T08:00:00.000Z',
   updatedAt: '2026-10-15T08:00:00.000Z',
   skus: [
@@ -503,6 +541,70 @@ export const paths: PathsFragment = {
       errorShape: 'nest',
     }),
   },
+  '/demo/shops/{shopId}/catalog/categories': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Category tree for the product page',
+      description: 'Own shop, SELLER only. The categories of the TikTok router (GET /product/202309/categories, same data in `backend/src/catalog-meta`) with permission AVAILABLE, as a tree from the roots.',
+      handler: 'CatalogDemoController.categories',
+      security: SESSION,
+      pathParams: [shopId],
+      ok: {
+        description: 'Tree.',
+        schema: obj({ categories: arr(obj({ id: str(), name: str(), isLeaf: bool(), children: arr({ type: 'object', description: 'Same shape (recursive)' }) })) }),
+        example: { categories: [{ id: '100001', name: 'Thời trang & Phụ kiện', isLeaf: false, children: [{ id: '100002', name: 'Áo Nam', isLeaf: true, children: [] }] }] },
+      },
+      errors: { 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}` },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/catalog/categories/{categoryId}/attributes': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Product attributes of a leaf category',
+      description: 'Own shop, SELLER only. PRODUCT_PROPERTY attributes of the category (same data as the TikTok Get Attributes), camelCase.',
+      handler: 'CatalogDemoController.categoryAttributes',
+      security: SESSION,
+      pathParams: [shopId, { name: 'categoryId', description: 'Leaf category id.', example: '100002' }],
+      ok: {
+        description: 'Attributes.',
+        schema: obj({ attributes: arr(obj({ id: str(), name: str(), isRequired: bool(), isMultipleSelection: bool(), isCustomizable: bool(), values: arr(obj({ id: str(), name: str() })) })) }),
+        example: { attributes: [{ id: 'attr_material', name: 'Chất liệu', isRequired: true, isMultipleSelection: false, isCustomizable: true, values: [] }] },
+      },
+      errors: { 400: 'Not a leaf category, or not AVAILABLE.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown category (`Unknown category`).' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/catalog/categories/{categoryId}/rules': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Listing rules of a leaf category',
+      description: 'Own shop, SELLER only. From the TikTok Get Category Rules data.',
+      handler: 'CatalogDemoController.categoryRules',
+      security: SESSION,
+      pathParams: [shopId, { name: 'categoryId', description: 'Leaf category id.', example: '200002' }],
+      ok: {
+        description: 'Rules.',
+        schema: obj({ packageDimensionsRequired: bool(), sizeChartSupported: bool(), codSupported: bool() }),
+        example: { packageDimensionsRequired: true, sizeChartSupported: false, codSupported: true },
+      },
+      errors: { 400: 'Not a leaf category, or not AVAILABLE.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown category.' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/catalog/brands': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Brands for the product page',
+      description: 'Own shop, SELLER only. The TikTok Get Brands data; `authorized` is `authorized_status === AUTHORIZED`.',
+      handler: 'CatalogDemoController.brands',
+      security: SESSION,
+      pathParams: [shopId],
+      ok: { description: 'Brands.', schema: obj({ brands: arr(obj({ id: str(), name: str(), authorized: bool() })) }), example: { brands: [{ id: 'brand_001', name: 'No Brand', authorized: true }] } },
+      errors: { 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}` },
+      errorShape: 'nest',
+    }),
+  },
   '/demo/shops/{shopId}/catalog/products': {
     post: op({
       tag: 'Demo Catalog',
@@ -518,6 +620,7 @@ export const paths: PathsFragment = {
             description: str('max 10000; default ""'),
             status: str('default ACTIVATE', { enum: ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED', 'DELETED'] }),
             skus: { type: 'array', items: SkuInput, minItems: 1, maxItems: 100 },
+            ...ListingInput,
           },
           ['title', 'skus'],
         ),
@@ -525,7 +628,7 @@ export const paths: PathsFragment = {
       },
       ok: { description: 'Created product.', schema: ProductSeller, example: productSellerExample },
       status: 201,
-      errors: { 400: `${VALIDATION} Also: unknown warehouse in \`stock\`.`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}` },
+      errors: { 400: `${VALIDATION} Also: unknown warehouse in \`stock\`. ${LISTING_400}`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}` },
       errorShape: 'nest',
     }),
   },
@@ -538,11 +641,11 @@ export const paths: PathsFragment = {
       security: SESSION,
       pathParams: [shopId, { name: 'productId', description: 'Product row id (`id` in catalog responses, UUID), not the marketplace externalId.', example: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d' }],
       body: {
-        schema: obj({ title: str('1-500'), description: str('max 10000'), status: str(undefined, { enum: ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED', 'DELETED'] }), isNotForSale: bool() }, [], { minProperties: 1 }),
+        schema: obj({ title: str('1-500'), description: str('max 10000'), status: str(undefined, { enum: ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED', 'DELETED'] }), isNotForSale: bool(), ...ListingInput }, [], { minProperties: 1 }),
         example: { status: 'SELLER_DEACTIVATED' },
       },
       ok: { description: 'Updated product.', schema: ProductSeller, example: { ...productSellerExample, status: 'SELLER_DEACTIVATED' } },
-      errors: { 400: `${VALIDATION} Also: the product is DELETED.`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown product (`Unknown product`).' },
+      errors: { 400: `${VALIDATION} Also: the product is DELETED. ${LISTING_400} The listing rules run only when a listing field is sent; stored values stand in for the ones not sent.`, 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown product (`Unknown product`).' },
       errorShape: 'nest',
     }),
     delete: op({
@@ -651,6 +754,52 @@ export const paths: PathsFragment = {
         example: { currency: 'VND', product: { id: '7500123456789012', title: 'Ao thun co tron', description: 'Cotton 100%', imageUrl: '/demo/media/products/0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.svg', minPriceVnd: 125000, maxPriceVnd: 125000, skus: [{ id: '7510123456789013', name: 'Size M', attributeName: 'Kich thuoc', priceVnd: 125000, available: true, stock: 40 }] } },
       },
       errors: { ...base, 404: 'Product not available (`This product is not available`).' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/shops/{shopId}/media/images': {
+    post: op({
+      tag: 'Demo Catalog',
+      summary: 'Upload a product image',
+      description:
+        'Own shop, SELLER only. multipart/form-data with one part `file`. The format is read from the bytes (magic numbers), never from the declared type or file name: only JPEG, PNG and WebP are accepted, at most 5 MB. Width and height are read from the image header. The picture is stored in PostgreSQL (`MediaAsset`, belongs to the shop). Use the returned `uri` in `images` of the create/edit product endpoints.',
+      handler: 'MediaDemoController.upload',
+      security: SESSION,
+      pathParams: [shopId],
+      body: {
+        contentType: 'multipart/form-data',
+        schema: obj({ file: str('JPEG, PNG or WebP, max 5 MB', { format: 'binary' }) }, ['file']),
+      },
+      ok: {
+        description: 'Stored image.',
+        schema: obj(
+          {
+            uri: str('`sim-media/{id}`; reference it in product `images`'),
+            url: str('Absolute public URL (PUBLIC_API_BASE_URL) of GET /demo/media/images/{id}'),
+            width: int(),
+            height: int(),
+            mimeType: str(undefined, { enum: ['image/jpeg', 'image/png', 'image/webp'] }),
+            sizeBytes: int(),
+          },
+          ['uri', 'url', 'width', 'height', 'mimeType', 'sizeBytes'],
+        ),
+        example: { uri: 'sim-media/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', url: 'http://localhost:8090/demo/media/images/0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70', width: 800, height: 800, mimeType: 'image/png', sizeBytes: 48213 },
+      },
+      status: 201,
+      errors: { 400: 'No `file` part, or the bytes are not a JPEG, PNG or WebP image.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 413: 'The file is larger than 5 MB (multer limit).' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/media/images/{id}': {
+    get: op({
+      tag: 'Demo Catalog',
+      summary: 'Uploaded product image',
+      description: 'Public (an <img> cannot send the session header). Serves the stored bytes with their `Content-Type` and `Cache-Control: public, max-age=31536000, immutable` (an id never changes content).',
+      handler: 'MediaDemoController.image',
+      security: [],
+      pathParams: [{ name: 'id', description: 'MediaAsset id (UUID), the part after `sim-media/` in the uri.', example: '0f8e2a51-3c1d-4f7a-9b8e-2d6c4a1b5e70' }],
+      ok: { description: 'The image bytes.', contentType: 'image/*', schema: str('Image bytes', { format: 'binary' }) },
+      errors: { 404: 'Malformed or unknown id.' },
       errorShape: 'nest',
     }),
   },

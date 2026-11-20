@@ -2,8 +2,12 @@ import { api } from './api';
 import type {
   AftersaleList,
   Aftersale,
+  Brand,
   Cart,
   Catalog,
+  CategoryAttribute,
+  CategoryNode,
+  CategoryRules,
   ChatMessage,
   CheckoutRequest,
   Conversation,
@@ -13,15 +17,18 @@ import type {
   Fulfillment,
   Identities,
   InventoryHistory,
+  MarketplaceCart,
   Me,
   Order,
   OrderHistoryEntry,
   ReturnRequest,
   ShippingDocument,
+  ShopRef,
   ShippingDocumentType,
   Shop,
   SignInIdentity,
   StorefrontProduct,
+  UploadedImage,
 } from './types';
 
 /** One function per /demo endpoint used by the Tiptop Shop screens. Shop-scoped calls take the signed-in session. */
@@ -29,6 +36,12 @@ import type {
 const shop = (s: DemoSession, path = '') => `/demo/shops/${encodeURIComponent(s.shopId)}${path}`;
 const id = encodeURIComponent;
 const auth = (s: DemoSession) => ({ demoSession: s.sessionToken });
+
+/**
+ * A buyer session works in every shop: the shop is taken from the URL. Use this to point a shop-scoped call
+ * at a shop other than the session's default one, e.g. `getCart(inShop(buyer, product.shop.id))`.
+ */
+export const inShop = (s: DemoSession, shopId: string): DemoSession => ({ ...s, shopId });
 
 // Sessions
 export const getIdentities = () => api<Identities>('/demo/identities');
@@ -47,6 +60,26 @@ export const listStorefrontProducts = (s: DemoSession) =>
   api<{ currency: string; items: StorefrontProduct[] }>(shop(s, '/storefront/products'), auth(s));
 export const getStorefrontProduct = (s: DemoSession, productId: string) =>
   api<{ currency: string; product: StorefrontProduct }>(shop(s, `/storefront/products/${id(productId)}`), auth(s));
+
+// Marketplace (buyer): products, cart and orders of every shop
+const PAGE = 100;
+const MAX_PAGES = 20;
+/** Every on-sale product of every active shop (GET /demo/catalog, public), following the cursor. */
+export async function listMarketplaceProducts(): Promise<StorefrontProduct[]> {
+  const items: StorefrontProduct[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${cursor ? `&cursor=${id(cursor)}` : ''}`);
+    items.push(...r.items);
+    if (!r.nextCursor) break;
+    cursor = r.nextCursor;
+  }
+  return items;
+}
+export const getMarketplaceProduct = (shopId: string, productId: string) =>
+  api<{ currency: string; shop: ShopRef; product: StorefrontProduct }>(`/demo/catalog/${id(shopId)}/${id(productId)}`);
+export const getMarketplaceCart = (s: DemoSession) => api<MarketplaceCart>('/demo/cart', auth(s));
+export const listBuyerOrders = (s: DemoSession) => api<{ items: Order[] }>('/demo/buyer/orders', auth(s));
 
 // Cart and checkout (buyer)
 export const getCart = (s: DemoSession) => api<Cart>(shop(s, '/cart'), auth(s));
@@ -92,6 +125,18 @@ export const addSku = (s: DemoSession, productRowId: string, body: Body) =>
   api(shop(s, `/catalog/products/${id(productRowId)}/skus`), { method: 'POST', body, ...auth(s) });
 /** `skuRowId` is CatalogSku.id; body is one of { priceVnd } | { stock: { [warehouseExternalId]: n } } | { status }. */
 export const patchSku = (s: DemoSession, skuRowId: string, body: Body) => api(shop(s, `/catalog/skus/${id(skuRowId)}`), { method: 'PATCH', body, ...auth(s) });
+// Product page: category data and image upload
+export const getCategories = (s: DemoSession) => api<{ categories: CategoryNode[] }>(shop(s, '/catalog/categories'), auth(s));
+export const getCategoryAttributes = (s: DemoSession, categoryId: string) =>
+  api<{ attributes: CategoryAttribute[] }>(shop(s, `/catalog/categories/${id(categoryId)}/attributes`), auth(s));
+export const getCategoryRules = (s: DemoSession, categoryId: string) => api<CategoryRules>(shop(s, `/catalog/categories/${id(categoryId)}/rules`), auth(s));
+export const getBrands = (s: DemoSession) => api<{ brands: Brand[] }>(shop(s, '/catalog/brands'), auth(s));
+/** Multipart upload (field `file`); the returned `uri` goes into the product `images`. */
+export const uploadProductImage = (s: DemoSession, file: File) => {
+  const body = new FormData();
+  body.append('file', file);
+  return api<UploadedImage>(shop(s, '/media/images'), { method: 'POST', body, ...auth(s) });
+};
 export const getInventoryHistory = (s: DemoSession) => api<InventoryHistory>(shop(s, '/inventory/history'), auth(s));
 
 export const approveAftersale = (s: DemoSession, requestId: string) => api(shop(s, `/aftersale/${id(requestId)}/approve`), { method: 'POST', body: {}, ...auth(s) });

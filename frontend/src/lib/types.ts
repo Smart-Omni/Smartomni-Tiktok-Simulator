@@ -46,7 +46,14 @@ export interface Sku {
   stock: number;
 }
 
+export interface ShopRef {
+  id: string;
+  name: string;
+}
+
 export interface StorefrontProduct {
+  /** Set by the marketplace catalog (GET /demo/catalog); absent on the per-shop storefront. */
+  shop?: ShopRef;
   id: string;
   title: string;
   description: string;
@@ -81,6 +88,14 @@ export interface CatalogProduct {
   /** DRAFT, ACTIVATE, SELLER_DEACTIVATED, DELETED, ... */
   status: string;
   isNotForSale: boolean;
+  /** Listing fields (optional: older payloads and fixtures do not carry them). */
+  images?: ProductImage[];
+  categoryId?: string | null;
+  categoryPath?: { id: string; name: string }[];
+  brandId?: string | null;
+  productAttributes?: ProductAttribute[];
+  packageWeight?: PackageWeight | null;
+  packageDimensions?: PackageDimensions | null;
   skus: CatalogSku[];
 }
 
@@ -112,6 +127,20 @@ export interface Cart {
   currency: string;
   items: CartItem[];
   totalVnd: number;
+}
+
+/** One shop's part of the marketplace cart (GET /demo/cart). */
+export interface CartShopGroup {
+  shop: ShopRef;
+  items: CartItem[];
+  shopTotalVnd: number;
+}
+
+export interface MarketplaceCart {
+  currency: string;
+  shops: CartShopGroup[];
+  totalVnd: number;
+  itemCount: number;
 }
 
 export type OrderStatus =
@@ -157,6 +186,9 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  /** Shop that sold the order. Present on every /demo order response. */
+  shopId?: string;
+  shop?: ShopRef;
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;
@@ -298,4 +330,80 @@ export interface Conversations {
   supportedTypes: string[];
   unsupported: string;
   items: Conversation[];
+}
+
+/** Uploaded product image (POST /demo/shops/{shopId}/media/images). `uri` goes into a product's `images`. */
+export interface UploadedImage {
+  uri: string;
+  url: string;
+  width: number;
+  height: number;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+
+export interface ProductImage {
+  uri: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+/** Category tree node (GET .../catalog/categories). Only leaves can hold products. */
+export interface CategoryNode {
+  id: string;
+  name: string;
+  isLeaf: boolean;
+  children: CategoryNode[];
+}
+
+export interface CategoryAttribute {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  isMultipleSelection: boolean;
+  /** Free-text values allowed (otherwise only `values`). */
+  isCustomizable: boolean;
+  values: { id: string; name: string }[];
+}
+
+export interface CategoryRules {
+  packageDimensionsRequired: boolean;
+  sizeChartSupported: boolean;
+  codSupported: boolean;
+}
+
+export interface Brand {
+  id: string;
+  name: string;
+  authorized: boolean;
+}
+
+/** A product attribute as stored and sent: listed values carry their `id`, custom ones only a `name`. */
+export interface ProductAttribute {
+  id: string;
+  name?: string;
+  values: { id?: string; name?: string }[];
+}
+
+export interface PackageWeight {
+  value: number;
+  unit: string;
+}
+
+export interface PackageDimensions {
+  length: number;
+  width: number;
+  height: number;
+  unit: string;
+}
+
+/** Listing fields of the create/edit product body (null clears a stored value). */
+export interface ProductListingBody {
+  categoryId: string;
+  brandId: string | null;
+  images: string[];
+  productAttributes: ProductAttribute[];
+  packageWeight: { value: number; unit: 'KILOGRAM' } | null;
+  packageDimensions: { length: number; width: number; height: number; unit: 'CENTIMETER' } | null;
 }

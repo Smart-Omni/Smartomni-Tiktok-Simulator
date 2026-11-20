@@ -7,10 +7,9 @@ import request from 'supertest';
 import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { resolveTargetUrl, webhookSignature, WebhookWorkerService } from '../src/webhooks/webhook-worker.service';
 import { conformErrors, loadFixture } from './contract';
-import { ADMIN_TOKEN, cleanDb, createApp, FakeTime, FakeTransport } from './helpers';
+import { ADMIN_TOKEN, createApp, FakeTime, FakeTransport, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const SEARCH = '/order/202309/orders/search';
@@ -41,8 +40,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
     shopAId = (await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Mộc Lan' } } })).id;
     transport.calls = [];
@@ -501,8 +499,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         const rp = real.get(PrismaService);
         const rhttp = request(real.getHttpServer());
         const rt = new TiktokTestClient(rhttp, real.get(APP_CONFIG));
-        await cleanDb(rp);
-        await real.get(SeedService).seedAll();
+        await resetToSeed(real, rp);
         const a = await rt.connect(0);
         await rt.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'ORDER_STATUS_CHANGE', address: `http://127.0.0.1:${port}/webhook` } }).expect(200);
         const buyer = await rt.buyerSession(0);

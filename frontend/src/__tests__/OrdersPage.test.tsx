@@ -12,6 +12,8 @@ const buyer: DemoSession = { sessionToken: 'tok-b', role: 'BUYER', shopId: 'shop
 
 const order = (id: string, status: OrderStatus, createdAt: string, extra: Partial<Order> = {}): Order => ({
   id,
+  shopId: 'shop-1',
+  shop: { id: 'shop-1', name: 'Mộc Lan Shop' },
   status,
   createdAt,
   updatedAt: createdAt,
@@ -30,7 +32,8 @@ const orders = [
   order('o1', 'UNPAID', '2026-10-21T05:00:00.000Z'),
   order('o2', 'AWAITING_SHIPMENT', '2026-10-21T04:00:00.000Z'),
   order('o3', 'IN_TRANSIT', '2026-10-21T03:00:00.000Z'),
-  order('o4', 'DELIVERED', '2026-10-21T02:00:00.000Z'),
+  // bought from another shop than the buyer's own one (shop-1)
+  order('o4', 'DELIVERED', '2026-10-21T02:00:00.000Z', { shopId: 'shop-2', shop: { id: 'shop-2', name: 'Pottery Shop' } }),
   order('o5', 'CANCELLED', '2026-10-21T01:00:00.000Z', { cancelReason: 'Changed mind' }),
 ];
 
@@ -104,12 +107,10 @@ describe('OrdersPage', () => {
         const method = init?.method ?? 'GET';
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url, method, body });
-        const base = '/demo/shops/shop-1';
-        if (url === `${base}/orders`) return json({ items: orders });
-        if (url === `${base}/aftersale` && method === 'GET') {
+        if (url === '/demo/buyer/orders') return json({ items: orders });
+        if ((url === '/demo/shops/shop-1/aftersale' || url === '/demo/shops/shop-2/aftersale') && method === 'GET') {
           return json({ items: [], requestReasons: ['CHANGED_MIND', 'DAMAGED_ITEM', 'OTHER'], rejectReasons: [] });
         }
-        if (url === '/demo/me') return json({ role: 'BUYER', shop: { id: 'shop-1', name: 'Mộc Lan Shop' }, buyer: null });
         const f = /\/orders\/(o\d)\/fulfillment$/.exec(url);
         if (f) return json(fulfillment(f[1], `SIM-${f[1]}`));
         if (method === 'POST') return json({}, 201);
@@ -133,6 +134,14 @@ describe('OrdersPage', () => {
     expect(screen.getAllByRole('article').map((a) => a.getAttribute('aria-label'))).toEqual(['Order o4']);
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Cancelled (1)' }));
     expect(within(card('o5')).getByText('Cancelled: Changed mind')).toBeTruthy();
+  });
+
+  it('lists the orders of every shop and names the shop on each card', async () => {
+    renderOrders();
+    await screen.findByRole('article', { name: 'Order o1' });
+    expect(within(card('o1')).getByText('Mộc Lan Shop')).toBeTruthy();
+    expect(within(card('o4')).getByText('Pottery Shop')).toBeTruthy();
+    expect(calls.filter((c) => c.url.endsWith('/aftersale')).map((c) => c.url).sort()).toEqual(['/demo/shops/shop-1/aftersale', '/demo/shops/shop-2/aftersale']);
   });
 
   it('shows the actions of each status on the cards', async () => {
@@ -176,6 +185,8 @@ describe('OrdersPage', () => {
 
     fireEvent.click(within(card('o4')).getByRole('button', { name: 'Track' }));
     expect(await within(panel).findByText('SIM-o4')).toBeTruthy();
+    // the tracking of an order bought in another shop is read from that shop
+    expect(calls).toContainEqual({ url: '/demo/shops/shop-2/orders/o4/fulfillment', method: 'GET', body: undefined });
   });
 
   it('requests a return with type, reason and items', async () => {
@@ -193,7 +204,7 @@ describe('OrdersPage', () => {
     fireEvent.click(submit);
     await waitFor(() =>
       expect(calls).toContainEqual({
-        url: '/demo/shops/shop-1/aftersale/returns',
+        url: '/demo/shops/shop-2/aftersale/returns',
         method: 'POST',
         body: { orderId: 'o4', items: [{ skuId: 'o4-sku', quantity: 2 }], returnType: 'RETURN_AND_REFUND', reason: 'DAMAGED_ITEM' },
       }),

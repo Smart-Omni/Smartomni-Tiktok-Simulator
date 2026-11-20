@@ -2,8 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 describe('OAS alignment P0: catalog metadata, brands, categories, query params', () => {
@@ -21,8 +20,7 @@ describe('OAS alignment P0: catalog metadata, brands, categories, query params',
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     token = (await t.connect(0)).accessToken;
   });
 
