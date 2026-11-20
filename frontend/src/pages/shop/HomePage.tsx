@@ -13,7 +13,6 @@ import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
 const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
-const PAGE_SIZE = 20;
 
 /** Products with a 4★+ rating and a discount, biggest discount first. */
 export const deals = (items: EnrichedProduct[]) => items.filter((p) => p.rating >= 4 && p.discountPct > 0).sort((a, b) => b.discountPct - a.discountPct);
@@ -28,17 +27,18 @@ function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; 
   const [sort, setSort] = useState('recommended');
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<4 | 6>(4);
+  const pageSize = columns === 6 ? 18 : 16;
   const cat = categoryBySlug(category);
   const matching = cat ? items.filter((p) => p.category === cat.slug) : items;
   const found = q ? search(matching, q) : matching;
   const sorted = [...found].sort((a, b) => sort === 'price-low' ? a.minPriceVnd - b.minPriceVnd : sort === 'price-high' ? b.minPriceVnd - a.minPriceVnd : sort === 'discount' ? b.discountPct - a.discountPct : b.sold - a.sold);
-  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, pages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const visible = sorted.slice(start, start + PAGE_SIZE);
+  const start = (currentPage - 1) * pageSize;
+  const visible = sorted.slice(start, start + pageSize);
   return <section id="catalog" aria-label="Products" className="buyer-catalog">
     <div className="buyer-catalog-toolbar">
-      <div className="buyer-catalog-view"><div className="buyer-layout-toggle" role="group" aria-label="Product layout">{([4, 6] as const).map((count) => <button key={count} type="button" aria-label={`${count} products per row`} title={`${count} products per row`} aria-pressed={columns === count} onClick={() => setColumns(count)}><span className={`buyer-layout-icon buyer-layout-icon-${count}`} aria-hidden="true">{Array.from({ length: count }, (_, i) => <i key={i} />)}</span></button>)}</div><span role="status">{found.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, found.length)} of ${found.length} products` : '0 products'}</span></div>
+      <div className="buyer-catalog-view"><div className="buyer-layout-toggle" role="group" aria-label="Product layout">{([4, 6] as const).map((count) => <button key={count} type="button" aria-label={`${count} products per row`} title={`${count} products per row`} aria-pressed={columns === count} onClick={() => { setColumns(count); setPage(1); }}><span className={`buyer-layout-icon buyer-layout-icon-${count}`} aria-hidden="true">{Array.from({ length: count }, (_, i) => <i key={i} />)}</span></button>)}</div><span role="status">{found.length ? `${start + 1}–${Math.min(start + pageSize, found.length)} of ${found.length} products` : '0 products'}</span></div>
       <label>Sort by<select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} aria-label="Sort products">
         <option value="recommended">Recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="discount">Biggest discount</option>
       </select></label>

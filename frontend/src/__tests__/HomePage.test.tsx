@@ -100,15 +100,22 @@ describe('HomePage', () => {
     expect(await screen.findByText('No products match “zzz”.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Clear search' }).getAttribute('href')).toBe('/');
   });
-  it('paginates 20 products and resets when the category changes', async () => {
+  it('paginates 16 products in four columns and 18 in six columns', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     vi.stubGlobal('fetch', vi.fn(async () => json({ currency: 'VND', items: Array.from({ length: 25 }, (_, i) => real(`item-${i}`, `Item ${i}`)), nextCursor: null })));
     renderHome();
-    await screen.findByText('1–20 of 25 products');
+    await screen.findByText('1–16 of 25 products');
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
-    expect(screen.getByText('21–25 of 25 products')).toBeTruthy();
-    expect(within(screen.getByRole('region', { name: 'Products' })).getAllByRole('link')).toHaveLength(5);
+    expect(screen.getByText('17–25 of 25 products')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Products' })).getAllByRole('link')).toHaveLength(9);
     fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
-    expect(screen.getByText('1–20 of 25 products')).toBeTruthy();
+    expect(screen.getByText('1–16 of 25 products')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '6 products per row' }));
+    expect(screen.getByText('1–18 of 25 products')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Products' })).getAllByRole('link')).toHaveLength(18);
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByText('19–25 of 25 products')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '4 products per row' }));
+    expect(screen.getByText('1–16 of 25 products')).toBeTruthy();
   });
 });
