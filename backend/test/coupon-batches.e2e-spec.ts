@@ -361,4 +361,76 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       expect(await prisma.coupon.count({ where: { shopId: seller.shopId } })).toBe(0);
     });
   });
+
+  describe('/test-admin loyalty vouchers + coupon overview (Phase 3)', () => {
+    const admin = { 'x-test-admin-token': ADMIN_TOKEN };
+    const scenario = (body: Record<string, unknown>) => http.post('/test-admin/scenarios/loyalty-vouchers').set(admin).send(body);
+    const overview = (query: Record<string, string>) => http.get('/test-admin/coupons').set(admin).query(query);
+
+    it('needs the admin token', async () => {
+      const shop = await shopId();
+      await http.post('/test-admin/scenarios/loyalty-vouchers').send({ shopId: shop }).expect(401);
+      await http.get('/test-admin/coupons').expect(401);
+    });
+
+    it('creates Silver 10% / Platinum 20% / Diamond 30% batches that SmartOmni can pull with Search; every call creates new batches', async () => {
+      const { accessToken, seller } = await t.connect(0);
+      const r = await scenario({ shopId: seller.shopId, quantityPerTier: 4 }).expect(201);
+      expect(r.body.batches.map((b: any) => [b.tier, b.title, b.percentage, b.codes.length])).toEqual([
+        ['Silver', 'Loyalty Silver 10%', 10, 4],
+        ['Platinum', 'Loyalty Platinum 20%', 20, 4],
+        ['Diamond', 'Loyalty Diamond 30%', 30, 4],
+      ]);
+      const start = new Date(r.body.batches[0].startAt).getTime();
+      expect(new Date(r.body.batches[0].endAt).getTime() - start).toBe(30 * DAY);
+      const found = await t.call('POST', '/promotion/202406/coupons/search', accessToken, { query: { page_size: '100' }, body: { title_keyword: 'LOYALTY DIAMOND' } }).expect(200);
+      expect(found.body.data.coupons.map((c: any) => c.promo_code).sort()).toEqual(r.body.batches[2].codes.map((c: any) => c.promoCode).sort());
+      expect(found.body.data.coupons.every((c: any) => c.discount.percentage === '30')).toBe(true);
+
+      await scenario({ shopId: seller.shopId, quantityPerTier: 1, validDays: 7, tiers: [{ name: 'Gold', percentage: 15, maxDiscountVnd: 50000 }] }).expect(201);
+      expect(await prisma.coupon.count({ where: { shopId: seller.shopId } })).toBe(13);
+      expect(await prisma.coupon.findFirstOrThrow({ where: { title: 'Loyalty Gold 15%' } })).toMatchObject({ percentage: 15, maxDiscountVnd: 50000, redemptionLimit: 1 });
+    });
+
+    it('rejects bad tiers and quantities (400) and an unknown shop (404)', async () => {
+      const shop = await shopId();
+      await scenario({ shopId: shop, tiers: [{ name: 'Bad', percentage: 0 }] }).expect(400);
+      await scenario({ shopId: shop, tiers: [{ name: 'Bad', percentage: 101 }] }).expect(400);
+      await scenario({ shopId: shop, quantityPerTier: 501 }).expect(400);
+      await scenario({ shopId: shop, validDays: 0 }).expect(400);
+      await scenario({ shopId: 'no-such-shop' }).expect(404);
+      expect(await prisma.coupon.count()).toBe(0);
+    });
+
+    it('pages a 250-code batch with limit=100 into 3 pages without gaps or duplicates; bad limit/after answer 400', async () => {
+      const shop = await shopId();
+      const { batch } = await batches.createBatch(shop, input({ quantity: 250 }), clock.now());
+      await batches.createBatch(shop, input({ quantity: 3, title: 'Other' }), clock.now());
+      const seen: string[] = [];
+      let after = '';
+      let pages = 0;
+      do {
+        const r = await overview({ batchId: batch.id, limit: '100', ...(after ? { after } : {}) }).expect(200);
+        expect(r.body.items.every((c: any) => c.batchId === batch.id)).toBe(true);
+        seen.push(...r.body.items.map((c: any) => c.promoCode));
+        after = r.body.next;
+        pages++;
+      } while (after);
+      expect(pages).toBe(3);
+      expect(seen).toHaveLength(250);
+      expect(new Set(seen).size).toBe(250);
+      expect((await overview({ shopId: shop }).expect(200)).body.items).toHaveLength(200);
+      for (const limit of ['0', '501', 'x']) await overview({ limit }).expect(400);
+      await overview({ after: 'abc' }).expect(400);
+    });
+
+    it('usages link a code to the order that used it', async () => {
+      const buyer = await t.buyerSession(0);
+      const { batch, codes } = await batches.createBatch(buyer.shopId, input({ quantity: 2 }), clock.now());
+      const order = (await checkout(buyer, 'key-p3-000001', codes[1].promoCode).expect(201)).body.order.id;
+      const items = (await overview({ batchId: batch.id }).expect(200)).body.items;
+      expect(items.map((c: any) => c.usages)).toEqual([[], [{ orderId: order, discountVnd: 77400, at: expect.any(String) }]]);
+      expect(items[1]).toMatchObject({ redeemedCount: 1, redemptionLimit: 1, status: 'ONGOING' });
+    });
+  });
 });
