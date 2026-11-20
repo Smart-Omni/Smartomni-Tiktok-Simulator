@@ -140,8 +140,11 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-product-rating { display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:10px; color:#888; }
 .buyer-product-rating svg { color:#b78d43; }
 .buyer-product-rating span:first-of-type { color:#333; }
-.buyer-pagination { display:flex; justify-content:center; align-items:center; gap:18px; margin-top:32px; padding-top:20px; border-top:1px solid #ededed; font-size:11px; }
-.buyer-pagination button { display:grid; place-items:center; width:32px; height:32px; border:1px solid #ddd; border-radius:5px; background:#fff; cursor:pointer; }
+.buyer-pagination { display:flex; justify-content:center; align-items:stretch; width:fit-content; max-width:100%; margin:28px auto 0; border-bottom:1px solid #ddd; font-size:11px; }
+.buyer-pagination button { display:grid; place-items:center; width:40px; height:36px; margin-bottom:-1px; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:#555; cursor:pointer; }
+.buyer-pagination button[aria-current=page] { border-bottom-color:#222; color:#171717; font-weight:600; box-shadow:inset 1px 0 #f0f0f0,inset -1px 0 #f0f0f0; }
+.buyer-pagination button:hover:not(:disabled) { background:#f6f6f6; color:#171717; }
+.buyer-pagination button:focus-visible { outline:2px solid #333; outline-offset:-3px; }
 .buyer-pagination button:disabled { opacity:.3; cursor:default; }
 .buyer-catalog-empty { padding:60px 12px; text-align:center; font-size:12px; color:#777; }
 .buyer-catalog-empty a { display:inline-block; margin-top:14px; color:#171717; text-decoration:underline; }

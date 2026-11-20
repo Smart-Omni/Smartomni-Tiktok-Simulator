@@ -35,6 +35,8 @@ function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; 
   const sorted = [...found].sort((a, b) => sort === 'price-low' ? a.minPriceVnd - b.minPriceVnd : sort === 'price-high' ? b.minPriceVnd - a.minPriceVnd : sort === 'discount' ? b.discountPct - a.discountPct : b.sold - a.sold);
   const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const currentPage = Math.min(page, pages);
+  const firstPage = Math.max(1, Math.min(currentPage - 1, pages - 2));
+  const pageNumbers = Array.from({ length: Math.min(3, pages) }, (_, i) => firstPage + i);
   const start = (currentPage - 1) * pageSize;
   const visible = sorted.slice(start, start + pageSize);
   return <section id="catalog" aria-label="Products" className="buyer-catalog">
@@ -47,7 +49,7 @@ function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; 
     {visible.length ? <div className={`buyer-product-grid buyer-product-grid-${columns}`}>{visible.map((product) => <ProductCard key={productPath(product)} product={product} compact />)}</div> : <div className="buyer-catalog-empty"><p>{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p><Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link></div>}
     {pages > 1 && <nav className="buyer-pagination" aria-label="Product pages">
       <button type="button" aria-label="Previous page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} /></button>
-      <span>Page {currentPage} of {pages}</span>
+      {pageNumbers.map((number) => <button key={number} type="button" aria-label={`Page ${number}`} aria-current={currentPage === number ? 'page' : undefined} onClick={() => setPage(number)}>{number}</button>)}
       <button type="button" aria-label="Next page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight size={16} /></button>
     </nav>}
   </section>;

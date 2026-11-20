@@ -100,6 +100,24 @@ describe('HomePage', () => {
     expect(await screen.findByText('No products match “zzz”.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Clear search' }).getAttribute('href')).toBe('/');
   });
+  it('shows a sliding window of three consecutive page numbers', async () => {
+    sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
+    vi.stubGlobal('fetch', vi.fn(async () => json({ currency: 'VND', items: Array.from({ length: 97 }, (_, i) => real(`item-${i}`, `Item ${i}`)), nextCursor: null })));
+    renderHome();
+    await screen.findByText('1–16 of 97 products');
+    const nav = within(screen.getByRole('navigation', { name: 'Product pages' }));
+    const numbers = () => nav.getAllByRole('button', { name: /^Page \d+$/ }).map((el) => el.textContent);
+    expect(numbers()).toEqual(['1', '2', '3']);
+    fireEvent.click(nav.getByRole('button', { name: 'Page 3' }));
+    expect(numbers()).toEqual(['2', '3', '4']);
+    expect(nav.getByRole('button', { name: 'Page 3' }).getAttribute('aria-current')).toBe('page');
+    fireEvent.click(nav.getByRole('button', { name: 'Page 4' }));
+    fireEvent.click(nav.getByRole('button', { name: 'Page 5' }));
+    fireEvent.click(nav.getByRole('button', { name: 'Page 6' }));
+    fireEvent.click(nav.getByRole('button', { name: 'Page 7' }));
+    expect(numbers()).toEqual(['5', '6', '7']);
+    expect(nav.getByRole('button', { name: 'Next page' }).hasAttribute('disabled')).toBe(true);
+  });
   it('paginates 16 products in four columns and 18 in six columns', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     vi.stubGlobal('fetch', vi.fn(async () => json({ currency: 'VND', items: Array.from({ length: 25 }, (_, i) => real(`item-${i}`, `Item ${i}`)), nextCursor: null })));
