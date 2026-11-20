@@ -62,6 +62,10 @@ describe('HomePage', () => {
 
   it('shows the mock catalog to guests in both sections without calling the API', async () => {
     renderHome();
+    expect(within(region('Quick actions')).getByText('Bonus')).toBeTruthy();
+    expect(within(region('Explore')).getByText('Shipping Vouchers')).toBeTruthy();
+    expect(screen.queryByText('Sign in required')).toBeNull();
+    expect(screen.queryByText('Coming soon')).toBeNull();
     expect(await screen.findByRole('region', { name: 'Deals on 4★+ products for you' })).toBeTruthy();
     expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(mockCatalog.length);
     // best sellers are ordered by sold count
@@ -77,6 +81,7 @@ describe('HomePage', () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderHome();
     await screen.findByRole('region', { name: 'Best sellers' });
+    expect(within(region('Quick actions')).getByRole('link', { name: 'Order' }).getAttribute('href')).toBe('/account/orders');
     expect(urls.map((u) => u.url)).toEqual(['/demo/catalog?limit=100']);
     expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(10);
     fireEvent.click(screen.getByRole('button', { name: 'See more' }));
@@ -100,23 +105,23 @@ describe('HomePage', () => {
   it('shows the categories row and filters the products by category', async () => {
     renderHome();
     const row = await screen.findByRole('region', { name: 'Categories' });
-    expect(within(row).getAllByRole('link')).toHaveLength(mockCategories.length);
-    fireEvent.click(within(row).getByRole('link', { name: 'Phones & Electronics' }));
+    expect(within(row).getAllByRole('link')).toHaveLength(mockCategories.length + 1);
+    fireEvent.click(within(row).getByRole('link', { name: 'Electronics' }));
     expect(screen.getByTestId('location').textContent).toBe('/?category=phones-electronics');
-    const results = await screen.findByRole('region', { name: 'Phones & Electronics (1)' });
+    const results = await screen.findByRole('region', { name: 'Electronics (1)' });
     expect(within(results).getAllByRole('link', { name: /Minimal phone case/ })).toHaveLength(1);
     expect(within(results).getAllByRole('link', { name: /sold/ })).toHaveLength(1); // one product card
-    expect(within(row).getByRole('link', { name: 'Phones & Electronics' }).getAttribute('aria-current')).toBe('true');
+    expect(within(row).getByRole('link', { name: 'Electronics' }).getAttribute('aria-current')).toBe('true');
 
     // clicking the active category again clears the filter
-    fireEvent.click(within(row).getByRole('link', { name: 'Phones & Electronics' }));
+    fireEvent.click(within(row).getByRole('link', { name: 'Electronics' }));
     expect(screen.getByTestId('location').textContent).toBe('/');
     expect(await screen.findByRole('region', { name: 'Best sellers' })).toBeTruthy();
   });
 
   it('combines a category with a search and shows an empty category', async () => {
     renderHome('/?q=tea&category=kitchenware');
-    const results = await screen.findByRole('region', { name: 'Results for “tea” in Kitchenware (1)' });
+    const results = await screen.findByRole('region', { name: 'Results for “tea” in Kitchen (1)' });
     expect(within(results).getByRole('link', { name: 'All categories' }).getAttribute('href')).toBe('/?q=tea');
     cleanup();
     renderHome('/?category=shoes');

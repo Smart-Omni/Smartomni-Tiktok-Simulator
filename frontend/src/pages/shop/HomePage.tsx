@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Gift, Package, Ticket, MessageCircle, Wallet, CreditCard, MapPin, RotateCcw, Store, CircleHelp, FileText, Truck, Radio, BadgeCheck, Crown, Sparkles, Egg, TrendingUp, Heart, Shirt, ArrowRight } from 'lucide-react';
 import { CategoryRow } from '@/components/shop/CategoryRow';
 import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { MockBadge } from '@/components/ui/mock-badge';
 import { useAuth } from '@/lib/auth';
 import { productPath } from '@/lib/links';
 import { listMarketplaceProducts } from '@/lib/endpoints';
@@ -25,14 +24,13 @@ export const search = (items: EnrichedProduct[], q: string) => {
   return items.filter((p) => normalizeTitle(p.title).includes(term));
 };
 
-function Section({ id, title, mock, action, children }: { id: string; title: ReactNode; mock: boolean; action?: ReactNode; children: ReactNode }) {
+function Section({ id, title, action, children }: { id: string; title: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className="mt-8 first:mt-2">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 id={id} className="text-xl font-bold tracking-tight text-ink">
           {title}
         </h2>
-        {mock && import.meta.env.DEV ? <MockBadge /> : null}
         {action ? <div className="ml-auto flex items-center gap-2">{action}</div> : null}
       </div>
       {children}
@@ -50,14 +48,13 @@ function ArrowButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disable
 }
 
 /** One row of cards (5 / 3 / 2 visible) scrolled a page at a time with the arrow buttons. */
-function DealsRow({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) {
+function DealsRow({ items }: { items: EnrichedProduct[] }) {
   const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
 
   return (
     <Section
       id="deals"
       title="Deals on 4★+ products for you"
-      mock={mock}
       action={
         <>
           <ArrowButton dir="prev" disabled={edges.start} onClick={() => page(-1)} />
@@ -78,10 +75,10 @@ function DealsRow({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) 
   );
 }
 
-function BestSellers({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) {
+function BestSellers({ items }: { items: EnrichedProduct[] }) {
   const [shown, setShown] = useState(BEST_SELLERS_PAGE);
   return (
-    <Section id="best-sellers" title="Best sellers" mock={mock}>
+    <Section id="best-sellers" title="Best sellers">
       <div className={GRID}>
         {items.slice(0, shown).map((p) => <ProductCard key={productPath(p)} product={p} />)}
       </div>
@@ -97,7 +94,7 @@ function BestSellers({ items, mock }: { items: EnrichedProduct[]; mock: boolean 
 }
 
 /** Search (?q=) and/or category (?category=) results, filtered client-side. */
-function Results({ items, q, category, mock }: { items: EnrichedProduct[]; q: string; category: string | null; mock: boolean }) {
+function Results({ items, q, category }: { items: EnrichedProduct[]; q: string; category: string | null }) {
   const cat = categoryBySlug(category);
   const inCategory = cat ? items.filter((p) => p.category === cat.slug) : items;
   const found = q ? search(inCategory, q) : inCategory;
@@ -106,7 +103,6 @@ function Results({ items, q, category, mock }: { items: EnrichedProduct[]; q: st
     <Section
       id="results"
       title={title}
-      mock={mock}
       action={
         cat ? (
           <Button asChild variant="outline" size="sm" className="bg-white">
@@ -129,6 +125,31 @@ function Results({ items, q, category, mock }: { items: EnrichedProduct[]; q: st
   );
 }
 
+const actions = [
+  { label: 'Bonus', icon: Gift }, { label: 'Order', icon: Package, to: '/account/orders' },
+  { label: 'Vouchers', icon: Ticket }, { label: 'Messages', icon: MessageCircle, to: '/account/messages' },
+  { label: 'Pay Later', icon: Wallet }, { label: 'TikTok Pay', icon: CreditCard },
+  { label: 'Buy Local', icon: MapPin }, { label: 'Returns', icon: RotateCcw, to: '/account/orders' },
+  { label: 'Start selling', icon: Store, to: '/seller-center' }, { label: 'Address', icon: MapPin },
+  { label: 'Help', icon: CircleHelp }, { label: 'Policies', icon: FileText },
+];
+const collections = [
+  { label: 'Shipping Vouchers', icon: Truck }, { label: 'LIVE Shopping', icon: Radio },
+  { label: 'TikTok Shop Mall', icon: BadgeCheck }, { label: 'TikTok Shop VIP', icon: Crown },
+  { label: 'Buy More Get More', icon: Sparkles }, { label: 'Crack the Egg', icon: Egg },
+  { label: 'Trending', icon: TrendingUp }, { label: 'Following (Shop)', icon: Heart },
+  { label: 'Fashion Trends', icon: Shirt },
+];
+function HomeNavigation({ signedIn }: { signedIn: boolean }) {
+  return <><section className="buyer-home-section" aria-label="Quick actions"><div className="buyer-section-heading"><h2>Quick actions</h2></div>
+    <div className="buyer-actions-row">{actions.map(({ label, icon: Icon, to }) => signedIn && to ? <Link key={label} to={to} className="buyer-action-tile"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></Link> : <div key={label} className="buyer-action-tile buyer-unavailable" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></div>)}</div>
+  </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-section-heading"><h2>Explore</h2></div><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
+}
+function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
+  const featured = deals(items).slice(0, 3);
+  return <section className="buyer-flash-banner" aria-label="Flash sale"><div><span className="buyer-flash-kicker">TODAY'S PICKS</span><h2>Flash sale</h2><a href="#deals">Shop deals <ArrowRight size={15} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}><span>{p.discountPct}% OFF</span><strong>{p.title}</strong></Link>)}</div></section>;
+}
+
 export function HomePage() {
   const { buyer } = useAuth();
   const [params] = useSearchParams();
@@ -138,20 +159,22 @@ export function HomePage() {
     () => (buyer ? listMarketplaceProducts().then((items) => items.map(enrichProduct)) : Promise.resolve(mockCatalog)),
     [buyer?.sessionToken],
   );
-  const mock = !buyer;
 
   return (
     <>
-      <CategoryRow />
-      <Products state={products} q={q} category={category} mock={mock} />
+      <HomeNavigation signedIn={!!buyer} />
+      <FlashSaleBanner items={products.data ?? []} />
+      <div className="buyer-products-area"><div className="buyer-section-heading"><h2>Products</h2></div><CategoryRow />
+      <Products state={products} q={q} category={category} /></div>
+      <footer className="buyer-home-footer"><strong>TikTok SHOP SIMULATOR</strong><Link to="/console">Test console</Link></footer>
     </>
   );
 }
 
-function Products({ state, q, category, mock }: { state: AsyncResult<EnrichedProduct[]>; q: string; category: string | null; mock: boolean }) {
+function Products({ state, q, category }: { state: AsyncResult<EnrichedProduct[]>; q: string; category: string | null }) {
   if (state.loading && !state.data) {
     return (
-      <Section id="loading" title="Deals on 4★+ products for you" mock={false}>
+      <Section id="loading" title="Deals on 4★+ products for you">
         <div className={GRID} role="status" aria-label="Loading products">
           {Array.from({ length: 10 }, (_, i) => <ProductCardSkeleton key={i} />)}
         </div>
@@ -175,12 +198,12 @@ function Products({ state, q, category, mock }: { state: AsyncResult<EnrichedPro
   if (!items.length) {
     return <p className="mt-10 text-center text-muted-foreground">No products are for sale yet.</p>;
   }
-  if (q || category) return <Results items={items} q={q} category={category} mock={mock} />;
+  if (q || category) return <Results items={items} q={q} category={category} />;
   const dealItems = deals(items);
   return (
     <>
-      {dealItems.length ? <DealsRow items={dealItems} mock={mock} /> : null}
-      <BestSellers items={bestSellers(items)} mock={mock} />
+      {dealItems.length ? <DealsRow items={dealItems} /> : null}
+      <BestSellers items={bestSellers(items)} />
     </>
   );
 }

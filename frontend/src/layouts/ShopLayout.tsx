@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, type LucideIcon } from 'lucide-react';
+import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -22,8 +22,6 @@ const nav: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/seller-center', label: 'Sell', icon: Store },
 ];
 
-const footerLinks = ['Company', 'Program', 'Terms & Policies'];
-
 export function Logo({ withName = false, className }: { withName?: boolean; className?: string }) {
   return (
     <Link to="/" className={cn('flex items-center gap-2.5 font-bold text-ink', className)} aria-label="Tiptop Shop home">
@@ -43,40 +41,6 @@ function MoreMenu({ children }: { children: ReactNode }) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-/** Home only: full sidebar (280px). */
-function Sidebar({ className }: { className?: string }) {
-  return (
-    <aside className={cn('fixed inset-y-0 left-0 z-40 w-[280px] flex-col border-r border-line-soft bg-white px-4 py-5', className)}>
-      <Logo withName className="px-2" />
-      <nav className="mt-6 flex flex-col gap-1">
-        {nav.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end
-            className={({ isActive }) =>
-              cn('flex h-12 items-center gap-3 rounded-lg px-3 text-[17px] font-semibold hover:bg-surface-2', isActive ? 'text-buyer' : 'text-ink')
-            }
-          >
-            <Icon className="size-6" />
-            {label}
-          </NavLink>
-        ))}
-        <MoreMenu>
-          <button type="button" className="flex h-12 cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-[17px] font-semibold hover:bg-surface-2">
-            <Ellipsis className="size-6" />
-            More
-          </button>
-        </MoreMenu>
-      </nav>
-      <footer className="mt-auto flex flex-col gap-1 border-t border-line-soft px-2 pt-4 text-xs text-muted-2">
-        {footerLinks.map((l) => <span key={l}>{l}</span>)}
-        <span className="mt-2">© 2026 Tiptop Shop · simulator, fake data</span>
-      </footer>
-    </aside>
   );
 }
 
@@ -102,7 +66,7 @@ function Rail({ className }: { className?: string }) {
   );
 }
 
-function SearchPill() {
+function SearchPill({ wide = false }: { wide?: boolean }) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const urlQ = params.get('q') ?? '';
@@ -115,7 +79,7 @@ function SearchPill() {
     navigate(term ? `/?q=${encodeURIComponent(term)}` : '/');
   };
   return (
-    <form role="search" onSubmit={submit} className="flex h-10 w-full max-w-[360px] items-center gap-2 rounded-full bg-surface px-4 focus-within:ring-2 focus-within:ring-ring/40">
+    <form role="search" onSubmit={submit} className={cn("flex h-10 w-full items-center gap-2 rounded-full bg-surface px-4 focus-within:ring-2 focus-within:ring-ring/40", wide ? "max-w-none" : "max-w-[360px]")}>
       <Search className="size-4 shrink-0 text-muted-foreground" />
       <input
         type="search"
@@ -197,22 +161,14 @@ function AccountPill() {
 /** Buyer shell for /, /product/:id, /cart, /checkout and /account/*. */
 export function ShopLayout() {
   const home = useLocation().pathname === '/';
+  const { buyer } = useAuth();
   return (
-    <div className="min-h-screen bg-white font-sans text-[15px] text-ink">
-      {home ? (
-        <>
-          <Sidebar className="hidden lg:flex" />
-          <Rail className="lg:hidden" />
-        </>
-      ) : (
-        <Rail />
-      )}
-      <div className={cn('min-h-screen', home ? 'pl-[76px] lg:pl-[280px]' : 'pl-[76px]')}>
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur">
-          <SearchPill />
-          <AccountPill />
-        </header>
-        <main className="px-6 pb-12">
+    <div className={cn("min-h-screen font-sans text-[15px] text-ink", home ? "buyer-home-shell" : "bg-white")}>
+      {!home && <Rail />}
+      <div className={cn('min-h-screen', home ? 'buyer-home-frame' : 'pl-[76px]')}>
+        {home ? <header className="buyer-home-header"><Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link><div className="buyer-home-toplinks"><Link to="/console"><ShieldCheck size={16} />Test console</Link>{buyer ? <BuyerMenu buyer={buyer} /> : <Link to={loginUrl("/")} className="buyer-home-signin">Sign in / Sign up</Link>}</div></header> : null}
+        <div className={cn(home ? "buyer-home-search" : "sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur")}><SearchPill wide={home} />{home ? <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={18} />Cart</Link> : <AccountPill />}</div>
+        <main className={home ? "buyer-home-main" : "px-6 pb-12"}>
           <Outlet />
         </main>
       </div>
