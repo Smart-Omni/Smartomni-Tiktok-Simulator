@@ -1,5 +1,5 @@
-import { expect, Page, request as pwRequest, test } from '@playwright/test';
-import { BUYER_A, demoSession, resetAll, SELLER_A, shot, signInAs } from './helpers';
+import { expect, Page, test } from '@playwright/test';
+import { BUYER_A, resetAll, SELLER_A, shot, signInAs } from './helpers';
 
 /**
  * Phase 09c UI: the seller creates a batch of single-use codes on the Seller Center; batch codes are private (not in the buyer's voucher
@@ -78,25 +78,30 @@ test('the voucher picker does not show batch codes; a typed code discounts the o
   await shot(page, 'phase09c-buyer-exhausted');
 });
 
-test('cancelling an UNPAID order burns its code: typing it again is refused', async ({ page, baseURL }) => {
-  // place an UNPAID order with the second code and cancel it over HTTP (same /demo calls as the UI)
-  const api = await pwRequest.newContext({ baseURL });
-  const buyer = await demoSession(api, 'BUYER', BUYER_A);
-  const headers = { 'x-demo-session': buyer.token };
-  const placed = await api.post(`/demo/shops/${buyer.shopId}/checkout`, {
-    headers,
-    data: { checkoutKey: `e2e-09c-${Date.now().toString(36)}`, items: [{ skuId: 'sim-sku-a-TEE-WHT-M', quantity: 1 }], couponCode: codes[1] },
-  });
-  expect(placed.status(), await placed.text()).toBe(201);
-  const orderId = (await placed.json()).order.id as string;
-  expect((await api.post(`/demo/shops/${buyer.shopId}/orders/${orderId}/cancel`, { headers, data: { reason: 'e2e' } })).ok()).toBe(true);
-  await api.dispose();
-
-  // the refused checkout of the previous test left the 2 tees in the cart
+test('cancelling an UNPAID order burns its code: typing it again is refused', async ({ page }) => {
+  // the refused checkout of the previous test left the 2 tees in the cart: place them with the second code and do NOT pay
   await signInAs(page, 'BUYER', BUYER_A, '/cart');
   await expect(page.getByTestId('total')).toHaveText('₫258.000');
   await page.getByRole('button', { name: 'Check out (1)' }).click();
   await page.waitForURL('**/checkout');
+  await page.getByLabel('Voucher code').fill(codes[1]);
+  await page.getByRole('button', { name: 'Place order' }).click();
+  await expect(page.getByText('Order placed · UNPAID')).toBeVisible();
+  await expect(page.getByTestId('total')).toHaveText('₫205.600');
+
+  // My orders > To pay holds only that order (the first one was paid); the buyer cancels it
+  await page.goto('/account/orders?tab=to-pay');
+  const unpaid = page.getByRole('article', { name: /^Order / });
+  await expect(unpaid).toHaveCount(1);
+  await unpaid.getByRole('button', { name: 'Cancel', exact: true }).click();
+  const confirm = page.getByRole('dialog', { name: 'Cancel this order?' });
+  await confirm.getByRole('button', { name: 'Cancel order' }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(unpaid).toHaveCount(0);
+  await shot(page, 'phase09c-buyer-cancelled');
+
+  // the same code at a new checkout is refused: the cancel burned it
+  await checkoutTwoWhiteTees(page);
   await page.getByLabel('Voucher code').fill(codes[1]);
   await page.getByRole('button', { name: 'Place order' }).click();
   const alert = await expectVoucherError(page);
