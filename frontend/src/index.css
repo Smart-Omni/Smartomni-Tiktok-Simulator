@@ -8,6 +8,7 @@
 @import "tw-animate-css";
 @import "./legacy-defaults.css" layer(legacy);
 @import "./styles.css" layer(legacy);
+@import "./console.css" layer(legacy);
 @import "./legacy-isolation.css" layer(legacy-isolation);
 
 /* Legacy pages use class="inline" on labels (inline-flex in styles.css); don't let Tailwind's `inline` utility override it. */

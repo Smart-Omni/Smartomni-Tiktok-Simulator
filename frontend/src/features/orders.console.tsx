@@ -3,6 +3,7 @@ import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { OrderAuditPanel } from '../pages/console/OrderAuditPanel';
 
 interface AdminOrder {
   id: string;
@@ -30,6 +31,9 @@ const NEXT: Record<string, string[]> = {
 export function OrdersPanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminOrder[] }>(`/test-admin/orders?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   const [msg, setMsg] = useState<string>();
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [auditRef, setAuditRef] = useState<string>();
   async function go(id: string, to: string) {
     try {
       await api(`/test-admin/orders/${id}/transition`, { method: 'POST', body: { to, shopId } });
@@ -65,25 +69,32 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
         <span className="muted">Advance the business clock on the Clock tab first to test the hold boundary. Invalid jumps (for example shipping an ON_HOLD order) are refused by the API.</span>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
+      <div className="admin-toolbar">
+        <label>Search orders<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Order ID or buyer name" /></label>
+        <label>Status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">All statuses</option>{Object.keys(NEXT).map((s) => <option key={s}>{s}</option>)}</select></label>
+        <button type="button" onClick={list.reload}>Refresh orders</button>
+        <span className="muted">Filters apply to the loaded orders.</span>
+      </div>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (
-          <table>
+          <div className="scroll"><table>
             <thead><tr><th>Order</th><th>Buyer</th><th>Units</th><th>Status</th><th>Hold until</th><th>Move to</th></tr></thead>
             <tbody>
-              {d.items.map((o) => (
+              {d.items.filter((o) => (!statusFilter || o.status === statusFilter) && `${o.id} ${o.buyerName}`.toLowerCase().includes(query.toLowerCase())).map((o) => (
                 <tr key={o.id}>
-                  <td>{o.id}</td>
+                  <td><button type="button" className="admin-text-button" onClick={() => setAuditRef(o.id)} aria-label={`View history of ${o.id}`}>{o.id}</button></td>
                   <td>{o.buyerName}</td>
                   <td>{o.units}</td>
                   <td><span className="pill">{o.status}</span></td>
                   <td>{o.releaseAt && o.status === 'ON_HOLD' ? new Date(o.releaseAt).toLocaleString() : ''}</td>
-                  <td>{(NEXT[o.status] ?? []).map((to) => <button key={to} onClick={() => void go(o.id, to)}>{to}</button>)}</td>
+                  <td><div className="admin-table-actions">{(NEXT[o.status] ?? []).map((to) => <button key={to} onClick={() => void go(o.id, to)}>{to}</button>)}</div></td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table>{!d.items.some((o) => (!statusFilter || o.status === statusFilter) && `${o.id} ${o.buyerName}`.toLowerCase().includes(query.toLowerCase())) && <div className="state state-empty">No orders match these filters.</div>}</div>
         )}
       </AsyncState>
+      {auditRef && <OrderAuditPanel key={auditRef} shopId={shopId} orderRef={auditRef} onClose={() => setAuditRef(undefined)} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { AsyncState } from '../components/AsyncState';
 import { api, vnd } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { ArbitrationPanel } from '../pages/console/ArbitrationPanel';
 
 interface AdminAftersale {
   id: string;
@@ -21,6 +22,7 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminAftersale[] }>(`/test-admin/aftersale?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   const [msg, setMsg] = useState<string>();
   const [history, setHistory] = useState<{ id: string; data: History }>();
+  const [arbitrationRef, setArbitrationRef] = useState<string>();
   async function complete(id: string) {
     try {
       await api(`/test-admin/aftersale/${id}/complete?shopId=${encodeURIComponent(shopId)}`, { method: 'POST', body: {} });
@@ -43,7 +45,7 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No cancellation or return requests for this shop.">
         {(d) => (
-          <table>
+          <div className="scroll"><table>
             <thead><tr><th>Request</th><th>Order</th><th>Kind</th><th>Units</th><th>Status</th><th className="num">Refund</th><th /></tr></thead>
             <tbody>
               {d.items.map((r) => (
@@ -56,14 +58,16 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
                   <td className="num">{vnd(r.refundTotalVnd)}</td>
                   <td>
                     <button onClick={() => void show(r.id)}>History</button>{' '}
+                    {r.kind === 'RETURN' && <button type="button" onClick={() => setArbitrationRef(r.id)}>Arbitrate</button>}{' '}
                     {r.status.endsWith('REQUEST_SUCCESS') ? <button onClick={() => void complete(r.id)}>Complete refund</button> : null}
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </AsyncState>
+      {arbitrationRef && <section aria-label="Arbitrate selected return"><div className="admin-section-title"><h2>Dispute · {arbitrationRef}</h2><button type="button" onClick={() => setArbitrationRef(undefined)}>Close arbitration</button></div><ArbitrationPanel key={arbitrationRef} shopId={shopId} initialRef={arbitrationRef} /></section>}
       {history ? (
         <section className="card" aria-label="aftersale history">
           <h3>History of {history.id}</h3>
