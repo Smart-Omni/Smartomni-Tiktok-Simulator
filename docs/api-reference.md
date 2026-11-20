@@ -4212,7 +4212,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-SELLER only. The code and the discount are immutable (orders may carry a snapshot). Updatable: title, startAt, endAt, redemptionLimit (nullable = unlimited), minSpendVnd (nullable), deactivated. 404 unknown coupon (by marketplace id); 400 if the resulting start >= end or redemptionLimit is below the redemptions already used.
+SELLER only. The code and the discount are immutable (orders may carry a snapshot). Updatable: title, startAt, endAt, redemptionLimit (nullable = unlimited), minSpendVnd (nullable), deactivated. A code of a batch (09c) accepts only `{ "deactivated": true }`: it stays single-use and a burned or switched-off code can never come back (anything else on a batch code is 400). 404 unknown coupon (by marketplace id); 400 if the resulting start >= end or redemptionLimit is below the redemptions already used.
 
 </details>
 

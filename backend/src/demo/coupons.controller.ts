@@ -192,6 +192,10 @@ export class CouponsDemoController {
     assertSellerShop(p, shopId);
     const existing = await this.prisma.coupon.findUnique({ where: { shopId_externalId: { shopId, externalId: couponId } } });
     if (!existing) throw new NotFoundException('Unknown coupon');
+    // Phase 09c (Q8): a code of a batch stays single-use and every non-free state is final, so it can only be switched off
+    if (existing.batchId && (body.deactivated !== true || Object.keys(body).length !== 1)) {
+      throw new BadRequestException('A code of a batch can only be deactivated ({ "deactivated": true })');
+    }
     const startAt = body.startAt ? new Date(body.startAt) : existing.startAt;
     const endAt = body.endAt ? new Date(body.endAt) : existing.endAt;
     if (startAt >= endAt) throw new BadRequestException('endAt must be after startAt');

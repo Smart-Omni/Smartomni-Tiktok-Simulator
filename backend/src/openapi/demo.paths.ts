@@ -1375,7 +1375,7 @@ Object.assign(paths, {
     patch: op({
       tag: 'Demo Coupons',
       summary: 'Edit a coupon (seller)',
-      description: 'SELLER only. The code and the discount are immutable (orders may carry a snapshot). Updatable: title, startAt, endAt, redemptionLimit (nullable = unlimited), minSpendVnd (nullable), deactivated. 404 unknown coupon (by marketplace id); 400 if the resulting start >= end or redemptionLimit is below the redemptions already used.',
+      description: 'SELLER only. The code and the discount are immutable (orders may carry a snapshot). Updatable: title, startAt, endAt, redemptionLimit (nullable = unlimited), minSpendVnd (nullable), deactivated. A code of a batch (09c) accepts only `{ "deactivated": true }`: it stays single-use and a burned or switched-off code can never come back (anything else on a batch code is 400). 404 unknown coupon (by marketplace id); 400 if the resulting start >= end or redemptionLimit is below the redemptions already used.',
       handler: 'CouponsDemoController.update',
       security: SESSION,
       pathParams: [shopId, { name: 'couponId', description: 'Coupon marketplace id (`id` of a coupon view).', example: '7700123456789012' }],

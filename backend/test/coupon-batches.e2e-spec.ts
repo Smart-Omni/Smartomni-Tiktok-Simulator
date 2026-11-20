@@ -315,6 +315,24 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       expect(detail.batch.status).toBe('ONGOING');
     });
 
+    it('a batch code can only be switched off: no reactivation, no extra redemptions, no title or window change (Q8)', async () => {
+      const { seller } = await t.connect(0);
+      const buyer = await t.buyerSession(0);
+      const { batch, codes } = (await createBatch(seller, { quantity: 2 }).expect(201)).body;
+      const patch = (id: string, body: object) => http.patch(`/demo/shops/${seller.shopId}/coupons/${id}`).set('x-demo-session', seller.token).send(body);
+      // burn the first code, then try to bring it back
+      const unpaid = (await checkout(buyer, 'key-p2-000030', codes[0].promoCode).expect(201)).body.order.id;
+      await cancel(buyer, unpaid);
+      await patch(codes[0].id, { deactivated: false }).expect(400);
+      await patch(codes[1].id, { redemptionLimit: 5 }).expect(400);
+      await patch(codes[1].id, { title: 'Renamed' }).expect(400);
+      await patch(codes[1].id, { endAt: new Date(Date.now() + 2 * DAY).toISOString() }).expect(400);
+      await patch(codes[1].id, { deactivated: true, title: 'Renamed' }).expect(400);
+      const detail = await batchDetail(seller, batch.id);
+      expect(detail.codes.map((c: any) => [c.status, c.redeemedCount])).toEqual([['DEACTIVATED', 0], ['ONGOING', 0]]);
+      expect(await prisma.coupon.count({ where: { batchId: batch.id, title: 'Loyalty Diamond 30%', redemptionLimit: 1 } })).toBe(2);
+    });
+
     it('validates the batch body: no promoCode/redemptionLimit, quantity 1-500', async () => {
       const { seller } = await t.connect(0);
       await createBatch(seller, { promoCode: 'MYCODE01' }).expect(400);
