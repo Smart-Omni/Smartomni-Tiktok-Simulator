@@ -39,8 +39,10 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-sale-products { margin-top:24px; }
 .buyer-sale-products-heading { position:relative; display:flex; align-items:center; justify-content:center; min-height:58px; margin-bottom:16px; }
 .buyer-sale-products-heading h2 { margin:0; font-family:'Segoe Script','Monotype Corsiva','Brush Script MT',cursive; font-size:clamp(30px,3vw,42px); line-height:1.4; font-style:italic; font-weight:500; color:#222; }
-.buyer-sale-products-heading a { position:absolute; right:0; display:flex; align-items:center; gap:8px; font-size:11px; color:#666; }
-@media(max-width:650px) { .buyer-sale-products-heading { flex-direction:column; gap:8px; } .buyer-sale-products-heading a { position:static; } }
+.buyer-sale-products-action { display:flex; justify-content:center; margin-top:20px; }
+.buyer-sale-products-action > a { display:inline-flex; align-items:center; justify-content:center; gap:18px; min-height:38px; padding:8px 22px; border:1px solid #333; border-radius:999px; background:transparent; color:#222; font-size:12px; font-weight:500; transition:background .15s,color .15s; }
+.buyer-sale-products-action > a:hover { background:#171717; color:#fff; }
+.buyer-sale-products-action > a:focus-visible { outline:2px solid #171717; outline-offset:4px; }
 .buyer-flash-kicker { display:flex; align-items:center; gap:7px; font-size:9px; letter-spacing:1.8px; color:#c4c4c4; }
 .buyer-flash-banner h2 { margin:12px 0; font-size:clamp(32px,3.4vw,50px); line-height:.98; font-weight:700; letter-spacing:-2px; }
 .buyer-flash-banner h2 span { display:block; color:#e9c7ae; }
