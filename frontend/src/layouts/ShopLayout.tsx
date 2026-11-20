@@ -172,9 +172,9 @@ export function ShopLayout() {
             <div className="buyer-home-utility">
               <div className="buyer-home-toplinks">
                 <Link to="/seller-center">Seller Center</Link>
-                <Link to="/console"><ShieldCheck size={14} />Test control</Link>
+                <Link to="/console"><ShieldCheck size={14} />Test Console</Link>
               </div>
-              {buyer ? <BuyerMenu buyer={buyer} /> : <Link to={loginUrl('/')} className="buyer-home-signin">Sign in / Sign up</Link>}
+              {buyer ? <BuyerMenu buyer={buyer} /> : <div className="buyer-home-auth"><Link to={loginUrl('/')} className="buyer-home-signin">Sign in</Link><Link to={loginUrl('/')} className="buyer-home-signup">Sign up</Link></div>}
             </div>
             <div className="buyer-home-primary">
               <Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link>

@@ -60,7 +60,7 @@ describe('routes', () => {
     expect(await screen.findByRole('region', { name: 'Best sellers' })).toBeTruthy();
     expect(screen.queryByText('TikTok Shop Simulator')).toBeNull();
     expect(within(screen.getByRole('banner')).getByRole('search')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Sign in / Sign up' }).getAttribute('href')).toBe('/login?next=%2F');
+    expect(screen.getByRole('link', { name: 'Sign in', exact: true }).getAttribute('href')).toBe('/login?next=%2F');
   });
 
   it('sends a guest from a buyer-only page to /login with next', () => {
