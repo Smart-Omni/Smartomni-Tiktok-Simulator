@@ -85,6 +85,17 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-catalog-toolbar label { display:flex; align-items:center; gap:10px; }
 .buyer-catalog-toolbar select { height:32px; padding:0 28px 0 10px; border:1px solid #e5e5e5; border-radius:5px; background:#fff; color:#222; font-size:11px; }
 .buyer-product-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:44px 24px; }
+.buyer-catalog-view { display:flex; align-items:center; gap:16px; }
+.buyer-layout-toggle { display:flex; gap:4px; }
+.buyer-layout-toggle button { display:grid; place-items:center; width:32px; height:32px; border:1px solid transparent; border-radius:4px; background:transparent; color:#999; cursor:pointer; }
+.buyer-layout-toggle button[aria-pressed=true] { border-color:#ddd; background:#f4f4f4; color:#171717; }
+.buyer-layout-toggle button:hover { color:#171717; }
+.buyer-layout-icon { display:grid; width:16px; height:16px; gap:2px; grid-template-columns:repeat(2,1fr); }
+.buyer-layout-icon-6 { grid-template-columns:repeat(3,1fr); }
+.buyer-layout-icon i { background:currentColor; }
+.buyer-product-grid-6 { grid-template-columns:repeat(6,minmax(0,1fr)); gap:32px 14px; }
+.buyer-product-grid-6 .buyer-product-info h3 { font-size:11px; }
+.buyer-product-grid-6 .buyer-product-info > strong { font-size:12px; }
 .buyer-product-card { display:flex; min-width:0; flex-direction:column; gap:16px; color:#333; }
 .buyer-product-photo { position:relative; overflow:hidden; border-radius:0; }
 .buyer-product-photo > div { width:100%; aspect-ratio:4/5; background-color:#ededed !important; border-radius:0; transition:transform .2s; }
@@ -102,5 +113,5 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-pagination button:disabled { opacity:.3; cursor:default; }
 .buyer-catalog-empty { padding:60px 12px; text-align:center; font-size:12px; color:#777; }
 .buyer-catalog-empty a { display:inline-block; margin-top:14px; color:#171717; text-decoration:underline; }
-@media(max-width:1100px) { .buyer-product-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:1100px) { .buyer-product-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .buyer-layout-toggle { display:none; } }
 @media(max-width:650px) { .buyer-product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .buyer-catalog-layout { grid-template-columns:1fr; padding:14px; } }

@@ -27,6 +27,7 @@ export const search = (items: EnrichedProduct[], q: string) => {
 function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; category: string | null }) {
   const [sort, setSort] = useState('recommended');
   const [page, setPage] = useState(1);
+  const [columns, setColumns] = useState<4 | 6>(4);
   const cat = categoryBySlug(category);
   const matching = cat ? items.filter((p) => p.category === cat.slug) : items;
   const found = q ? search(matching, q) : matching;
@@ -37,12 +38,12 @@ function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; 
   const visible = sorted.slice(start, start + PAGE_SIZE);
   return <section id="catalog" aria-label="Products" className="buyer-catalog">
     <div className="buyer-catalog-toolbar">
-      <span role="status">{found.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, found.length)} of ${found.length} products` : '0 products'}</span>
+      <div className="buyer-catalog-view"><div className="buyer-layout-toggle" role="group" aria-label="Product layout">{([4, 6] as const).map((count) => <button key={count} type="button" aria-label={`${count} products per row`} title={`${count} products per row`} aria-pressed={columns === count} onClick={() => setColumns(count)}><span className={`buyer-layout-icon buyer-layout-icon-${count}`} aria-hidden="true">{Array.from({ length: count }, (_, i) => <i key={i} />)}</span></button>)}</div><span role="status">{found.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, found.length)} of ${found.length} products` : '0 products'}</span></div>
       <label>Sort by<select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} aria-label="Sort products">
         <option value="recommended">Recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="discount">Biggest discount</option>
       </select></label>
     </div>
-    {visible.length ? <div className="buyer-product-grid">{visible.map((product) => <ProductCard key={productPath(product)} product={product} compact />)}</div> : <div className="buyer-catalog-empty"><p>{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p><Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link></div>}
+    {visible.length ? <div className={`buyer-product-grid buyer-product-grid-${columns}`}>{visible.map((product) => <ProductCard key={productPath(product)} product={product} compact />)}</div> : <div className="buyer-catalog-empty"><p>{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p><Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link></div>}
     {pages > 1 && <nav className="buyer-pagination" aria-label="Product pages">
       <button type="button" aria-label="Previous page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} /></button>
       <span>Page {currentPage} of {pages}</span>

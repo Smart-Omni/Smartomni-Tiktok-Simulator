@@ -66,6 +66,10 @@ describe('HomePage', () => {
     expect(within(catalog).getAllByRole('link')).toHaveLength(mockCatalog.length);
     expect(new Set(within(catalog).getAllByRole('link').map((el) => el.getAttribute('href'))).size).toBe(mockCatalog.length);
     expect(urls).toEqual([]);
+    fireEvent.click(screen.getByRole('button', { name: '6 products per row' }));
+    expect(screen.getByRole('button', { name: '6 products per row' }).getAttribute('aria-pressed')).toBe('true');
+    expect(within(catalog).getAllByRole('link')).toHaveLength(mockCatalog.length);
+    expect(urls).toEqual([]);
   });
   it('loads buyer products through the existing catalog endpoint and sorts prices', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
