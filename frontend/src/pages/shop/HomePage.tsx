@@ -13,7 +13,7 @@ import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
-const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-4 lg:grid-cols-7';
+const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
 const BEST_SELLERS_PAGE = 10;
 
 /** Products with a 4★+ rating and a discount, biggest discount first. */
@@ -69,7 +69,7 @@ function DealsRow({ items }: { items: EnrichedProduct[] }) {
           <ProductCard
             key={productPath(p)}
             product={p}
-            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-2.25rem)/4)] lg:basis-[calc((100%-4.5rem)/7)]"
+            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]"
           />
         ))}
       </div>
@@ -166,8 +166,9 @@ export function HomePage() {
     <>
       <FlashSaleBanner items={products.data ?? []} />
       <HomeNavigation signedIn={!!buyer} />
-      <div className="buyer-products-area"><CategoryRow />
-      <Products state={products} q={q} category={category} /></div>
+      <div className="buyer-products-area buyer-catalog-layout"><CategoryRow />
+        <div className="buyer-catalog-results"><Products state={products} q={q} category={category} /></div>
+      </div>
       <footer className="buyer-home-footer"><strong>TikTok SHOP SIMULATOR</strong><Link to="/console">Test console</Link></footer>
     </>
   );
