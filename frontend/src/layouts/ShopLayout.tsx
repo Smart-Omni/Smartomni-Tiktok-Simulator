@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, UserRound, type LucideIcon } from 'lucide-react';
+import { Compass, Ellipsis, Package, Search, ShoppingCart, Store, type LucideIcon } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -174,27 +174,13 @@ export function ShopLayout() {
                 <Link to="/console">Test Console</Link>
                 <span aria-hidden="true">|</span>
                 <Link to="/seller-center">Seller Center</Link>
+                <span aria-hidden="true">|</span>
+                {buyer ? <BuyerMenu buyer={buyer} /> : <><Link to={loginUrl('/')}>Sign in</Link><span aria-hidden="true">|</span><Link to={loginUrl('/')}>Sign up</Link></>}
               </div>
             </div>
             <div className="buyer-home-primary">
               <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><span>TikTok</span><small>SHOP SIMULATOR</small></Link>
               <SearchPill wide />
-              <div className="buyer-header-actions">
-                <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={22} /><span>Cart</span></Link>
-                {buyer ? <BuyerMenu buyer={buyer} /> : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" className="buyer-home-account"><UserRound size={22} /><span>Account</span></button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-44">
-                      <DropdownMenuLabel>Account</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild><Link to={loginUrl('/')}>Sign in</Link></DropdownMenuItem>
-                      <DropdownMenuItem asChild><Link to={loginUrl('/')}>Sign up</Link></DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
             </div>
           </header>
         ) : (
