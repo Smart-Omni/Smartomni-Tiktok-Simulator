@@ -232,8 +232,8 @@ function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef })
       <div className="detail-quantity">
         <span className="text-sm font-semibold">Quantity</span>
         <div className="flex items-center gap-3">
-          <QuantityStepper value={qty} max={max} onChange={setQty} />
-          <span className="text-sm text-muted-foreground">{sku ? `${sku.stock} available` : 'Out of stock'}</span>
+          <QuantityStepper value={qty} max={max} onChange={setQty} className="detail-quantity-stepper !rounded-md" />
+          <span className="detail-stock">{sku ? `${sku.stock} available` : 'Out of stock'}</span>
         </div>
       </div>
 
