@@ -105,8 +105,8 @@ Buyer checkout (simulator)
 
 ### Quy tắc làm và commit
 
-- Làm **từng phase một**. Hết mỗi phase: chạy test gate, báo kết quả (pass/fail + output liên quan), rồi chờ bạn đồng ý
-  mới làm phase sau.
+- Làm **từng phase một**, theo thứ tự. Hết mỗi phase: chạy test gate, commit, báo kết quả ngắn (pass/fail + output liên quan),
+  rồi **làm tiếp phase sau ngay, không chờ duyệt**. Chỉ dừng khi gate fail mà không tự sửa được, hoặc cần bạn quyết định.
 - Mỗi phase **một commit** (Conventional Commits có scope), chỉ commit khi gate của phase đó pass.
 - Test gate:
   - Backend: trong `backend/`: `npm run typecheck && npm run lint && npm run build && npm test`.
