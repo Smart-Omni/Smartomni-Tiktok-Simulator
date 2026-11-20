@@ -194,7 +194,7 @@ export class DisputeService {
         sub?.address ||
         process.env.SMARTOMNI_WEBHOOK_URL ||
         process.env.SMARTOMNI_BE_WEBHOOK_URL ||
-        'http://localhost:8080/api/v1/integrations/tiktok/webhook';
+        'http://localhost:8080/api/v1/integrations/tiktok/webhooks';
 
       // Build standard TikTok Webhook envelope
       const topic = 'DISPUTE_STATUS_CHANGE';
