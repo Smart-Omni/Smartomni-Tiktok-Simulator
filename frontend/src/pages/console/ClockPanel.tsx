@@ -30,7 +30,7 @@ export function ClockPanel() {
         <div className="card">
           <h3>Business clock</h3>
           <p>Now: <code>{c.now}</code> {c.frozen ? <span className="pill warn">frozen</span> : null}</p>
-          <p className="muted">System time: {c.systemNow}. This clock drives business timestamps only; request-signature validation always uses real time.</p>
+          <p className="muted">System time: {c.systemNow}</p>
           {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
           <div className="row-wrap">
             {[['+1 hour', 3_600_000], ['+1 day', 86_400_000], ['+7 days', 604_800_000]].map(([label, ms]) => (

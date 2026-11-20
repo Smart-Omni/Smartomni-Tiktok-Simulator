@@ -29,7 +29,7 @@ export function ArbitrationPanel({ shopId, initialRef = '' }: { shopId: string; 
         {error && <div className="state state-error" role="alert">{error}</div>}
         {result && <div className="state state-empty" role="status"><div><strong>{result.changed ? 'Decision applied' : 'Already in this state'}</strong><p>Request {result.id}</p><span className="pill" data-tone={statusTone(result.arbitration_status)}>{result.arbitration_status}</span></div></div>}
       </form>
-      <aside className="admin-callout"><Scale size={20} /><div><strong>Dispute lifecycle</strong><p>Use a return request from the selected shop. The API validates each transition.</p><ol><li>NO_ARBITRATION</li><li>IN_ARBITRATION</li><li>ARBITRATION_WIN or ARBITRATION_LOSS</li></ol><p>These controls affect simulator data and can emit webhook events.</p></div></aside>
+      <aside className="admin-callout"><Scale size={20} /><div><strong>Dispute lifecycle</strong><ol><li>NO_ARBITRATION</li><li>IN_ARBITRATION</li><li>ARBITRATION_WIN or ARBITRATION_LOSS</li></ol></div></aside>
     </div>
   );
 }

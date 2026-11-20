@@ -48,7 +48,7 @@ export function StatusPanel({ onSeeded }: { onSeeded: () => void }) {
             {s.seed ? <dl className="admin-seed-counts">{Object.entries(s.seed).map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{count.toLocaleString()}</dd></div>)}</dl> : <span className="muted">unavailable</span>}
             <div><button onClick={seed}>Run seed (idempotent)</button> {msg ? <span className="muted">{msg}</span> : null}</div>
           </div>
-          <div className="card muted">API base: {s.publicApiBaseUrl} / callback host: {s.hostCallbackBaseUrl}</div>
+          <details className="admin-connection-details"><summary>Connection details</summary><p>API: {s.publicApiBaseUrl}<br />Callback: {s.hostCallbackBaseUrl}</p></details>
         </div>
       )}
     </AsyncState>

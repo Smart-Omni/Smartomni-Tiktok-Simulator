@@ -52,7 +52,6 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
     <div>
       <div className="card">
         <h3>Inject a fault</h3>
-        <p className="muted">Webhook faults apply to the delivery worker (match by topic). API faults apply only to TikTok-shaped routes (match by path prefix).</p>
         <div className="row-wrap">
           <label>Target <select value={target} onChange={(e) => setTarget(e.target.value as 'WEBHOOK' | 'API')}><option>WEBHOOK</option><option>API</option></select></label>
           <label>Kind <select value={kind} onChange={(e) => setKind(e.target.value)}><option>HTTP_ERROR</option><option>DELAY</option><option>DROP</option><option>DUPLICATE</option><option>REORDER</option><option>TIMEOUT_BEFORE_WRITE</option><option>TIMEOUT_AFTER_WRITE</option><option>APP_ERROR_200</option></select></label>

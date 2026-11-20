@@ -42,7 +42,6 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
-      <p className="muted">Complete = the refund was paid out (SUCCESS to COMPLETE). Returns never change the order status and the simulator never adds stock back.</p>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No cancellation or return requests for this shop.">
         {(d) => (

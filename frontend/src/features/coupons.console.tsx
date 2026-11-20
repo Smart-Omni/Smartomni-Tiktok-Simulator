@@ -20,7 +20,6 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminCoupon[] }>(`/test-admin/coupons?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   return (
     <div>
-      <p className="muted">Create coupons in the Seller view. Voucher creation is deliberately not available on the TikTok API router.</p>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No coupons for this shop.">
         {(d) => (
           <table>

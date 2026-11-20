@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { CheckCircle2, FlaskConical, Search } from 'lucide-react';
+import { CheckCircle2, Search } from 'lucide-react';
 import { AsyncState } from '../../components/AsyncState';
 import { useAsync } from '../../lib/useAsync';
 import { vnd } from '../../lib/api';
@@ -38,7 +38,6 @@ function SandboxForm({ shopId, catalog, onCreated }: { shopId: string; catalog: 
   };
   return (
     <form onSubmit={submit} className="admin-sandbox">
-      <div className="admin-callout"><FlaskConical size={18} /><div><strong>Real simulator lifecycle</strong><p>Orders use the shop’s first buyer and go through checkout. A batch can partly succeed; successful orders remain in the simulator.</p></div></div>
       <div className="admin-sandbox-layout">
         <section className="admin-surface">
           <div className="admin-section-title"><h2>Select products</h2><span>{selected.length} / 20 SKUs selected</span></div>
@@ -56,6 +55,7 @@ function SandboxForm({ shopId, catalog, onCreated }: { shopId: string; catalog: 
           <label className="admin-check"><input type="checkbox" checked={pay} disabled={busy} onChange={(e) => setPay(e.target.checked)} /> Simulate payment after checkout</label>
           <dl className="admin-summary-list"><div><dt>Selected SKUs</dt><dd>{selected.length}</dd></div><div><dt>Items per order</dt><dd>{selected.reduce((n, r) => n + items[r.id], 0)}</dd></div><div><dt>Item subtotal / order</dt><dd>{vnd(total)}</dd></div><div><dt>Initial order status</dt><dd>{pay ? 'ON_HOLD' : 'UNPAID'}</dd></div></dl>
           <p className="muted">Item subtotal excludes shipping and other checkout adjustments.</p>
+          <p className="muted">Successful orders are kept if a batch partially fails.</p>
           <button className="admin-primary" type="submit" disabled={!valid || busy}>{busy ? 'Creating orders…' : result ? 'Create another batch' : 'Create test orders'}</button>
         </section>
       </div>

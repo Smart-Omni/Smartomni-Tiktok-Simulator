@@ -67,7 +67,6 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
       <div className="row-wrap">
         <button onClick={() => void loyalty()}>Create loyalty test orders (before/after 15 days)</button>
         <button onClick={() => void releaseDue()}>Release due holds</button>
-        <span className="muted">Advance the business clock on the Clock tab first to test the hold boundary. Invalid jumps (for example shipping an ON_HOLD order) are refused by the API.</span>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <div className="admin-toolbar">

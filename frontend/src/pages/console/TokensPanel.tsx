@@ -34,7 +34,6 @@ export function TokensPanel({ shopId }: { shopId: string }) {
 
   return (
     <div>
-      <p className="muted">Test faults for the SmartOmni connection: expire a token, revoke the authorization, or remove one granted scope. SmartOmni sees the effect on its next API call.</p>
       {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
       <div className="row-wrap">
         <button data-tone="warning" disabled={!shopId} onClick={() => void act('/test-admin/authorization-codes/expire', { shopId })}>Expire unused authorization codes</button>

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, Info, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusPanel } from './console/StatusPanel';
 import { ShopsPanel } from './console/ShopsPanel';
@@ -88,11 +88,11 @@ export function ConsolePage() {
             <button type="button" key={e.path} aria-current={tab === e.label ? 'page' : undefined} onClick={() => select(e.label)}><Package size={17} />{e.label}</button>
           ))}
         </nav>
-        <div className="admin-sidebar-note"><FlaskConical size={16} /><span>Simulation environment<br /><strong>Test data only</strong></span></div>
+        <div className="admin-sidebar-note"><FlaskConical size={16} /><span>Sandbox</span></div>
       </aside>
       <div className="admin-workspace" ref={workspaceRef}>
         <div className="admin-context-bar">
-          <div className="admin-workspace-welcome"><strong>Your testing workspace</strong><span>Manage your shops, scenarios and integrations.</span></div>
+          <div className="admin-workspace-welcome"><strong>Admin Console</strong></div>
           <div className="admin-header-actions"><label className="admin-shop-picker"><Store size={15} />
             <select value={selected} onChange={(e) => setShopId(e.target.value)} disabled={list.length === 0} aria-label="Selected shop">
               {list.length === 0 ? <option value="">{shops.loading ? 'Loading shops…' : 'No shops — run seed'}</option> : null}
@@ -101,9 +101,8 @@ export function ConsolePage() {
           </label><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
         </div>
         <div className="admin-content">
-          <header className="admin-page-heading"><div><div className="admin-eyebrow">Test Console / {tab === 'Status' ? 'Workspace' : screen.title}</div><h1>{screen.title}</h1><p>{screen.description}</p></div><span className="admin-environment"><span />Simulation mode</span></header>
+          <header className="admin-page-heading"><h1>{screen.title}</h1><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></header>
           {shops.error ? <div className="state state-error" role="alert">Could not load shops: {shops.error.message}<button onClick={shops.reload}>Retry</button></div> : null}
-          {SCOPE_NOTES[tab] && <p className="admin-scope-note"><ShieldCheck size={15} aria-hidden="true" />{SCOPE_NOTES[tab]}</p>}
           {tab === 'Status' && (
             <>
               <div className="admin-overview-strip">
@@ -114,12 +113,12 @@ export function ConsolePage() {
               </div>
               <div className="admin-section-title"><h2>System health</h2><span>Updates every 5 seconds</span></div>
               <StatusPanel onSeeded={shops.reload} />
-              <div className="admin-section-title"><h2>Start a test</h2><span>Common workflows</span></div>
+              <div className="admin-section-title"><h2>Quick actions</h2></div>
               <div className="admin-shortcuts">{[
                 ['Sandbox', 'Create test orders', 'Select products and prepare a batch of orders.'],
                 ['Orders', 'Inspect order lifecycle', 'Review history and exercise order transitions.'],
                 ['Webhooks', 'Inspect event deliveries', 'Review attempts and replay a webhook job.'],
-              ].map(([target, title, description]) => <button key={target} onClick={() => select(target)}><ArrowUpRight size={18} /><strong>{title}</strong><span>{description}</span></button>)}</div>
+              ].map(([target, title]) => <button key={target} onClick={() => select(target)}><ArrowUpRight size={18} /><strong>{title}</strong></button>)}</div>
             </>
           )}
           <div className="admin-panel" key={`${tab}:${selected}`}>

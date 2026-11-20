@@ -28,7 +28,6 @@ export function HttpLogPanel({ shopId }: { shopId: string }) {
         <label className="admin-check"><input type="checkbox" checked={onlyShop} onChange={(e) => setOnlyShop(e.target.checked)} /> selected shop only</label>
         <button onClick={logs.reload}>Refresh</button>
       </div>
-      <p className="muted">Tokens, secrets and signatures are redacted before storage. Pagination applies to the records returned by the API.</p>
       <AsyncState {...logs} onRetry={logs.reload} isEmpty={(d) => d.items.length === 0} emptyText="No requests logged yet for this filter.">
         {(d) => (
           <PaginatedList key={qs.toString()} items={d.items} label="Requests">{(visible) => <div className="scroll">

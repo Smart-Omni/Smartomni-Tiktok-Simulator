@@ -28,7 +28,6 @@ export function FulfillmentPanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
-      <p className="muted">Moves orders through the carrier steps with the same state machine the apps use; packages, tracking events and PACKAGE_UPDATE webhooks follow automatically. "Try to ship" on an ON_HOLD order is refused.</p>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (

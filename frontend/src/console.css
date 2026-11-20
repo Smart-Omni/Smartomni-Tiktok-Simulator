@@ -183,3 +183,13 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 @media (prefers-reduced-motion:reduce) { .app .admin-console button { transition:none; } }
 
 .app .admin-console .pill.ok { background:#ebebeb; color:#333; }
+.admin-page-info { position:relative; flex-shrink:0; }
+.admin-page-info summary { display:grid; place-items:center; width:28px; height:28px; color:#999; cursor:pointer; list-style:none; border-radius:50%; }
+.admin-page-info summary::-webkit-details-marker { display:none; }
+.admin-page-info summary:hover { color:#222; background:#e8e8e8; }
+.admin-page-info summary:focus-visible { outline:2px solid #222; outline-offset:2px; }
+.admin-page-info > div { position:absolute; top:36px; right:0; width:300px; z-index:5; padding:16px; border:1px solid #e5e5e5; border-radius:12px; background:#fff; color:#666; font-size:11px; }
+.admin-page-info p { margin:0 0 10px; }
+.admin-page-info p:last-child { margin-bottom:0; }
+.admin-connection-details { margin:16px 0; font-size:11px; color:#777; }
+.admin-connection-details summary { cursor:pointer; }

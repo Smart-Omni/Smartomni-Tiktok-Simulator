@@ -36,10 +36,9 @@ export function ChatPanel({ shopId }: { shopId: string }) {
   const post = (path: string, body: unknown) => api(`/test-admin/chat/conversations/${path}`, { method: 'POST', body });
   return (
     <div>
-      <p className="muted">Image upload and Send Message 202606 are unsupported (no verified contract); only TEXT messages are created.</p>
       <div className="row-wrap">
         <button onClick={() => void run('Created an unlinked conversation.', () => api('/test-admin/chat/conversations', { method: 'POST', body: { shopId, unknownBuyerNickname: 'unlinked_user', text: 'Hello from an unknown TikTok user' } }))} disabled={!shopId}>
-          New conversation from an unlinked TikTok user
+          New conversation
         </button>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
