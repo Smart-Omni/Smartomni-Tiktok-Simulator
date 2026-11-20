@@ -94,3 +94,43 @@
 .admin-timeline span { display:block; font-size:12px; color:var(--muted); margin-top:4px; }
 .admin-timeline p { margin:6px 0 0; font-size:12px; }
 .admin-error-text { color:var(--bad) !important; }
+
+/* Keep dense data readable; scroll the table rather than breaking status labels. */
+.admin-panel .pill { white-space:nowrap; overflow-wrap:normal; }
+.admin-shops-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.app .admin-shop-card { display:flex; flex-direction:column; min-width:0; margin:0; padding:22px; }
+.admin-shop-card h3 { min-height:44px; }
+.admin-shop-id { display:block; margin-top:5px; overflow-wrap:anywhere; }
+.app .admin-shop-scenario { display:flex; flex-direction:column; align-items:stretch; gap:8px; margin:20px 0 12px; }
+.admin-shop-scenario select { width:100%; min-width:0; }
+.admin-scenario-description { flex:1; min-height:48px; margin-bottom:16px; }
+.app .admin-shop-card > button { width:100%; min-height:38px; margin-top:auto; }
+.admin-chat-table { min-width:1050px; }
+.admin-chat-table th:nth-child(1) { min-width:130px; }
+.admin-chat-table th:nth-child(2) { min-width:200px; }
+.admin-chat-table th:nth-child(3) { min-width:88px; }
+.admin-chat-table th:nth-child(4) { min-width:60px; }
+.admin-chat-table th:nth-child(5) { min-width:160px; }
+.admin-chat-table th:nth-child(6) { width:450px; min-width:450px; }
+.admin-chat-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.app .admin-chat-controls button { width:100%; height:44px; min-height:44px; padding:6px 10px; font-size:12px; line-height:1.35; white-space:normal; }
+.admin-chat-flags { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+.admin-log-table { min-width:1050px; }
+.admin-log-table th:nth-child(1) { min-width:105px; }
+.admin-log-table th:nth-child(2) { min-width:115px; }
+.admin-log-table th:nth-child(3) { min-width:80px; }
+.admin-log-table th:nth-child(5) { min-width:80px; }
+.admin-log-table th:nth-child(6) { min-width:55px; }
+.admin-log-table th:nth-child(7) { min-width:270px; }
+.admin-log-table > tbody > tr:not(:has(pre)) > td:not(:nth-child(4)) { white-space:nowrap; overflow-wrap:normal; }
+.admin-log-table td:nth-child(4) { min-width:240px; }
+.admin-log-filters { display:flex; align-items:flex-end; flex-wrap:wrap; gap:16px; padding:20px; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+.admin-log-filters > label:not(.admin-check) { display:flex; flex-direction:column; align-items:stretch; gap:8px; font-size:12px; }
+.admin-log-filters input:not([type=checkbox]) { min-width:240px; }
+.admin-log-filters select { min-width:150px; }
+.admin-log-filters .admin-check { min-height:36px; }
+.admin-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin:16px 0 22px; color:var(--muted); font-size:12px; }
+.admin-pagination-controls { display:flex; align-items:center; gap:10px; }
+.admin-pagination label { font-size:12px; }
+.app .admin-pagination select { min-width:60px; margin-left:4px; }
+.app .admin-pagination button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:90px; min-height:36px; }
