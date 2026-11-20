@@ -86,7 +86,7 @@ function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
     {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div className="buyer-sale-products-heading"><h2>Sale picks</h2></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
       <div className="buyer-flash-image"><ProductImage product={p} className="rounded-none" /><span>-{p.discountPct}%</span></div>
       <div className="buyer-flash-product-info"><strong>{p.title}</strong><div className="buyer-flash-prices"><b>{shopPrice(p.minPriceVnd)}</b><del>{shopPrice(p.originalPriceVnd)}</del></div></div>
-    </Link>)}</div><div className="buyer-sale-products-action"><a href="#catalog">View products <ArrowRight size={14} /></a></div></section>}
+    </Link>)}</div><div className="buyer-sale-products-action"><a href="#catalog">View products</a></div></section>}
   </div>;
 }
 
@@ -114,7 +114,7 @@ export function HomePage() {
           <nav aria-label="Customer account"><h2>Account</h2><Link to="/login">Sign in</Link><Link to="/account/messages">Messages</Link></nav>
           <nav aria-label="Simulator tools"><h2>Workspace</h2><Link to="/seller-center">Seller Center</Link><Link to="/console">Test Console</Link></nav>
         </div>
-        <div className="buyer-footer-bottom"><span>© {new Date().getFullYear()} TikTok SHOP SIMULATOR</span><a href="#root">Back to top ↑</a></div>
+        <div className="buyer-footer-bottom"><span>© {new Date().getFullYear()} TikTok SHOP SIMULATOR</span></div>
       </footer>
     </>
   );
