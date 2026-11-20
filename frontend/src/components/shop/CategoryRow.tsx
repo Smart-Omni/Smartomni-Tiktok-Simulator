@@ -12,7 +12,6 @@ export function CategoryRow() {
   };
   return <section className="buyer-category-section" aria-label="Categories">
     <h2>Categories</h2>
-    <p className="buyer-filter-label">By category</p>
     <div className="buyer-category-list">
       <Link to={params.get('q') ? `/?q=${encodeURIComponent(params.get('q')!)}` : '/'} aria-current={!active ? 'true' : undefined}>All</Link>
       {mockCategories.map((category) => <Link key={category.slug} to={linkFor(category.slug)} aria-current={active === category.slug ? 'true' : undefined}>{category.name}</Link>)}

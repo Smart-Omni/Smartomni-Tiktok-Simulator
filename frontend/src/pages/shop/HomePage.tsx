@@ -27,7 +27,7 @@ export const search = (items: EnrichedProduct[], q: string) => {
 
 function Section({ id, title, action, hideTitle = false, children }: { id: string; title: ReactNode; action?: ReactNode; hideTitle?: boolean; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="mt-8 first:mt-2">
+    <section aria-labelledby={id} className={`buyer-catalog-section${id === 'deals' ? ' buyer-deals-section' : ''}`}>
       <div className={hideTitle && !action ? 'sr-only' : 'mb-3 flex flex-wrap items-center gap-3'}>
         <h2 id={id} className={hideTitle ? 'sr-only' : 'text-xl font-bold tracking-tight text-ink'}>
           {title}
@@ -42,7 +42,7 @@ function Section({ id, title, action, hideTitle = false, children }: { id: strin
 function ArrowButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disabled: boolean; onClick: () => void }) {
   const Icon = dir === 'prev' ? ChevronLeft : ChevronRight;
   return (
-    <Button variant="outline" size="icon" aria-label={dir === 'prev' ? 'Previous deals' : 'Next deals'} disabled={disabled} onClick={onClick} className="size-9 bg-white">
+    <Button variant="outline" size="icon" aria-label={dir === 'prev' ? 'Previous deals' : 'Next deals'} disabled={disabled} onClick={onClick} className="!h-10 !w-7 !rounded-md bg-white disabled:!opacity-0">
       <Icon />
     </Button>
   );
@@ -64,7 +64,7 @@ function DealsRow({ items }: { items: EnrichedProduct[] }) {
         </>
       }
     >
-      <div ref={ref} onScroll={update} className="-mx-1.5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={ref} onScroll={update} className="buyer-deals-track flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((p) => (
           <ProductCard
             key={productPath(p)}
@@ -169,7 +169,15 @@ export function HomePage() {
       <div className="buyer-products-area buyer-catalog-layout"><CategoryRow />
         <div className="buyer-catalog-results"><Products state={products} q={q} category={category} /></div>
       </div>
-      <footer className="buyer-home-footer"><strong>TikTok SHOP SIMULATOR</strong><Link to="/console">Test console</Link></footer>
+      <footer className="buyer-home-footer">
+        <div className="buyer-footer-main">
+          <Link to="/" className="buyer-footer-brand"><strong>TikTok</strong><span>SHOP SIMULATOR</span></Link>
+          <nav aria-label="Shopping"><h2>Shop</h2><Link to="/">All products</Link><Link to="/cart">Cart</Link><Link to="/account/orders">Orders</Link></nav>
+          <nav aria-label="Customer account"><h2>Account</h2><Link to="/login">Sign in</Link><Link to="/account/messages">Messages</Link></nav>
+          <nav aria-label="Simulator tools"><h2>Workspace</h2><Link to="/seller-center">Seller Center</Link><Link to="/console">Test Console</Link></nav>
+        </div>
+        <div className="buyer-footer-bottom"><span>© {new Date().getFullYear()} TikTok SHOP SIMULATOR</span><a href="#root">Back to top ↑</a></div>
+      </footer>
     </>
   );
 }
