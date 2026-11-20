@@ -2,11 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Gift, Package, Ticket, MessageCircle, Wallet, CreditCard, MapPin, RotateCcw, Store, CircleHelp, FileText, Truck, Radio, BadgeCheck, Crown, Sparkles, Egg, TrendingUp, Heart, Shirt, ArrowRight } from 'lucide-react';
 import { CategoryRow } from '@/components/shop/CategoryRow';
-import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard';
+import { ProductCard, ProductCardSkeleton, ProductImage } from '@/components/shop/ProductCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { productPath } from '@/lib/links';
+import { shopPrice } from '@/lib/format';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
@@ -148,7 +149,7 @@ function HomeNavigation({ signedIn }: { signedIn: boolean }) {
 }
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
   const featured = deals(items).slice(0, 3);
-  return <section className="buyer-flash-banner" aria-label="Flash sale"><div><span className="buyer-flash-kicker">TODAY'S PICKS</span><h2>Flash sale</h2><a href="#deals">Shop deals <ArrowRight size={15} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}><span>{p.discountPct}% OFF</span><strong>{p.title}</strong></Link>)}</div></section>;
+  return <section className="buyer-flash-banner" aria-label="Flash sale"><div className="buyer-flash-intro"><span className="buyer-flash-kicker">FLASH SALE</span><h2>Everyday finds.<br />Better prices.</h2><a href="#deals">Shop deals <ArrowRight size={15} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}><div className="buyer-flash-image"><ProductImage product={p} /><span>-{p.discountPct}%</span></div><strong>{p.title}</strong><b>{shopPrice(p.minPriceVnd)}</b></Link>)}</div></section>;
 }
 
 export function HomePage() {

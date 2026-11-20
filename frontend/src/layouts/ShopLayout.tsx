@@ -79,7 +79,7 @@ function SearchPill({ wide = false }: { wide?: boolean }) {
     navigate(term ? `/?q=${encodeURIComponent(term)}` : '/');
   };
   return (
-    <form role="search" onSubmit={submit} className={cn("flex h-10 w-full items-center gap-2 rounded-full bg-surface px-4 focus-within:ring-2 focus-within:ring-ring/40", wide ? "max-w-none" : "max-w-[360px]")}>
+    <form role="search" onSubmit={submit} className={cn("flex w-full items-center gap-2 focus-within:ring-2 focus-within:ring-ring/40", wide ? "buyer-header-search" : "h-10 max-w-[360px] rounded-full bg-surface px-4")}>
       {!wide && <Search className="size-4 shrink-0 text-muted-foreground" />}
       <input
         type="search"
