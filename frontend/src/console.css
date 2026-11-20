@@ -242,3 +242,28 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-webhook-history { padding:18px 20px; border-radius:12px; background:#f6f6f6; }
 .app .admin-webhook-history h4 { margin:0 0 12px; font-size:11px; }
 .admin-webhook-history p { margin:8px 0; font-size:10px; overflow-wrap:anywhere; }
+.admin-data-table { min-width:840px; }
+.admin-data-table td:first-child { font-variant-numeric:tabular-nums; }
+.admin-data-table th:last-child { min-width:160px; }
+.admin-fields-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:end; }
+.app .admin-fields-grid > label:not(.admin-check) { display:flex; flex-direction:column; align-items:stretch; gap:8px; font-size:10px; }
+.admin-fields-grid :is(input:not([type=checkbox]),select) { width:100%; min-width:0; }
+.admin-fields-grid > button { grid-column:1 / -1; justify-self:end; min-width:130px; }
+.admin-fields-grid .admin-check { min-height:34px; font-size:11px; }
+.admin-token-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:20px 0; max-width:720px; }
+.admin-token-scopes { border-top:1px solid #eee; padding-top:16px; font-size:11px; color:#777; }
+.admin-token-scopes summary { cursor:pointer; }
+.admin-scope-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.app .admin-scope-grid button { text-align:left; border-radius:10px; overflow-wrap:anywhere; white-space:normal; }
+.admin-clock-card > p:first-of-type { font-size:20px; font-variant-numeric:tabular-nums; margin:24px 0 12px; }
+.admin-clock-card code { font-family:inherit; }
+.admin-clock-card > .row-wrap { gap:10px; margin:24px 0; }
+.admin-clock-form { padding:20px 0 0; border-radius:0; border-top:1px solid #eee; }
+.admin-reset-fields { padding:8px 0 0; }
+.admin-reset-confirmation > label { display:flex; flex-wrap:wrap; gap:10px; margin:20px 0; }
+.app .admin-reset-confirmation .danger-btn { color:#fff; background:#a2534e; border-color:#a2534e; }
+.admin-panel .admin-catalog-scroll { max-height:none; }
+.admin-panel .admin-catalog-scroll thead { position:static; }
+.admin-sandbox .admin-pagination { gap:10px; }
+.admin-sandbox .admin-pagination-controls { gap:6px; }
+.app .admin-sandbox .admin-pagination button { min-width:30px; padding:6px 8px; }

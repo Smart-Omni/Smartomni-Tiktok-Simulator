@@ -13,6 +13,26 @@ const catalog = {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('Admin sandbox', () => {
+  it('keeps SKU selections across pages and submits them together', async () => {
+    const pagedCatalog = { ...catalog, products: [{ ...catalog.products[0], sku_list: Array.from({ length: 12 }, (_, i) => ({ ...catalog.products[0].sku_list[0], id: `sku-${i + 1}`, seller_sku: `SKU-${i + 1}` })) }] };
+    const fetcher = vi.fn<(url: string, options?: RequestInit) => Promise<Response>>(async (url) => url.startsWith('/test-admin/sandbox/products') ? json(pagedCatalog) : json({ created: [], failed: [], request_id: 'request-1' }));
+    vi.stubGlobal('fetch', fetcher);
+    render(<SandboxPanel shopId="shop-1" />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /^Select SKU-1$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select SKU-11' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+    expect((screen.getByRole('checkbox', { name: /^Select SKU-1$/ }) as HTMLInputElement).checked).toBe(true);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Create test orders' }));
+    await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === '/test-admin/sandbox/orders')).toBe(true));
+    const request = fetcher.mock.calls.find(([url]) => url === '/test-admin/sandbox/orders')!;
+    expect(JSON.parse(request[1]!.body as string).items).toEqual([
+      { product_id: 'product-1', sku_id: 'sku-1', quantity: 1 },
+      { product_id: 'product-1', sku_id: 'sku-11', quantity: 1 },
+    ]);
+  });
+
   it('blocks a batch whose combined quantity exceeds stock', async () => {
     const fetcher = vi.fn(async () => json(catalog));
     vi.stubGlobal('fetch', fetcher);

@@ -1,3 +1,6 @@
+import { PageActions } from '../components/console/PageActions';
+import { RefreshCw } from 'lucide-react';
+import { PaginatedList } from '../components/console/PaginatedList';
 import { useState } from 'react';
 import { AsyncState } from '../components/AsyncState';
 import { api, vnd } from '../lib/api';
@@ -42,13 +45,14 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
+      <PageActions><button className="admin-icon-action" onClick={list.reload}><RefreshCw size={13} />Refresh</button></PageActions>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No cancellation or return requests for this shop.">
         {(d) => (
-          <div className="scroll"><table>
-            <thead><tr><th>Request</th><th>Order</th><th>Kind</th><th>Units</th><th>Status</th><th className="num">Refund</th><th /></tr></thead>
+          <PaginatedList items={d.items} label="Requests">{(visible) => <div className="scroll"><table className="admin-data-table">
+            <thead><tr><th>Request</th><th>Order</th><th>Kind</th><th>Units</th><th>Status</th><th className="num">Refund</th><th>Actions</th></tr></thead>
             <tbody>
-              {d.items.map((r) => (
+              {visible.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.orderId}</td>
@@ -56,21 +60,21 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
                   <td>{r.units}</td>
                   <td><span className="pill" data-tone={statusTone(r.status)}>{r.status}</span></td>
                   <td className="num">{vnd(r.refundTotalVnd)}</td>
-                  <td>
+                  <td><div className="admin-table-actions">
                     <button onClick={() => void show(r.id)}>History</button>{' '}
                     {r.kind === 'RETURN' && <button type="button" data-tone="warning" onClick={() => setArbitrationRef(r.id)}>Arbitrate</button>}{' '}
                     {r.status.endsWith('REQUEST_SUCCESS') ? <button data-tone="success" onClick={() => void complete(r.id)}>Complete refund</button> : null}
-                  </td>
+                  </div></td>
                 </tr>
               ))}
             </tbody>
-          </table></div>
+          </table></div>}</PaginatedList>
         )}
       </AsyncState>
       {arbitrationRef && <section aria-label="Arbitrate selected return"><div className="admin-section-title"><h2>Dispute · {arbitrationRef}</h2><button type="button" onClick={() => setArbitrationRef(undefined)}>Close arbitration</button></div><ArbitrationPanel key={arbitrationRef} shopId={shopId} initialRef={arbitrationRef} /></section>}
       {history ? (
         <section className="card" aria-label="aftersale history">
-          <h3>History of {history.id}</h3>
+          <div className="admin-section-title"><h3>History of {history.id}</h3><button onClick={() => setHistory(undefined)}>Close history</button></div>
           <ul className="list">{history.data.records.map((h, i) => <li key={i}><span>{h.from ?? 'new'} → {h.to}</span><span className="muted">{h.actor} · {new Date(h.at).toLocaleString()}</span></li>)}</ul>
         </section>
       ) : null}

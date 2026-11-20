@@ -1,3 +1,6 @@
+import { PageActions } from '../components/console/PageActions';
+import { RefreshCw } from 'lucide-react';
+import { PaginatedList } from '../components/console/PaginatedList';
 import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -20,12 +23,13 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminCoupon[] }>(`/test-admin/coupons?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   return (
     <div>
+      <PageActions><button className="admin-icon-action" onClick={list.reload}><RefreshCw size={13} />Refresh</button></PageActions>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No coupons for this shop.">
         {(d) => (
-          <div className="scroll"><table>
+          <PaginatedList items={d.items} label="Coupons">{(visible) => <div className="scroll"><table className="admin-data-table">
             <thead><tr><th>Code</th><th>Title</th><th>Status</th><th>Used</th><th>From</th><th>Until</th></tr></thead>
             <tbody>
-              {d.items.map((c) => (
+              {visible.map((c) => (
                 <tr key={c.id}>
                   <td>{c.promoCode}</td>
                   <td>{c.title}</td>
@@ -36,7 +40,7 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
                 </tr>
               ))}
             </tbody>
-          </table></div>
+          </table></div>}</PaginatedList>
         )}
       </AsyncState>
     </div>

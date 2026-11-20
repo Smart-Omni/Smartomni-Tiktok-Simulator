@@ -27,7 +27,7 @@ export function ClockPanel() {
   return (
     <AsyncState {...clock} onRetry={clock.reload}>
       {(c) => (
-        <div className="card">
+        <div className="card admin-clock-card">
           <h3>Business clock</h3>
           <p>Now: <code>{c.now}</code> {c.frozen ? <span className="pill warn">frozen</span> : null}</p>
           <p className="muted">System time: {c.systemNow}</p>
@@ -38,10 +38,10 @@ export function ClockPanel() {
             ))}
             <button onClick={() => put({ reset: true })}>Reset to real time</button>
           </div>
-          <div className="row-wrap">
+          <div className="admin-log-filters admin-clock-form">
             <label>Set to <input type="datetime-local" value={target} onChange={(e) => setTarget(e.target.value)} /></label>
-            <label><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> freeze</label>
-            <button disabled={!target} onClick={() => put({ setTo: new Date(target).toISOString(), freeze })}>Apply</button>
+            <label className="admin-check"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> freeze</label>
+            <button className="admin-primary" disabled={!target} onClick={() => put({ setTo: new Date(target).toISOString(), freeze })}>Apply</button>
           </div>
         </div>
       )}

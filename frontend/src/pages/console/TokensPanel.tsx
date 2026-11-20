@@ -1,3 +1,4 @@
+import { PaginatedList } from '../../components/console/PaginatedList';
 import { useState } from 'react';
 import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
@@ -39,28 +40,30 @@ export function TokensPanel({ shopId }: { shopId: string }) {
       <PageActions>
         <button data-tone="warning" disabled={!shopId} onClick={() => void act('/test-admin/authorization-codes/expire', { shopId })}>Expire unused authorization codes</button>
       </PageActions>
-      <AsyncState {...tokens} onRetry={tokens.reload} isEmpty={(d) => d.items.length === 0} emptyText="No authorization for this shop yet. Connect it from SmartOmni (consent page: /seller/authorize).">
+      <AsyncState {...tokens} onRetry={tokens.reload} isEmpty={(d) => d.items.length === 0} emptyText="No authorization for this shop.">
         {(d) => (
-          <div>
-            {d.items.map((t) => (
+          <PaginatedList items={d.items} label="Authorizations" initialPageSize={5}>{(visible) => <div>
+            {visible.map((t) => (
               <article key={t.id} className="card">
                 <h3>{t.appKey} <span className="pill" data-tone={statusTone(t.status)}>{t.status}</span></h3>
                 <div className="muted">
                   Access token {t.accessExpired ? 'EXPIRED' : 'expires'} {new Date(t.accessExpiresAt).toLocaleString()} / refresh token {t.refreshExpired ? 'EXPIRED' : 'expires'} {new Date(t.refreshExpiresAt).toLocaleString()}
                   {t.revokedAt ? ` / revoked ${new Date(t.revokedAt).toLocaleString()}` : ''}
                 </div>
-                <div className="muted">Granted scopes: {t.scopes.length === 0 ? '(none)' : t.scopes.join(', ')}</div>
-                <div className="row-wrap">
+
+                <div className="admin-token-actions">
                   <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-access`)}>Expire access token</button>
                   <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-refresh`)}>Expire refresh token</button>
                   <button data-tone="danger" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/revoke`)}>Revoke authorization</button>
+                </div>
+                <details className="admin-token-scopes"><summary>Granted scopes ({t.scopes.length})</summary><div className="admin-scope-grid">
                   {t.scopes.map((s) => (
                     <button data-tone="danger" key={s} onClick={() => void act(`/test-admin/tokens/${t.id}/remove-scope`, { scope: s })}>Remove {s}</button>
                   ))}
-                </div>
+                </div></details>
               </article>
             ))}
-          </div>
+          </div>}</PaginatedList>
         )}
       </AsyncState>
     </div>

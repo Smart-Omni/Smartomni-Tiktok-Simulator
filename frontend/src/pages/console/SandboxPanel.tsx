@@ -1,3 +1,4 @@
+import { PaginatedList } from '../../components/console/PaginatedList';
 import { useState, type FormEvent } from 'react';
 import { CheckCircle2, Search } from 'lucide-react';
 import { AsyncState } from '../../components/AsyncState';
@@ -42,11 +43,11 @@ function SandboxForm({ shopId, catalog, onCreated }: { shopId: string; catalog: 
         <section className="admin-surface">
           <div className="admin-section-title"><h2>Select products</h2><span>{selected.length} / 20 SKUs selected</span></div>
           <label className="admin-search"><Search size={16} /><input aria-label="Search sandbox products" placeholder="Search product, seller SKU or SKU ID" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
-          <div className="admin-catalog-scroll"><table><thead><tr><th>Select</th><th>Product / SKU</th><th>Unit price</th><th>Stock</th><th>Qty / order</th></tr></thead><tbody>{shown.map((r) => <tr key={r.id}>
+          <PaginatedList key={query} items={shown} label="SKUs">{(visible) => <div className="admin-catalog-scroll"><table><thead><tr><th>Select</th><th>Product / SKU</th><th>Unit price</th><th>Stock</th><th>Qty / order</th></tr></thead><tbody>{visible.map((r) => <tr key={r.id}>
             <td><input type="checkbox" aria-label={`Select ${r.seller_sku}`} checked={r.id in items} disabled={busy || r.stock_count === 0 || (!(r.id in items) && selected.length >= 20)} onChange={(e) => setItems((prev) => { const next = { ...prev }; if (e.target.checked) next[r.id] = 1; else delete next[r.id]; return next; })} /></td>
             <td><strong>{r.title}</strong><small>{r.seller_sku}</small></td><td>{vnd(r.price)}</td><td>{r.stock_count}</td>
             <td><input type="number" min={1} max={catalog.limits.max_quantity_per_sku} aria-label={`Quantity of ${r.seller_sku}`} disabled={busy || !(r.id in items)} value={items[r.id] ?? 1} onChange={(e) => setItems((prev) => ({ ...prev, [r.id]: Number(e.target.value) }))} />{r.id in items && items[r.id] * count > r.stock_count ? <small className="admin-error-text">Insufficient stock for this batch</small> : null}</td>
-          </tr>)}</tbody></table>{!shown.length && <div className="state state-empty">No products match your search.</div>}</div>
+          </tr>)}</tbody></table>{!shown.length && <div className="state state-empty">No products match your search.</div>}</div>}</PaginatedList>
         </section>
         <section className="admin-surface admin-batch-summary">
           <h2>Batch settings</h2>
@@ -61,7 +62,7 @@ function SandboxForm({ shopId, catalog, onCreated }: { shopId: string; catalog: 
       </div>
       {error && <div className="state state-error" role="alert">{error}</div>}
       {result && <section className="admin-surface" aria-label="Batch result"><div className="admin-section-title"><h2><CheckCircle2 size={18} /> Batch result</h2><span>{result.created.length} created · {result.failed.length} failed</span></div>
-        {result.created.length > 0 && <table><thead><tr><th>Order ID</th><th>Status</th></tr></thead><tbody>{result.created.map((o) => <tr key={o.order_id}><td>{o.order_id}</td><td><span className="pill ok">{o.status}</span></td></tr>)}</tbody></table>}
+        {result.created.length > 0 && <PaginatedList items={result.created} label="Orders">{(visible) => <div className="scroll"><table><thead><tr><th>Order ID</th><th>Status</th></tr></thead><tbody>{visible.map((o) => <tr key={o.order_id}><td>{o.order_id}</td><td><span className="pill ok">{o.status}</span></td></tr>)}</tbody></table></div>}</PaginatedList>}
         {result.failed.map((f) => <div className="state state-error" key={f.index}>Order {f.index + 1}: {f.error}</div>)}
         {result.request_id && <p className="muted">Request ID: {result.request_id}</p>}
       </section>}

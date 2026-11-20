@@ -1,3 +1,6 @@
+import { PageActions } from '../../components/console/PageActions';
+import { Plus, RefreshCw } from 'lucide-react';
+import { PaginatedList } from '../../components/console/PaginatedList';
 import { useState } from 'react';
 import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
@@ -23,6 +26,7 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
   const [remaining, setRemaining] = useState('1');
   const [global, setGlobal] = useState(false);
   const [msg, setMsg] = useState<string>();
+  const [showForm, setShowForm] = useState(false);
 
   const create = async () => {
     try {
@@ -50,30 +54,31 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
 
   return (
     <div>
-      <div className="card">
+      <PageActions><button className="admin-icon-action" onClick={faults.reload}><RefreshCw size={13} />Refresh</button><button className="admin-primary admin-icon-action" aria-expanded={showForm} onClick={() => setShowForm((open) => !open)}><Plus size={14} />New fault</button></PageActions>
+      {showForm && <div className="card">
         <h3>Inject a fault</h3>
-        <div className="row-wrap">
+        <div className="admin-fields-grid">
           <label>Target <select value={target} onChange={(e) => setTarget(e.target.value as 'WEBHOOK' | 'API')}><option>WEBHOOK</option><option>API</option></select></label>
           <label>Kind <select value={kind} onChange={(e) => setKind(e.target.value)}><option>HTTP_ERROR</option><option>DELAY</option><option>DROP</option><option>DUPLICATE</option><option>REORDER</option><option>TIMEOUT_BEFORE_WRITE</option><option>TIMEOUT_AFTER_WRITE</option><option>APP_ERROR_200</option></select></label>
           <label>{target === 'WEBHOOK' ? 'Topic' : 'Path prefix'} <input value={pathMatch} onChange={(e) => setPathMatch(e.target.value)} placeholder="(any)" /></label>
           {kind === 'HTTP_ERROR' ? <label>Status <input size={4} value={status} onChange={(e) => setStatus(e.target.value)} /></label> : null}
           {kind === 'DELAY' ? <label>Delay ms <input size={6} value={delayMs} onChange={(e) => setDelayMs(e.target.value)} /></label> : null}
           <label>Uses <input size={4} value={remaining} onChange={(e) => setRemaining(e.target.value)} placeholder="unlimited" /></label>
-          <label><input type="checkbox" checked={global} onChange={(e) => setGlobal(e.target.checked)} /> all shops</label>
-          <button onClick={create} disabled={!global && !shopId}>Add fault</button>
+          <label className="admin-check"><input type="checkbox" checked={global} onChange={(e) => setGlobal(e.target.checked)} /> all shops</label>
+          <button className="admin-primary" onClick={create} disabled={!global && !shopId}>Add fault</button>
         </div>
         {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
-      </div>
+      </div>}
       <AsyncState {...faults} onRetry={faults.reload} isEmpty={(d) => d.items.length === 0} emptyText="No active faults.">
         {(d) => (
-          <div className="scroll"><table>
-            <thead><tr><th>Target</th><th>Kind</th><th>Match</th><th>Params</th><th>Uses left</th><th>Scope</th><th /></tr></thead>
+          <PaginatedList items={d.items} label="Rules">{(visible) => <div className="scroll"><table className="admin-data-table">
+            <thead><tr><th>Target</th><th>Kind</th><th>Match</th><th>Params</th><th>Uses left</th><th>Scope</th><th>Actions</th></tr></thead>
             <tbody>
-              {d.items.map((f) => (
-                <tr key={f.id}><td>{f.target}</td><td>{f.kind}</td><td>{f.pathMatch ?? '(any)'}</td><td><code>{JSON.stringify(f.params)}</code></td><td>{f.remaining ?? 'unlimited'}</td><td>{f.shopId ? 'shop' : 'all'}</td><td><button onClick={() => remove(f.id)}>Remove</button></td></tr>
+              {visible.map((f) => (
+                <tr key={f.id}><td>{f.target}</td><td>{f.kind}</td><td>{f.pathMatch ?? '(any)'}</td><td><code>{JSON.stringify(f.params)}</code></td><td>{f.remaining ?? 'unlimited'}</td><td>{f.shopId ? 'shop' : 'all'}</td><td><button data-tone="danger" onClick={() => remove(f.id)}>Remove</button></td></tr>
               ))}
             </tbody>
-          </table></div>
+          </table></div>}</PaginatedList>
         )}
       </AsyncState>
     </div>
