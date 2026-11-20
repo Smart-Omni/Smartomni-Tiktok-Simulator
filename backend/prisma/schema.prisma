@@ -714,6 +714,8 @@ model Coupon {
   redeemedCount   Int           @default(0)
   audience        String        @default("ALL")
   deactivated     Boolean       @default(false)
+  // Phase 09c: codes generated together as one batch (single-use each). Internal only, never in a TikTok response.
+  batchId         String?
   createdAt       DateTime
   updatedAt       DateTime
   usages          CouponUsage[]
@@ -721,6 +723,7 @@ model Coupon {
   @@unique([shopId, externalId])
   @@unique([shopId, promoCode])
   @@index([shopId, seq])
+  @@index([shopId, batchId])
 }
 
 // One row per (coupon, order): the unique constraint is what makes a retried checkout unable to count twice.

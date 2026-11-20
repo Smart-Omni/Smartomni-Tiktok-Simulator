@@ -303,6 +303,38 @@ export interface Coupon {
   audience: string;
 }
 
+/** Phase 09c: a batch of single-use promo codes (GET /demo/shops/:shopId/coupon-batches). */
+export interface CouponBatch {
+  id: string;
+  title: string;
+  status: string;
+  discountType: string;
+  amountOffVnd: number | null;
+  percentage: number | null;
+  maxDiscountVnd: number | null;
+  discountText: string;
+  minSpendVnd: number | null;
+  audience: string;
+  quantity: number;
+  redeemed: number;
+  startAt: string;
+  endAt: string;
+  createdAt: string;
+}
+
+export interface CouponBatchCode {
+  /** Coupon marketplace id (the coupon_id SmartOmni sees). */
+  id: string;
+  promoCode: string;
+  redeemedCount: number;
+  status: string;
+}
+
+export interface CouponBatchDetail {
+  batch: CouponBatch;
+  codes: CouponBatchCode[];
+}
+
 export interface ChatMessage {
   id: string;
   index: number;

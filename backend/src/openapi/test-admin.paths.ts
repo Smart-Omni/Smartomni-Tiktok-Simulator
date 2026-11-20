@@ -202,14 +202,26 @@ export const paths: PathsFragment = {
   '/test-admin/coupons': {
     get: op({
       tag: T_DATA, summary: 'Coupon overview', handler: 'TestAdminController.listCoupons', security: SEC, errorShape: E,
-      description: 'Read-only list of up to 200 coupons (oldest first by seq), optionally for one shop. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING.',
-      query: [shopIdQuery],
+      description: 'Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).',
+      query: [
+        shopIdQuery,
+        { name: 'batchId', description: 'Only the codes of this batch (`batchId` of a code, or `id` of a /demo coupon batch).', example: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b' },
+        { name: 'after', description: 'Cursor: the `next` value of the previous page.', example: '120' },
+        { name: 'limit', description: 'Page size 1..500 (default 200); anything else answers 400.', schema: int(undefined, { default: 200, minimum: 1, maximum: 500 }), example: 200 },
+      ],
       ok: {
         description: 'Coupons.',
-        schema: obj({ items: arr(obj({ id: str('Coupon external id'), title: str(), promoCode: str('Promo code (nullability not verified)'), status: { type: 'string', enum: ['DEACTIVATED', 'NOT_START', 'EXPIRED', 'ONGOING'] }, redeemedCount: int(), redemptionLimit: nullable(int()), startAt: dt(), endAt: dt() })) }, ['items']),
-        example: { items: [{ id: '7600000000000001', title: '10% off', promoCode: 'SAVE10', status: 'ONGOING', redeemedCount: 2, redemptionLimit: 100, startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-12-31T00:00:00.000Z' }] },
+        schema: obj({
+          items: arr(obj({
+            id: str('Coupon external id'), title: str(), promoCode: str('Promo code (nullability not verified)'), status: { type: 'string', enum: ['DEACTIVATED', 'NOT_START', 'EXPIRED', 'ONGOING'] }, redeemedCount: int(), redemptionLimit: nullable(int()), startAt: dt(), endAt: dt(),
+            batchId: nullable(str('Batch of single-use codes; null for a single voucher')),
+            usages: arr(obj({ orderId: str('Order external id'), discountVnd: int(), at: dt() })),
+          })),
+          next: str('Cursor for the next page; empty string on the last page'),
+        }, ['items', 'next']),
+        example: { items: [{ id: '7600000000000001', title: 'Loyalty Diamond 30%', promoCode: 'K7M2QX9PRT', status: 'ONGOING', redeemedCount: 1, redemptionLimit: 1, startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-12-31T00:00:00.000Z', batchId: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b', usages: [{ orderId: '5800000000000001', discountVnd: 77400, at: '2026-10-02T08:00:00.000Z' }] }], next: '' },
       },
-      errors: { 401: E401 },
+      errors: { 400: '`limit` not an integer in 1..500, or `after` not a valid cursor.', 401: E401 },
     }),
   },
   '/test-admin/aftersale': {
@@ -510,6 +522,30 @@ export const paths: PathsFragment = {
         example: { shopId: SHOP_ID, thresholdDays: 15, note: 'Loyalty points are computed by SmartOmni from the product amount actually paid (sub_total), never from total_amount which includes shipping/tax.', orders: [{ label: 'completed 16 days ago (eligible)', orderId: '5800000000000010', status: 'COMPLETED', completedAt: '2026-09-29T08:00:00.000Z', deliveredAt: '2026-09-29T08:00:00.000Z', updatedAt: '2026-09-29T08:00:00.000Z', amountsVnd: { productTotal: 45000, sellerDiscount: 0, platformDiscount: 0, subTotal: 45000, shippingFee: 15000, tax: 0, total: 60000 } }] },
       },
       errors: { 400: `${E400V} Also ${ruleError400} (checkout rules such as insufficient_stock).`, 401: E401, 404: 'Unknown shop; `No buyer for this shop`; or `No on-sale SKU with enough stock`.' },
+    }),
+  },
+  '/test-admin/scenarios/loyalty-vouchers': {
+    post: op({
+      tag: T_SCEN, summary: 'Create loyalty voucher batches', handler: 'LoyaltyAdminController.createVouchers', security: SEC, errorShape: E, status: 201,
+      description: 'Creates one batch of single-use PERCENT_OFF codes per tier (default Silver 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).',
+      body: {
+        schema: obj({
+          shopId: str('Internal shop id', { minLength: 1 }),
+          quantityPerTier: int('Codes per tier', { minimum: 1, maximum: 500, default: 20 }),
+          validDays: int('Validity from now (business clock)', { minimum: 1, maximum: 365, default: 30 }),
+          tiers: arr(obj({ name: str('1-40 chars'), percentage: int(undefined, { minimum: 1, maximum: 100 }), maxDiscountVnd: int('Optional cap', { minimum: 1 }) }, ['name', 'percentage'])),
+        }, ['shopId']),
+        example: { shopId: SHOP_ID, quantityPerTier: 20, validDays: 30 },
+      },
+      ok: {
+        description: 'Created batches (201 Created).',
+        schema: obj({
+          shopId: str(),
+          batches: arr(obj({ tier: str(), batchId: str(), title: str(), percentage: int(), startAt: dt(), endAt: dt(), codes: arr(obj({ id: str('Coupon external id (coupon_id of the TikTok API)'), promoCode: str() })) })),
+        }, ['shopId', 'batches']),
+        example: { shopId: SHOP_ID, batches: [{ tier: 'Diamond', batchId: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b', title: 'Loyalty Diamond 30%', percentage: 30, startAt: '2026-11-20T00:00:00.000Z', endAt: '2026-12-20T00:00:00.000Z', codes: [{ id: '7700123456789013', promoCode: 'K7M2QX9PRT' }] }] },
+      },
+      errors: { 400: `${E400V} (e.g. percentage outside 1..100, quantityPerTier outside 1..500, unknown field).`, 401: E401, 404: 'Unknown shop.', 409: 'Could not generate unique codes after 3 attempts; retry.' },
     }),
   },
 };

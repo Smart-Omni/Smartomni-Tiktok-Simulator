@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { PersistentBusinessClock } from '../clock/clock';
 import { ZodPipe } from '../common/zod.pipe';
+import { CouponBatchService, MAX_BATCH_QUANTITY } from '../coupons/coupon-batch.service';
 import { APP_CONFIG, AppConfig } from '../config/config';
 import { OrderStatus } from '../orders/order-state';
 import { OrderRow, OrdersService } from '../orders/orders.service';
@@ -27,6 +28,22 @@ const LoyaltyScenario = z.object({ shopId: z.string().min(1), buyerId: z.string(
 
 const DAY_MS = 24 * 3600 * 1000;
 
+const VoucherTier = z.object({ name: z.string().trim().min(1).max(40), percentage: z.number().int().min(1).max(100), maxDiscountVnd: z.number().int().min(1).max(2_000_000_000).optional() }).strict();
+const LoyaltyVouchers = z
+  .object({
+    shopId: z.string().min(1),
+    quantityPerTier: z.number().int().min(1).max(MAX_BATCH_QUANTITY).default(20),
+    validDays: z.number().int().min(1).max(365).default(30),
+    tiers: z.array(VoucherTier).min(1).max(10).optional(),
+  })
+  .strict();
+/** Test data only: the real percentages are configured by SmartOmni staff. */
+const DEFAULT_TIERS: z.infer<typeof VoucherTier>[] = [
+  { name: 'Silver', percentage: 10 },
+  { name: 'Platinum', percentage: 20 },
+  { name: 'Diamond', percentage: 30 },
+];
+
 /**
  * Test data for the SmartOmni loyalty rule "points only after N days since completion" (default N = 15, a SmartOmni business rule,
  * NOT a TikTok policy). Orders are driven through the real OrdersService state machine while the BUSINESS clock is frozen at the
@@ -39,7 +56,31 @@ export class LoyaltyAdminController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PersistentBusinessClock) private readonly clock: PersistentBusinessClock,
     @Inject(OrdersService) private readonly orders: OrdersService,
+    @Inject(CouponBatchService) private readonly batches: CouponBatchService,
   ) {}
+
+  /**
+   * Phase 09c: one batch of single-use PERCENT_OFF codes per loyalty tier (`Loyalty <tier> <n>%`), valid from now (business clock) for
+   * `validDays`. Not idempotent: every call creates new batches. SmartOmni pulls the codes with Search Coupon List (title_keyword).
+   */
+  @Post('scenarios/loyalty-vouchers')
+  async createVouchers(@Body(new ZodPipe(LoyaltyVouchers)) body: z.infer<typeof LoyaltyVouchers>) {
+    const shop = await this.prisma.shop.findUnique({ where: { id: body.shopId } });
+    if (!shop) throw new NotFoundException('Unknown shop');
+    const now = this.clock.now();
+    const endAt = new Date(now.getTime() + body.validDays * DAY_MS);
+    const batches = [];
+    for (const tier of body.tiers ?? DEFAULT_TIERS) {
+      const title = `Loyalty ${tier.name} ${tier.percentage}%`;
+      const { batch, codes } = await this.batches.createBatch(
+        shop.id,
+        { title, discount: { type: 'PERCENT_OFF', percentage: tier.percentage, maxDiscountVnd: tier.maxDiscountVnd }, endAt, quantity: body.quantityPerTier },
+        now,
+      );
+      batches.push({ tier: tier.name, batchId: batch.id, title, percentage: tier.percentage, startAt: batch.startAt.toISOString(), endAt: batch.endAt.toISOString(), codes });
+    }
+    return { shopId: shop.id, batches };
+  }
 
   @Post('scenarios/loyalty-orders')
   async create(@Body(new ZodPipe(LoyaltyScenario)) body: z.infer<typeof LoyaltyScenario>) {

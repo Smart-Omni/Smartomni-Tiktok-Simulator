@@ -80,6 +80,7 @@ describe('SellerHome', () => {
         ],
       },
       [`${base}/coupons`]: { items: [{ status: 'ONGOING' }, { status: 'ONGOING' }, { status: 'EXPIRED' }] },
+      [`${base}/coupon-batches`]: { items: [{ status: 'ONGOING' }, { status: 'DEACTIVATED' }] },
     };
     vi.stubGlobal('fetch', vi.fn(async (url: string) => (url in routes ? json(routes[url]) : json({ message: 'nope' }, 404))));
   });
@@ -130,6 +131,9 @@ describe('SellerHome', () => {
     await vi.waitFor(() => expect(within(card).getByRole('link', { name: /Products$/ }).textContent).toBe('2Products'));
     await vi.waitFor(() => expect(within(card).getByRole('link', { name: /Active vouchers$/ }).textContent).toBe('2Active vouchers'));
     await vi.waitFor(() => expect(within(card).getByRole('link', { name: /Low stock/ }).textContent).toBe('1Low stock (≤5)'));
+    // single vouchers and code batches are counted apart
+    await vi.waitFor(() => expect(within(card).getByRole('link', { name: /Code batches/ }).textContent).toBe('Code batches: 1 active'));
+    expect(within(card).getByRole('link', { name: /Code batches/ }).getAttribute('href')).toBe('/seller-center/vouchers?tab=batches');
   });
 
   it('lists the 5 latest orders with View all, and marks Business overview as mock', async () => {

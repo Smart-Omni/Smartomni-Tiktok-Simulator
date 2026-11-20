@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import { createHmac } from 'crypto';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { APIRequestContext, expect, request as pwRequest, test } from '@playwright/test';
 import { BUYER_A, demoSession, placePaidOrder, resetAll, SELLER_A } from './helpers';
@@ -15,7 +16,18 @@ test.setTimeout(300_000);
 const ROOT = join(__dirname, '..', '..');
 const API_URL = process.env.E2E_API_URL ?? 'http://localhost:8090';
 const APP_KEY = 'smartomni-dev-app-key';
-const APP_SECRET = 'fake_app_secret_local'; // the fake seed secret from the throwaway .env used by this stack
+/** Same lookup as docker compose: SEED_APP_SECRET from the environment, else from the repo-root .env, else the compose default. */
+function seedAppSecret(): string {
+  if (process.env.SEED_APP_SECRET) return process.env.SEED_APP_SECRET;
+  const envFile = join(ROOT, '.env');
+  if (existsSync(envFile)) {
+    const line = readFileSync(envFile, 'utf8').split(/\r?\n/).find((l) => /^\s*SEED_APP_SECRET\s*=/.test(l));
+    const value = line?.slice(line.indexOf('=') + 1).trim().replace(/^(['"])(.*)\1$/, '$2');
+    if (value) return value;
+  }
+  return 'smartomni-dev-app-secret-fake'; // docker-compose.yml default
+}
+const APP_SECRET = seedAppSecret();
 const SKU = 'sim-sku-a-BAG-NAT';
 
 let dockerAvailable = true;
