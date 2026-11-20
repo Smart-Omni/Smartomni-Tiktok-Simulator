@@ -10,6 +10,7 @@ import { productPath } from '@/lib/links';
 import { shopPrice } from '@/lib/format';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
+import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
 const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
@@ -73,7 +74,8 @@ function HomeNavigation({ signedIn }: { signedIn: boolean }) {
   </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
 }
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
-  const featured = deals(items).slice(0, 3);
+  const featured = deals(items);
+  const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
   const maxDiscount = featured[0]?.discountPct;
   return <div className="buyer-sale-area"><section className="buyer-flash-banner" aria-label="Flash sale">
     <div className="buyer-flash-intro">
@@ -83,10 +85,10 @@ function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
       <a href="#catalog">Shop deals <ArrowRight size={16} /></a>
     </div>
   </section>
-    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
+    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div ref={ref} onScroll={update} className="buyer-flash-preview buyer-sale-track" id="sale-products-track">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
       <div className="buyer-flash-image"><ProductImage product={p} className="rounded-none" /><span>-{p.discountPct}%</span></div>
       <div className="buyer-flash-product-info"><strong>{p.title}</strong><div className="buyer-flash-prices"><b>{shopPrice(p.minPriceVnd)}</b><del>{shopPrice(p.originalPriceVnd)}</del></div></div>
-    </Link>)}</div><div className="buyer-sale-products-action"><a href="#catalog">View products</a></div></section>}
+    </Link>)}</div><div className="buyer-sale-navigation" aria-label="Sale navigation"><button type="button" aria-label="Previous sale products" aria-controls="sale-products-track" disabled={edges.start} onClick={() => page(-1)}><ChevronLeft size={17} /></button><button type="button" aria-label="Next sale products" aria-controls="sale-products-track" disabled={edges.end} onClick={() => page(1)}><ChevronRight size={17} /></button></div></section>}
   </div>;
 }
 
