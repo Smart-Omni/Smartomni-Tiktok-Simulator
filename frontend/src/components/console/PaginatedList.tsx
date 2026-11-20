@@ -16,7 +16,7 @@ export function PaginatedList<T>({ items, label, initialPageSize = 10, children 
   return <>
     {children(items.slice(start, start + pageSize))}
     <nav className="admin-pagination" aria-label={`${label} pagination`}>
-      <span role="status">{items.length ? start + 1 : 0}–{Math.min(start + pageSize, items.length)} of {items.length} {label.toLowerCase()}</span>
+      <span role="status">{items.length ? start + 1 : 0}–{Math.min(start + pageSize, items.length)} of {items.length} {items.length === 1 ? label.toLowerCase().replace(/s$/, '') : label.toLowerCase()}</span>
       <div className="admin-pagination-controls">
         <label>Per page<select aria-label={`${label} per page`} value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>{[5, 6, 10, 20].filter((size) => size !== 6 || initialPageSize === 6).map((size) => <option key={size} value={size}>{size}</option>)}</select></label>
         <span>Page {page} of {pages}</span>
