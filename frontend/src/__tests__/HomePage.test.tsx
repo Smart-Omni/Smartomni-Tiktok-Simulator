@@ -62,8 +62,11 @@ describe('HomePage', () => {
 
   it('shows the mock catalog to guests in both sections without calling the API', async () => {
     renderHome();
+    expect(region('Flash sale').compareDocumentPosition(region('Quick actions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(region('Quick actions').compareDocumentPosition(region('Explore')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(region('Quick actions')).getByText('Bonus')).toBeTruthy();
     expect(within(region('Explore')).getByText('Shipping Vouchers')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Explore' })).toBeNull();
     expect(screen.queryByText('Sign in required')).toBeNull();
     expect(screen.queryByText('Coming soon')).toBeNull();
     expect(await screen.findByRole('region', { name: 'Deals on 4★+ products for you' })).toBeTruthy();

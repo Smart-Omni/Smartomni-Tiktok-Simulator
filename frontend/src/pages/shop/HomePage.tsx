@@ -143,7 +143,7 @@ const collections = [
 function HomeNavigation({ signedIn }: { signedIn: boolean }) {
   return <><section className="buyer-home-section" aria-label="Quick actions">
     <div className="buyer-actions-row">{actions.map(({ label, icon: Icon, to }) => signedIn && to ? <Link key={label} to={to} className="buyer-action-tile"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></Link> : <div key={label} className="buyer-action-tile buyer-unavailable" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></div>)}</div>
-  </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-section-heading"><h2>Explore</h2></div><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
+  </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
 }
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
   const featured = deals(items).slice(0, 3);
@@ -162,8 +162,8 @@ export function HomePage() {
 
   return (
     <>
-      <HomeNavigation signedIn={!!buyer} />
       <FlashSaleBanner items={products.data ?? []} />
+      <HomeNavigation signedIn={!!buyer} />
       <div className="buyer-products-area"><div className="buyer-section-heading"><h2>Products</h2></div><CategoryRow />
       <Products state={products} q={q} category={category} /></div>
       <footer className="buyer-home-footer"><strong>TikTok SHOP SIMULATOR</strong><Link to="/console">Test console</Link></footer>
