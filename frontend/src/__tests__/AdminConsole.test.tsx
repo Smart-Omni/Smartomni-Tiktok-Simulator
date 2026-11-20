@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ConsolePage } from '../pages/ConsolePage';
+import { MemoryRouter } from 'react-router-dom';
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -14,7 +15,7 @@ it('clears SKU selections when the Admin switches shops, so a previous shop cann
     return json({ items: [] });
   });
   vi.stubGlobal('fetch', fetcher);
-  render(<ConsolePage />);
+  render(<MemoryRouter><ConsolePage /></MemoryRouter>);
   await screen.findByText('simulator');
   const nav = screen.getByRole('navigation', { name: 'Test Console navigation' });
   fireEvent.click(within(nav).getByRole('button', { name: 'Create test orders' }));

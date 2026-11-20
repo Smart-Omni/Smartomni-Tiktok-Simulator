@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { StatusPanel } from './console/StatusPanel';
 import { ShopsPanel } from './console/ShopsPanel';
 import { ResetPanel } from './console/ResetPanel';
@@ -67,7 +68,7 @@ export function ConsolePage() {
   return (
     <div className="admin-console">
       <aside className="admin-sidebar">
-        <div className="admin-sidebar-brand"><ShieldCheck size={22} /><div>Test Console<small>Simulator workspace</small></div></div>
+        <div className="admin-sidebar-brand"><span className="admin-brand-mark"><ShieldCheck size={20} /></span><div>SmartOmni<small>SHOP SIMULATOR</small></div></div>
         <nav className="admin-nav" aria-label="Test Console navigation">
           {GROUPS.map((group) => (
             <div className="admin-nav-group" key={group.label}>
@@ -87,16 +88,16 @@ export function ConsolePage() {
       </aside>
       <div className="admin-workspace">
         <div className="admin-context-bar">
-          <span className="admin-breadcrumb">Test Console <ChevronRight size={14} /> {screen.title}</span>
-          <label className="admin-shop-picker"><Store size={16} /> Shop
+          <div className="admin-workspace-welcome"><strong>Your testing workspace</strong><span>Manage your shops, scenarios and integrations.</span></div>
+          <div className="admin-header-actions"><label className="admin-shop-picker"><Store size={15} />
             <select value={selected} onChange={(e) => setShopId(e.target.value)} disabled={list.length === 0} aria-label="Selected shop">
               {list.length === 0 ? <option value="">{shops.loading ? 'Loading shops…' : 'No shops — run seed'}</option> : null}
               {list.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </label>
+          </label><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
         </div>
         <div className="admin-content">
-          <header className="admin-page-heading"><div><div className="admin-eyebrow">Admin workspace</div><h1>{screen.title}</h1><p>{screen.description}</p></div><span className="admin-environment"><span />Local simulator</span></header>
+          <header className="admin-page-heading"><div><div className="admin-eyebrow">Test Console / {tab === 'Status' ? 'Workspace' : screen.title}</div><h1>{screen.title}</h1><p>{screen.description}</p></div><span className="admin-environment"><span />Simulation mode</span></header>
           {shops.error ? <div className="state state-error" role="alert">Could not load shops: {shops.error.message}<button onClick={shops.reload}>Retry</button></div> : null}
           {SCOPE_NOTES[tab] && <p className="admin-scope-note"><ShieldCheck size={15} aria-hidden="true" />{SCOPE_NOTES[tab]}</p>}
           {tab === 'Status' && (

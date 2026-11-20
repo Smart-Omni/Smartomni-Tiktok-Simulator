@@ -8,6 +8,7 @@
 @import "tw-animate-css";
 @import "./legacy-defaults.css" layer(legacy);
 @import "./styles.css" layer(legacy);
+/* The desktop Admin workspace overrides are scoped to .admin-console. */
 @import "./console.css" layer(legacy);
 @import "./legacy-isolation.css" layer(legacy-isolation);
 
