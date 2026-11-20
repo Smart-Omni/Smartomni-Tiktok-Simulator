@@ -1,4 +1,29 @@
 /* Buyer homepage */
+.buyer-transaction-page { padding-top:0; }
+.transaction-breadcrumb { display:flex; gap:10px; align-items:center; padding:22px 0; font-size:11px; color:#999; }
+.transaction-breadcrumb [aria-current] { color:#333; }
+.transaction-content { min-height:55vh; }
+.transaction-content h1 { font-size:25px !important; font-weight:500 !important; margin-bottom:24px; letter-spacing:-.5px; }
+.transaction-grid { display:grid; grid-template-columns:minmax(0,1fr) 310px; align-items:start; gap:24px; }
+.transaction-grid > aside { position:sticky; top:24px; }
+.transaction-content section { border-radius:12px !important; box-shadow:none !important; border:1px solid #e5e5e5; --tw-ring-shadow:0 0 #0000; }
+.transaction-content section h2 { font-size:16px !important; font-weight:600 !important; }
+.transaction-content section > div:first-child:has(h2) { flex-wrap:wrap; }
+.transaction-content .text-buyer { color:#333 !important; }
+.transaction-content button[data-state=checked] { background:#222 !important; border-color:#222 !important; color:#fff !important; }
+.transaction-content button:has(svg.lucide-trash-2) { border-radius:6px; }
+.transaction-content input,.transaction-content textarea { border-radius:7px; font-size:12px; }
+.transaction-content label { font-size:12px; }
+.transaction-content .text-sm { font-size:12px !important; }
+.transaction-content .text-xs { font-size:11px !important; }
+.transaction-content aside section { padding:22px; gap:18px; }
+.transaction-content aside section > button { min-height:42px; }
+.transaction-quantity { overflow:hidden; }
+.transaction-quantity button { background:#fafafa; }
+.transaction-quantity input { border-inline:1px solid #eee; border-radius:0; }
+.transaction-content [data-testid=total] { color:#171717 !important; font-size:23px; font-weight:600; }
+@media(max-width:950px) { .transaction-grid { grid-template-columns:minmax(0,1fr) 280px; gap:18px; } }
+@media(max-width:750px) { .transaction-grid { grid-template-columns:1fr; } .transaction-grid > aside { position:static; } .transaction-content li { flex-wrap:wrap; } }
 body:has(.product-detail) .buyer-home-shell { background:#fff; }
 .product-detail { --detail-width:1000px; }
 .detail-breadcrumb { display:flex; align-items:center; gap:8px; max-width:var(--detail-width); margin:auto; padding:20px 0; color:#888; font-size:11px; }

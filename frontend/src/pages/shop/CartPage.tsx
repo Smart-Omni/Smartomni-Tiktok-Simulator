@@ -1,3 +1,4 @@
+import { ShopFooter } from '@/components/shop/ShopFooter';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Store, Trash2 } from 'lucide-react';
@@ -69,11 +70,11 @@ function CartLine({
         {line.available ? (
           <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-bold text-buyer">{shopPrice(line.unitPriceVnd)}</span>
+              <span className="font-semibold text-ink">{shopPrice(line.unitPriceVnd)}</span>
               {was ? <span className="text-xs text-muted-2 line-through">{shopPrice(was)}</span> : null}
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <QuantityStepper size="sm" value={line.quantity} max={Math.min(MAX_PER_LINE, stock ?? MAX_PER_LINE)} onChange={onQuantity} disabled={pending} label={`Quantity of ${name}`} />
+              <QuantityStepper size="sm" className="transaction-quantity !rounded-md" value={line.quantity} max={Math.min(MAX_PER_LINE, stock ?? MAX_PER_LINE)} onChange={onQuantity} disabled={pending} label={`Quantity of ${name}`} />
               <Button variant="ghost" size="icon" aria-label={`Remove ${name}`} disabled={pending} onClick={() => onQuantity(0)} className="text-muted-foreground hover:text-buyer">
                 <Trash2 />
               </Button>
@@ -229,7 +230,7 @@ function Cart({ buyer }: { buyer: DemoSession }) {
   return (
     <div>
       <h1 className="mb-5 text-2xl font-bold">Cart ({all.length})</h1>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="transaction-grid">
         <div className="flex min-w-0 flex-col gap-4">
           <label className="flex items-center gap-3 rounded-card bg-white px-4 py-3 text-sm font-semibold shadow-xs ring-1 ring-line-soft">
             <Checkbox checked={allChecked} onCheckedChange={(v) => tickMany(selectable.map((x) => x.key), v === true)} disabled={!selectable.length} />
@@ -289,7 +290,7 @@ function Cart({ buyer }: { buyer: DemoSession }) {
               </div>
               <div className="mt-1 flex items-baseline justify-between border-t border-line-soft pt-3">
                 <dt className="font-semibold">Total</dt>
-                <dd className="text-xl font-bold text-buyer" data-testid="total">
+                <dd className="text-xl font-semibold text-ink" data-testid="total">
                   {shopPrice(total)}
                 </dd>
               </div>
@@ -297,7 +298,7 @@ function Cart({ buyer }: { buyer: DemoSession }) {
             {new Set(selected.map((x) => x.shopId)).size > 1 ? <p className="text-xs text-muted-foreground">Items from different shops are placed as separate orders.</p> : null}
             <Button
               size="lg"
-              className="mt-1 h-12 bg-buyer text-base text-white hover:bg-buyer/90"
+              className="mt-1 h-12 !bg-[#171717] text-sm text-white hover:!bg-[#333333] !rounded-lg"
               disabled={!selected.length || pending.size > 0}
               onClick={() => navigate('/checkout', { state: { items: selected.map((x) => ({ shopId: x.shopId, skuId: x.line.skuId, quantity: x.line.quantity })) } satisfies CheckoutState })}
             >
@@ -313,5 +314,5 @@ function Cart({ buyer }: { buyer: DemoSession }) {
 export function CartPage() {
   const { buyer } = useAuth();
   // the route is guarded by RequireRole BUYER
-  return buyer ? <Cart key={buyer.sessionToken} buyer={buyer} /> : null;
+  return buyer ? <div className="buyer-transaction-page"><nav className="transaction-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span aria-current="page">Cart</span></nav><div className="transaction-content"><Cart key={buyer.sessionToken} buyer={buyer} /></div><ShopFooter /></div> : null;
 }

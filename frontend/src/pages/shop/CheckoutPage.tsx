@@ -1,3 +1,4 @@
+import { ShopFooter } from '@/components/shop/ShopFooter';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, MapPin, ShieldCheck, Store, Ticket, Truck } from 'lucide-react';
@@ -142,7 +143,7 @@ function PaymentDetails({ productTotal, amounts }: { productTotal: number; amoun
       ))}
       <div className="mt-1 flex items-baseline justify-between border-t border-line-soft pt-3">
         <dt className="font-semibold">{amounts ? 'Total' : 'Estimated total'}</dt>
-        <dd className="text-xl font-bold text-buyer" data-testid="total">
+        <dd className="text-xl font-semibold text-ink" data-testid="total">
           {shopPrice(amounts?.totalVnd ?? productTotal)}
         </dd>
       </div>
@@ -332,7 +333,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
 
   if (data.loading && !data.data) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" role="status" aria-label="Loading checkout">
+      <div className="transaction-grid" role="status" aria-label="Loading checkout">
         <div className="flex flex-col gap-4">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-card" />)}
         </div>
@@ -464,7 +465,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="transaction-grid">
         <div className="flex min-w-0 flex-col gap-4">
           <Card
             title="Shipping address"
@@ -528,7 +529,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
             ) : null}
             {placedAll ? (
               <>
-                <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={paying} onClick={pay}>
+                <Button size="lg" className="h-12 !bg-[#171717] text-sm text-white hover:!bg-[#333333] !rounded-lg" disabled={paying} onClick={pay}>
                   {paying ? 'Paying...' : 'Pay now (simulated)'}
                 </Button>
                 <Button asChild variant="ghost" className="text-muted-foreground">
@@ -536,7 +537,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
                 </Button>
               </>
             ) : (
-              <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={placing} onClick={place}>
+              <Button size="lg" className="h-12 !bg-[#171717] text-sm text-white hover:!bg-[#333333] !rounded-lg" disabled={placing} onClick={place}>
                 {placing ? 'Placing order...' : anyPlaced ? 'Place remaining orders' : 'Place order'}
               </Button>
             )}
@@ -563,5 +564,5 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
 export function CheckoutPage() {
   const { buyer } = useAuth();
   // the route is guarded by RequireRole BUYER
-  return buyer ? <Checkout key={buyer.sessionToken} buyer={buyer} /> : null;
+  return buyer ? <div className="buyer-transaction-page"><nav className="transaction-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><Link to="/cart">Cart</Link><span>/</span><span aria-current="page">Checkout</span></nav><div className="transaction-content"><Checkout key={buyer.sessionToken} buyer={buyer} /></div><ShopFooter /></div> : null;
 }
