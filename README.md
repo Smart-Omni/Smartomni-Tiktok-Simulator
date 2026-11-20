@@ -179,7 +179,7 @@ PostgreSQL-backed queue (`WebhookJob`/`WebhookAttempt`):
 * exponential backoff (`WEBHOOK_BASE_BACKOFF_MS`, capped), `DEAD` after `maxAttempts`, replay creates a linked new job;
 * faults (`HTTP_ERROR`, `DELAY`, `DROP`, `DUPLICATE`) from `/test-admin/faults`; injected duplicates are recorded in `deliveries`.
 
-Webhooks emitted by the simulator are signed and use the TikTok-shaped envelope (see "Orders and webhooks"); ad-hoc test jobs from `/test-admin/webhooks` are unsigned.
+Webhooks emitted by the simulator are signed and use the TikTok-shaped envelope (see "Orders and webhooks"); replays and dispute events are signed too. Only ad-hoc test jobs from `/test-admin/webhooks` are unsigned.
 
 ### Logging and secrets
 
@@ -221,7 +221,7 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 * State machine (simulator model, unverified): `UNPAID -> ON_HOLD -> AWAITING_SHIPMENT -> AWAITING_COLLECTION -> IN_TRANSIT -> DELIVERED -> COMPLETED`, `CANCELLED` from the early states. An ON_HOLD order cannot be shipped; DELIVERED is not COMPLETED. The hold lasts `ORDER_HOLD_MINUTES` (30, business clock) and is released by a timer or `POST /test-admin/orders/release-due`.
 * Read API: `POST /order/202309/orders/search` (keyset `page_token`, `sort_field`, `sort_order`, filters with `*_ge` inclusive / `*_lt` exclusive) and `GET /order/202507/orders?ids=a,b` (max 50). `recipient_address` is absent for UNPAID/ON_HOLD, as in the OAS.
 * Events API: `GET/PUT/DELETE /event/202309/webhooks` (scope `sim.event.manage`). Only subscribed topics are delivered. Emitted topics: `ORDER_STATUS_CHANGE` (type 1), `PACKAGE_UPDATE`, `RETURN_STATUS_CHANGE`, `CANCELLATION_STATUS_CHANGE`, `NEW_MESSAGE`, `NEW_CONVERSATION`; payload fields and numeric `type` values other than 1 are UNVERIFIED.
-* Delivery: events are written in the same DB transaction as the state change (outbox), delivered by the worker with retries/backoff and attempt history. Header `Authorization` = lowercase hex `HMAC-SHA256(app_secret, app_key + raw body)` (secondary source). Receivers should dedupe on `tts_notification_id` and reconcile by polling.
+* Delivery: events are written in the same DB transaction as the state change (outbox), delivered by the worker with retries/backoff and attempt history. Header `Authorization` = lowercase hex `HMAC-SHA256(app_secret, app_secret + path + timestamp + raw body)`, the rule SmartOmni's `WebhookHmacValidator` verifies (`path` = pathname of the receiving URL; `timestamp` = the `timestamp` header, real send time; see DECISIONS.md D9). Receivers should dedupe on `tts_notification_id` and reconcile by polling.
 * Callback addresses on `localhost`/`127.0.0.1` are rewritten to `HOST_CALLBACK_BASE_URL` inside Docker (`WEBHOOK_REWRITE_LOCALHOST`).
 * Faults for events (Test Console Faults tab or `/test-admin/faults`): `DROP`, `DUPLICATE`, `DELAY`, `HTTP_ERROR`, `REORDER` (holds one matching event back so a later one overtakes it; `params.holdMs`). Replay: `/test-admin/webhooks/:id/replay`.
 

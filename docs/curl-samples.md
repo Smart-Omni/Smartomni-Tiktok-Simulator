@@ -70,12 +70,16 @@ curl -s -X PUT "${BASE_URL}${P}?app_key=${APP_KEY}&timestamp=${TS}&shop_cipher=$
 
 `DELETE /event/202309/webhooks` also carries a JSON body `{"event_type": "..."}` (per the OAS); sign it the same way.
 
-## Webhook delivery check (`webhook.ORDER_STATUS_CHANGE`; envelope and signature are SECONDARY/provisional)
+## Webhook delivery check (`webhook.ORDER_STATUS_CHANGE`; envelope provisional, signature = SmartOmni's rule, see DECISIONS.md D9)
+
+`Authorization` = hex `HMAC-SHA256(app_secret, app_secret + path + timestamp + raw body)`, where `path` is the pathname of `$CALLBACK_URL` and `timestamp` is the `timestamp` header (real time; SmartOmni rejects more than 5 minutes of skew):
 
 ```bash
+CALLBACK_URL=http://localhost:8080/api/v1/integrations/tiktok/webhooks
+CB_PATH=/api/v1/integrations/tiktok/webhooks; TS=$(date +%s)
 BODY='{"type":1,"tts_notification_id":"test-notification-0001","shop_id":"7000000000000000001","timestamp":1700000000,"data":{"order_id":"576000000000000001","order_status":"AWAITING_SHIPMENT"}}'
-SIG=$(printf '%s' "${APP_KEY}${BODY}" | openssl dgst -sha256 -hmac "$APP_SECRET" | awk '{print $NF}')
-curl -i -X POST "$CALLBACK_URL" -H "Authorization: ${SIG}" -H "Content-Type: application/json" --data-binary "$BODY"
+SIG=$(printf '%s' "${APP_SECRET}${CB_PATH}${TS}${BODY}" | openssl dgst -sha256 -hmac "$APP_SECRET" | awk '{print $NF}')
+curl -i -X POST "$CALLBACK_URL" -H "Authorization: ${SIG}" -H "timestamp: ${TS}" -H "Content-Type: application/json" --data-binary "$BODY"
 ```
 
 Error and edge cases (invalid input, expired token, missing scope) are test faults without documented codes; see `../contracts/fixtures/errors.json`.
@@ -91,7 +95,7 @@ SIGN=$(sign_api "$P" "$BODY" app_key=$APP_KEY page_size=20 shop_cipher=$SHOP_CIP
 curl -s -X POST "${BASE_URL}${P}?app_key=${APP_KEY}&timestamp=${TS}&page_size=20&sort_order=ASC&shop_cipher=${SHOP_CIPHER}&sign=${SIGN}" \
   -H "x-tts-access-token: ${ACCESS_TOKEN}" -H "Content-Type: application/json" --data-binary "$BODY"
 
-# Subscribe to order events (the receiver verifies Authorization = HMAC-SHA256(app_secret, app_key + raw body))
+# Subscribe to order events (the receiver verifies Authorization = HMAC-SHA256(app_secret, app_secret + path + timestamp + raw body))
 P=/event/202309/webhooks; TS=$(date +%s); BODY='{"event_type":"ORDER_STATUS_CHANGE","address":"http://localhost:8080/webhook"}'
 SIGN=$(sign_api "$P" "$BODY" app_key=$APP_KEY shop_cipher=$SHOP_CIPHER timestamp=$TS)
 curl -s -X PUT "${BASE_URL}${P}?app_key=${APP_KEY}&timestamp=${TS}&shop_cipher=${SHOP_CIPHER}&sign=${SIGN}" \
