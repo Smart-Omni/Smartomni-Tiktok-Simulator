@@ -163,14 +163,14 @@ function VariantTiles({ label, skus, value, onChange }: { label: string; skus: S
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-semibold">{label}</span>
-      <RadioGroupPrimitive.Root value={value} onValueChange={onChange} aria-label={label} className="flex flex-wrap gap-2">
+      <RadioGroupPrimitive.Root value={value} onValueChange={onChange} aria-label={label} className="detail-variant-track">
         {skus.map((s) => (
           <RadioGroupPrimitive.Item
             key={s.id}
             value={s.id}
             disabled={soldOut(s)}
             className={cn(
-              'h-9 cursor-pointer rounded-lg border border-line bg-white px-3.5 text-sm text-ink',
+              'h-9 shrink-0 cursor-pointer rounded-lg border border-line bg-white px-3.5 text-sm text-ink',
               'hover:border-ink data-[state=checked]:border-buyer data-[state=checked]:bg-buyer-soft data-[state=checked]:font-semibold data-[state=checked]:text-buyer-ink',
               'disabled:cursor-not-allowed disabled:border-line-soft disabled:bg-surface-2 disabled:text-muted-2 disabled:line-through',
             )}
