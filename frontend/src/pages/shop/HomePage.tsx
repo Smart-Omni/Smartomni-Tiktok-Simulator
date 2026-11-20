@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Gift, Package, Ticket, MessageCircle, Wallet, CreditCard, MapPin, RotateCcw, Store, CircleHelp, FileText, Truck, Radio, BadgeCheck, Crown, Sparkles, Egg, TrendingUp, Heart, Shirt, ArrowRight } from 'lucide-react';
 import { CategoryRow } from '@/components/shop/CategoryRow';
@@ -10,11 +10,10 @@ import { productPath } from '@/lib/links';
 import { shopPrice } from '@/lib/format';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
-import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
 const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
-const BEST_SELLERS_PAGE = 10;
+const PAGE_SIZE = 20;
 
 /** Products with a 4★+ rating and a discount, biggest discount first. */
 export const deals = (items: EnrichedProduct[]) => items.filter((p) => p.rating >= 4 && p.discountPct > 0).sort((a, b) => b.discountPct - a.discountPct);
@@ -25,106 +24,31 @@ export const search = (items: EnrichedProduct[], q: string) => {
   return items.filter((p) => normalizeTitle(p.title).includes(term));
 };
 
-function Section({ id, title, action, hideTitle = false, children }: { id: string; title: ReactNode; action?: ReactNode; hideTitle?: boolean; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className={`buyer-catalog-section${id === 'deals' ? ' buyer-deals-section' : ''}`}>
-      <div className={hideTitle && !action ? 'sr-only' : 'mb-3 flex flex-wrap items-center gap-3'}>
-        <h2 id={id} className={hideTitle ? 'sr-only' : 'text-xl font-bold tracking-tight text-ink'}>
-          {title}
-        </h2>
-        {action ? <div className="ml-auto flex items-center gap-2">{action}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function ArrowButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disabled: boolean; onClick: () => void }) {
-  const Icon = dir === 'prev' ? ChevronLeft : ChevronRight;
-  return (
-    <Button variant="outline" size="icon" aria-label={dir === 'prev' ? 'Previous deals' : 'Next deals'} disabled={disabled} onClick={onClick} className="!h-10 !w-7 !rounded-md bg-white disabled:!opacity-0">
-      <Icon />
-    </Button>
-  );
-}
-
-/** One row of cards scrolled a page at a time with the arrow buttons. */
-function DealsRow({ items }: { items: EnrichedProduct[] }) {
-  const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
-
-  return (
-    <Section
-      id="deals"
-      title="Deals on 4★+ products for you"
-      hideTitle
-      action={
-        <>
-          <ArrowButton dir="prev" disabled={edges.start} onClick={() => page(-1)} />
-          <ArrowButton dir="next" disabled={edges.end} onClick={() => page(1)} />
-        </>
-      }
-    >
-      <div ref={ref} onScroll={update} className="buyer-deals-track flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((p) => (
-          <ProductCard
-            key={productPath(p)}
-            product={p}
-            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]"
-          />
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function BestSellers({ items }: { items: EnrichedProduct[] }) {
-  const [shown, setShown] = useState(BEST_SELLERS_PAGE);
-  return (
-    <Section id="best-sellers" title="Best sellers" hideTitle>
-      <div className={GRID}>
-        {items.slice(0, shown).map((p) => <ProductCard key={productPath(p)} product={p} />)}
-      </div>
-      {shown < items.length ? (
-        <div className="mt-6 flex justify-center">
-          <Button variant="outline" className="h-10 min-w-40 bg-white" onClick={() => setShown((n) => n + BEST_SELLERS_PAGE)}>
-            See more
-          </Button>
-        </div>
-      ) : null}
-    </Section>
-  );
-}
-
-/** Search (?q=) and/or category (?category=) results, filtered client-side. */
-function Results({ items, q, category }: { items: EnrichedProduct[]; q: string; category: string | null }) {
+function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; category: string | null }) {
+  const [sort, setSort] = useState('recommended');
+  const [page, setPage] = useState(1);
   const cat = categoryBySlug(category);
-  const inCategory = cat ? items.filter((p) => p.category === cat.slug) : items;
-  const found = q ? search(inCategory, q) : inCategory;
-  const title = q ? `Results for “${q}”${cat ? ` in ${cat.name}` : ''} (${found.length})` : `${cat?.name ?? 'All products'} (${found.length})`;
-  return (
-    <Section
-      id="results"
-      title={title}
-      action={
-        cat ? (
-          <Button asChild variant="outline" size="sm" className="bg-white">
-            <Link to={q ? `/?q=${encodeURIComponent(q)}` : '/'}>All categories</Link>
-          </Button>
-        ) : null
-      }
-    >
-      {found.length ? (
-        <div className={GRID}>{found.map((p) => <ProductCard key={productPath(p)} product={p} />)}</div>
-      ) : (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line py-12 text-center">
-          <p className="text-muted-foreground">{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p>
-          <Button asChild variant="outline" className="bg-white">
-            <Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link>
-          </Button>
-        </div>
-      )}
-    </Section>
-  );
+  const matching = cat ? items.filter((p) => p.category === cat.slug) : items;
+  const found = q ? search(matching, q) : matching;
+  const sorted = [...found].sort((a, b) => sort === 'price-low' ? a.minPriceVnd - b.minPriceVnd : sort === 'price-high' ? b.minPriceVnd - a.minPriceVnd : sort === 'discount' ? b.discountPct - a.discountPct : b.sold - a.sold);
+  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = sorted.slice(start, start + PAGE_SIZE);
+  return <section id="catalog" aria-label="Products" className="buyer-catalog">
+    <div className="buyer-catalog-toolbar">
+      <span role="status">{found.length ? `${start + 1}–${Math.min(start + PAGE_SIZE, found.length)} of ${found.length} products` : '0 products'}</span>
+      <label>Sort by<select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} aria-label="Sort products">
+        <option value="recommended">Recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="discount">Biggest discount</option>
+      </select></label>
+    </div>
+    {visible.length ? <div className="buyer-product-grid">{visible.map((product) => <ProductCard key={productPath(product)} product={product} compact />)}</div> : <div className="buyer-catalog-empty"><p>{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p><Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link></div>}
+    {pages > 1 && <nav className="buyer-pagination" aria-label="Product pages">
+      <button type="button" aria-label="Previous page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} /></button>
+      <span>Page {currentPage} of {pages}</span>
+      <button type="button" aria-label="Next page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight size={16} /></button>
+    </nav>}
+  </section>;
 }
 
 const actions = [
@@ -149,7 +73,7 @@ function HomeNavigation({ signedIn }: { signedIn: boolean }) {
 }
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
   const featured = deals(items).slice(0, 3);
-  return <section className="buyer-flash-banner" aria-label="Flash sale"><div className="buyer-flash-intro"><span className="buyer-flash-kicker">FLASH SALE</span><h2>Everyday finds.<br />Better prices.</h2><a href="#deals">Shop deals <ArrowRight size={15} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}><div className="buyer-flash-image"><ProductImage product={p} /><span>-{p.discountPct}%</span></div><strong>{p.title}</strong><b>{shopPrice(p.minPriceVnd)}</b></Link>)}</div></section>;
+  return <section className="buyer-flash-banner" aria-label="Flash sale"><div className="buyer-flash-intro"><span className="buyer-flash-kicker">FLASH SALE</span><h2>Everyday finds.<br />Better prices.</h2><a href="#catalog">Shop deals <ArrowRight size={15} /></a></div><div className="buyer-flash-preview">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}><div className="buyer-flash-image"><ProductImage product={p} /><span>-{p.discountPct}%</span></div><strong>{p.title}</strong><b>{shopPrice(p.minPriceVnd)}</b></Link>)}</div></section>;
 }
 
 export function HomePage() {
@@ -185,11 +109,11 @@ export function HomePage() {
 function Products({ state, q, category }: { state: AsyncResult<EnrichedProduct[]>; q: string; category: string | null }) {
   if (state.loading && !state.data) {
     return (
-      <Section id="loading" title="Deals on 4★+ products for you">
+      <section aria-label="Products">
         <div className={GRID} role="status" aria-label="Loading products">
           {Array.from({ length: 10 }, (_, i) => <ProductCardSkeleton key={i} />)}
         </div>
-      </Section>
+      </section>
     );
   }
   if (state.error && !state.data) {
@@ -205,16 +129,5 @@ function Products({ state, q, category }: { state: AsyncResult<EnrichedProduct[]
     );
   }
 
-  const items = state.data ?? [];
-  if (!items.length) {
-    return <p className="mt-10 text-center text-muted-foreground">No products are for sale yet.</p>;
-  }
-  if (q || category) return <Results items={items} q={q} category={category} />;
-  const dealItems = deals(items);
-  return (
-    <>
-      {dealItems.length ? <DealsRow items={dealItems} /> : null}
-      <BestSellers items={bestSellers(items)} />
-    </>
-  );
+  return <Catalog key={`${q}:${category ?? ''}`} items={state.data ?? []} q={q} category={category} />;
 }

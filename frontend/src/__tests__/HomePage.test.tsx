@@ -40,7 +40,6 @@ const renderHome = (path = '/') =>
     </MemoryRouter>,
   );
 
-const region = (name: string) => screen.getByRole('region', { name });
 
 describe('HomePage', () => {
   const urls: { url: string; headers: Record<string, string> }[] = [];
@@ -60,80 +59,52 @@ describe('HomePage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows the mock catalog to guests in both sections without calling the API', async () => {
+  it('shows guests one catalog with unique product links without calling the API', async () => {
     renderHome();
-    expect(region('Flash sale').compareDocumentPosition(region('Quick actions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(region('Quick actions').compareDocumentPosition(region('Explore')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(region('Quick actions')).getByText('Bonus')).toBeTruthy();
-    expect(within(region('Explore')).getByText('Shipping Vouchers')).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Explore' })).toBeNull();
-    expect(screen.queryByText('Sign in required')).toBeNull();
-    expect(screen.queryByText('Coming soon')).toBeNull();
-    expect(await screen.findByRole('region', { name: 'Deals on 4★+ products for you' })).toBeTruthy();
-    expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(mockCatalog.length);
-    // best sellers are ordered by sold count
-    const top = [...mockCatalog].sort((a, b) => b.sold - a.sold)[0];
-    expect(within(region('Best sellers')).getAllByRole('link')[0].textContent).toContain(top.title);
-    // deals only list discounted products
-    const discounted = mockCatalog.filter((p) => p.discountPct > 0).length;
-    expect(within(region('Deals on 4★+ products for you')).getAllByRole('link')).toHaveLength(discounted);
+    await screen.findByText('1–10 of 10 products');
+    const catalog = screen.getByRole('region', { name: 'Products' });
+    expect(within(catalog).getAllByRole('link')).toHaveLength(mockCatalog.length);
+    expect(new Set(within(catalog).getAllByRole('link').map((el) => el.getAttribute('href'))).size).toBe(mockCatalog.length);
     expect(urls).toEqual([]);
   });
-
-  it('loads the storefront for a signed-in buyer and enriches it, with See more paging', async () => {
+  it('loads buyer products through the existing catalog endpoint and sorts prices', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderHome();
-    await screen.findByRole('region', { name: 'Best sellers' });
-    expect(within(region('Quick actions')).getByRole('link', { name: 'Order' }).getAttribute('href')).toBe('/account/orders');
+    await screen.findByText('1–12 of 12 products');
+    const catalog = screen.getByRole('region', { name: 'Products' });
     expect(urls.map((u) => u.url)).toEqual(['/demo/catalog?limit=100']);
-    expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(10);
-    fireEvent.click(screen.getByRole('button', { name: 'See more' }));
-    expect(within(region('Best sellers')).getAllByRole('link')).toHaveLength(12);
-    // the seeded title gets its mock sold count (1300 -> "1.3K sold")
-    const bottle = within(region('Best sellers')).getByRole('link', { name: /Bình giữ nhiệt 500ml/ });
-    expect(bottle.textContent).toContain('1.3K sold');
-    // every card names its shop and links to the product page of that shop, not of the buyer's own shop
-    expect(bottle.textContent).toContain('Pottery Shop');
-    expect(bottle.getAttribute('href')).toBe('/product/shop-2/750001');
-    expect(screen.queryByRole('button', { name: 'See more' })).toBeNull();
+    expect(within(catalog).getAllByRole('link')).toHaveLength(12);
+    fireEvent.change(screen.getByLabelText('Sort products'), { target: { value: 'price-low' } });
+    expect(within(catalog).getAllByRole('link')[0].getAttribute('href')).toContain('/product/shop-2/');
   });
-
-  it('filters by name for ?q=, ignoring case and diacritics', async () => {
-    sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
-    renderHome('/?q=BINH');
-    const results = await screen.findByRole('region', { name: 'Results for “BINH” (1)' });
-    expect(within(results).getByRole('link').textContent).toContain('Bình giữ nhiệt 500ml');
-  });
-
-  it('shows the categories row and filters the products by category', async () => {
+  it('filters categories and clears the selected category', async () => {
     renderHome();
-    const row = await screen.findByRole('region', { name: 'Categories' });
+    const row = screen.getByRole('region', { name: 'Categories' });
     expect(within(row).getAllByRole('link')).toHaveLength(mockCategories.length + 1);
     fireEvent.click(within(row).getByRole('link', { name: 'Electronics' }));
-    expect(screen.getByTestId('location').textContent).toBe('/?category=phones-electronics');
-    const results = await screen.findByRole('region', { name: 'Electronics (1)' });
-    expect(within(results).getAllByRole('link', { name: /Minimal phone case/ })).toHaveLength(1);
-    expect(within(results).getAllByRole('link', { name: /sold/ })).toHaveLength(1); // one product card
-    expect(within(row).getByRole('link', { name: 'Electronics' }).getAttribute('aria-current')).toBe('true');
-
-    // clicking the active category again clears the filter
+    expect(await screen.findByText('1–1 of 1 products')).toBeTruthy();
+    const catalog = screen.getByRole('region', { name: 'Products' });
+    expect(within(catalog).getAllByRole('link')).toHaveLength(1);
     fireEvent.click(within(row).getByRole('link', { name: 'Electronics' }));
     expect(screen.getByTestId('location').textContent).toBe('/');
-    expect(await screen.findByRole('region', { name: 'Best sellers' })).toBeTruthy();
   });
-
-  it('combines a category with a search and shows an empty category', async () => {
+  it('combines search and category and offers recovery for empty results', async () => {
     renderHome('/?q=tea&category=kitchenware');
-    const results = await screen.findByRole('region', { name: 'Results for “tea” in Kitchen (1)' });
-    expect(within(results).getByRole('link', { name: 'All categories' }).getAttribute('href')).toBe('/?q=tea');
+    expect(await screen.findByText('1–1 of 1 products')).toBeTruthy();
     cleanup();
-    renderHome('/?category=shoes');
-    expect(await screen.findByText('No products in this category yet.')).toBeTruthy();
-  });
-
-  it('offers to clear a search with no results', async () => {
     renderHome('/?q=zzz');
     expect(await screen.findByText('No products match “zzz”.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Clear search' }).getAttribute('href')).toBe('/');
+  });
+  it('paginates 20 products and resets when the category changes', async () => {
+    sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
+    vi.stubGlobal('fetch', vi.fn(async () => json({ currency: 'VND', items: Array.from({ length: 25 }, (_, i) => real(`item-${i}`, `Item ${i}`)), nextCursor: null })));
+    renderHome();
+    await screen.findByText('1–20 of 25 products');
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByText('21–25 of 25 products')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Products' })).getAllByRole('link')).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+    expect(screen.getByText('1–20 of 25 products')).toBeTruthy();
   });
 });

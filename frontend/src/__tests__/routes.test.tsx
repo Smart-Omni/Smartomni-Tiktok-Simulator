@@ -57,7 +57,7 @@ describe('routes', () => {
 
   it('renders the new shop layout without the legacy topbar', async () => {
     renderAt('/');
-    expect(await screen.findByRole('region', { name: 'Best sellers' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Products' })).toBeTruthy();
     expect(screen.queryByText('TikTok Shop Simulator')).toBeNull();
     expect(within(screen.getByRole('banner')).getByRole('search')).toBeTruthy();
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/login?next=%2F');
@@ -76,7 +76,7 @@ describe('routes', () => {
   it('shows the Seller Center menu with a seller session', async () => {
     sessionStorage.setItem('sim.demo-session.SELLER', JSON.stringify(sellerSession));
     renderAt('/seller-center/orders');
-    expect(screen.getByRole('navigation', { name: 'Seller Center' })).toBeTruthy();
+    expect(await screen.findByRole('navigation', { name: 'Seller Center' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Manage orders' }).getAttribute('aria-current')).toBe('page');
     expect(await screen.findByText('Demo Shop VN')).toBeTruthy();
   });
