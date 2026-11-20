@@ -24,6 +24,9 @@ api-reference). Không push, không mở PR nếu chưa được yêu cầu.
 | Q5 | Cột nội bộ **`Coupon.batchId`** (nullable) đánh dấu mã thuộc lô; **không lộ ra API TikTok**. | Dùng để ẩn mã khỏi buyer, gom nhóm trên Seller Center, tắt cả lô. |
 | Q6 | **Mã thuộc lô bị ẩn khỏi danh sách voucher của buyer** (`GET /demo/shops/:id/coupons`, ô chọn voucher ở checkout). Khách phải tự gõ mã nhận từ SmartOmni. Voucher lẻ vẫn hiện như cũ. | Mapper đã trả `display_channels: ['PRIVATE']`: theo OAS, người dùng không biết mã cho đến khi được đưa. Test checkout/e2e cũ không đổi. |
 | Q7 | Thêm `POST /test-admin/scenarios/loyalty-vouchers` tạo sẵn 3 lô Silver 10% / Platinum 20% / Diamond 30%. | Để SmartOmni và e2e test không phải bấm tay. Chỉ là dữ liệu test; mức % thật do staff SmartOmni cấu hình. |
+| Q8 | **Mã thuộc lô bị "đốt" khi đơn UNPAID dùng nó bị hủy**: lượt dùng được hoàn (`redeemed_count` về 0) **và** mã bị tắt (`deactivated = true`) trong cùng transaction hủy đơn. Mã **không dùng lại được**. Voucher lẻ giữ quy tắc 09a-5 (hoàn lượt, dùng tiếp). Hủy sau thanh toán: `redeemed_count` giữ 1 như cũ. | Mã một lần đã giao cho một khách thì không được quay lại pool. Mọi trạng thái SmartOmni thấy đều là trạng thái cuối, không quay ngược. |
+| Q9 | Search Coupon List lọc `title_keyword` **không phân biệt hoa thường** (Prisma `mode: 'insensitive'`). | OAS không nói rõ; nới lỏng an toàn hơn cho SmartOmni khi lọc theo tên lô. |
+| Q10 | Router TikTok **không thêm field nào ngoài schema OAS** (không coupon id trong đơn, không `batchId` trong coupon). | Giữ đúng field TTS toolkit. Liên kết đơn ↔ mã chỉ có ở `/test-admin` để test kiểm chứng. |
 
 ### Quyết định cũ đã bị thay thế (không làm)
 
@@ -59,15 +62,31 @@ Buyer checkout (simulator)
 
 ### Ràng buộc đồng bộ phía SmartOmni (hợp đồng tích hợp, ghi vào DECISIONS + phase-09.md)
 
-1. **Search không có `usage_stats`** (đúng schema OAS). Muốn biết mã đã dùng chưa thì phải gọi **Get Coupon cho từng mã**.
-2. **`status` vẫn `ONGOING` sau khi mã một lần đã dùng.** OAS không có trạng thái "hết lượt"; chỉ `redeemed_count` đổi từ 0 → 1.
-3. **`redeemed_count` có thể quay lại 1 → 0** khi đơn UNPAID dùng mã bị hủy (09a-5): mã dùng được lại. SmartOmni không được coi 1 là trạng thái cuối.
-4. **Đơn hàng không chứa coupon id hay mã.** Order Detail của OAS không có field nào nối đơn với coupon. Khoản giảm nằm ở `seller_discount`
-   (Order Detail) và `subtotal_deduction_seller` (Price Detail); `voucher_deduction_seller` đang cố định `'0'`.
-   SmartOmni **không thể** biết đơn nào dùng mã nào qua API. Đây là gap đã biết, plan này **không sửa**.
-5. **`title_keyword` là `contains` phân biệt hoa thường.** SmartOmni lọc theo title phải đúng chữ hoa/thường, ví dụ `Diamond 30%`.
+1. **Bảng trạng thái của một mã lô** (đọc bằng Get Coupon). Mọi trạng thái ngoài "còn trống" đều là **trạng thái cuối**:
+
+   | `status` | `usage_stats.redeemed_count` | Ý nghĩa | SmartOmni làm gì |
+   |---|---|---|---|
+   | `ONGOING` | 0 | Còn trống / đã giao nhưng khách chưa dùng | Tiếp tục poll nếu đã giao |
+   | `ONGOING` | 1 | Đã dùng trong một đơn | Dừng poll, đánh dấu đã dùng |
+   | `DEACTIVATED` | 0 hoặc 1 | Bị đốt (đơn UNPAID hủy, Q8) hoặc seller tắt | Dừng poll, không giao lại |
+   | `EXPIRED` | 0 hoặc 1 | Hết hạn | Dừng poll |
+   | `NOT_START` | 0 | Chưa tới ngày bắt đầu | Chưa giao cho khách |
+
+   Qua API **không phân biệt được** "bị đốt do hủy đơn" với "seller tắt" (OAS chỉ có `DEACTIVATED`).
+2. **Search không có `usage_stats`** (đúng schema OAS). Biết mã đã dùng chưa thì gọi **Get Coupon** cho từng mã.
+   Cách giảm số request:
+   - Chỉ poll mã **đã giao cho khách mà chưa ở trạng thái cuối**.
+   - Mã hết hạn hoặc bị tắt thì lọc hàng loạt bằng Search `status: ["EXPIRED", "DEACTIVATED"]`.
+   - Sau lần kéo đầu, lưu `coupon_id` và gọi Get Coupon theo id, không tìm lại theo title.
+3. **`status` vẫn `ONGOING` sau khi mã đã dùng**: OAS không có trạng thái "hết lượt", chỉ `redeemed_count` đổi từ 0 sang 1.
+4. **Đơn hàng không chứa coupon id hay mã**: Order Detail của OAS không có field nối đơn với coupon (Q10).
+   - Loyalty không cần nối: SmartOmni chỉ cần biết mã đã dùng chưa, và điểm tính theo `sub_total` đã trừ giảm giá.
+   - Khoản giảm nằm đúng chỗ: `seller_discount` (Order Detail) và `subtotal_deduction_seller` (Price Detail).
+   - `voucher_deduction_seller` trong OAS là **mã loại giảm giá** (`1010000`, `1020000`, `1030000`), không phải số tiền,
+     nên giá trị `'0'` hiện tại không làm sai số tiền.
+5. **`title_keyword` không phân biệt hoa thường** (Q9), dạng "chứa chuỗi".
 6. **`claimed_count` = `redeemed_count`** (09a-7, không đổi): simulator không có khái niệm claim, claim nằm ở SmartOmni.
-7. Mã đã tắt (deactivate) trả `status = DEACTIVATED` trong Search/Get; checkout từ chối với `coupon_deactivated`.
+7. Mã `DEACTIVATED` bị checkout từ chối với `coupon_deactivated`.
 
 ---
 
@@ -114,6 +133,10 @@ ALTER TABLE "Coupon" ADD COLUMN "batchId" TEXT;
 CREATE INDEX "Coupon_shopId_batchId_idx" ON "Coupon"("shopId", "batchId");
 ```
 
+Trước khi commit: `git fetch origin` và xem migration mới nhất trên `origin/develop`
+(`git ls-tree --name-only origin/develop backend/prisma/migrations/`). Nếu đã có timestamp ≥ `20261125000000`,
+đổi tên thư mục migration sang timestamp lớn hơn. `npm test` chạy toàn bộ migration trên DB mới nên sẽ bắt lỗi thứ tự.
+
 `schema.prisma`: `batchId String?` + `@@index([shopId, batchId])` trên model `Coupon`. Không tạo bảng `CouponBatch`:
 thông tin lô (title, mức giảm, hạn dùng, số lượng, ngày tạo) suy ra từ các coupon cùng `batchId`, vì chúng giống nhau.
 
@@ -136,7 +159,12 @@ thông tin lô (title, mức giảm, hạn dùng, số lượng, ngày tạo) su
 - `deactivateBatch(shopId, batchId)`: `updateMany` đặt `deactivated = true` cho mọi coupon của lô. Lặp lại không lỗi.
 - `listBatches(shopId, now)` / `getBatch(shopId, batchId, now)`: gom nhóm, đếm `total`, `redeemed`, `status`
   (suy ra như `couponStatus`, cả lô cùng cửa sổ thời gian).
-- Không đổi `computeDiscount`, `reserveCoupon`, `releaseCouponForOrder`: mã trong lô đi qua đúng đường checkout cũ.
+- Không đổi `computeDiscount`, `reserveCoupon`: mã trong lô đi qua đúng đường checkout cũ.
+- **Đốt mã khi hủy (Q8)**, `backend/src/coupons/coupon-rules.ts` → `releaseCouponForOrder`:
+  - Vẫn xóa dòng `CouponUsage` trước, chỉ giảm `redeemedCount` nếu lệnh xóa thực sự xóa được một dòng (exactly-once như cũ).
+  - Nếu coupon có `batchId`: trong cùng lệnh `UPDATE`, đặt thêm `deactivated = true` và `updatedAt = now` (business clock).
+  - Voucher lẻ (`batchId IS NULL`): giữ nguyên hành vi 09a-5.
+  - Hàm được gọi từ transaction hủy đơn ở `orders.service.ts`, nên rollback cùng đơn. Chữ ký hàm nhận thêm `now`.
 
 **Test** (`backend/test/coupon-batches.e2e-spec.ts`, phần service):
 
@@ -144,6 +172,9 @@ thông tin lô (title, mức giảm, hạn dùng, số lượng, ngày tạo) su
 - `rand` cố định để ép sinh trùng với một mã tay đã có: service sinh lại, không lỗi, không trùng.
 - Hai lô tạo đồng thời trong cùng shop: không trùng mã, tổng số coupon đúng.
 - `quantity` 0 và 501 bị từ chối.
+- Q8: hủy đơn UNPAID dùng mã lô → `redeemedCount = 0`, `deactivated = true`, không còn dòng `CouponUsage`.
+  Hủy lặp lại không đổi gì thêm. Voucher lẻ bị hủy đơn vẫn hoàn lượt và **không** bị tắt (test 09a cũ vẫn pass).
+- Hủy sau thanh toán: mã lô giữ `redeemedCount = 1`, không bị tắt.
 
 Gate: backend. Commit ⭐.
 
@@ -167,7 +198,9 @@ File: `backend/src/demo/coupons.controller.ts` (hoặc controller mới `coupon-
   - Seller: cũng lọc bỏ mã thuộc lô (xem theo lô ở endpoint mới). Không thì trang Vouchers poll 10 s sẽ kéo hàng trăm dòng.
 - `POST /demo/shops/:shopId/coupons`: **`promoCode` thành tùy chọn**. Bỏ trống thì sinh bằng `generatePromoCode` (kiểm trùng như Phase 1). Gõ tay vẫn theo quy tắc 6–12 cũ.
 - `PATCH /demo/shops/:shopId/coupons/:couponId` trên mã thuộc lô: cho phép như cũ (tắt một mã lẻ trong lô).
-- Router TikTok **không đổi gì**: Search/Get trả cả mã lô (đó là cách SmartOmni kéo về), `batchId` không xuất hiện trong response.
+- Router TikTok: Search/Get trả cả mã lô (đó là cách SmartOmni kéo về), `batchId` không xuất hiện trong response (Q10).
+  Thay đổi duy nhất: `title_keyword` trong `backend/src/tiktok/coupons.controller.ts` đổi thành
+  `{ contains: keyword, mode: 'insensitive' }` (Q9); cập nhật mô tả trong `tiktok-b.paths.ts`.
 
 **Quyền**: buyer gọi các route lô → 403; seller shop khác → 403 (dùng `assertSellerShop` như hiện tại).
 
@@ -179,7 +212,8 @@ File: `backend/src/demo/coupons.controller.ts` (hoặc controller mới `coupon-
 - Tạo lô qua `/demo` → Search Coupon List (token SmartOmni, `title_keyword`) thấy đủ N mã, phân trang `page_size=100` với 150 mã.
 - Get Coupon một mã: `usage_limits.redemption_limit = 1`, `display_channels = ['PRIVATE']`, `creation_source = 'SELLER_CENTER'`, không có `batchId`.
 - Buyer checkout bằng một mã → `redeemed_count = 1`; buyer khác dùng lại mã đó → 400 `coupon_exhausted`.
-- Hủy đơn UNPAID → `redeemed_count` về 0, mã dùng lại được (ràng buộc đồng bộ 3).
+- Hủy đơn UNPAID → Get Coupon trả `redeemed_count = 0` + `status = DEACTIVATED`; buyer gõ lại mã đó → 400 `coupon_deactivated` (Q8).
+- Search `title_keyword: "diamond"` tìm thấy lô `Loyalty Diamond 30%` (Q9).
 - Buyer `GET /coupons` không thấy mã lô, vẫn thấy voucher lẻ; buyer gõ mã lô ở checkout vẫn được giảm.
 - Tắt lô → mọi mã `DEACTIVATED` trong Search; checkout trả `coupon_deactivated`.
 - `POST /coupons` không có `promoCode` → mã 10 ký tự đúng bảng chữ.
@@ -202,11 +236,18 @@ File: `backend/src/test-admin/loyalty-admin.controller.ts` (cạnh `scenarios/lo
   - Tạo mỗi tier một lô bằng `CouponBatchService.createBatch`. Title: `Loyalty Silver 10%`, `Loyalty Platinum 20%`, `Loyalty Diamond 30%`.
   - Trả `{ batches: [{ tier, batchId, title, codes: [...] }] }`.
   - Mỗi lần gọi tạo lô mới (không idempotent); ghi rõ trong OpenAPI.
-- `GET /test-admin/coupons`: thêm query `batchId` (lọc), thêm `batchId` vào mỗi dòng. Giữ `take: 200`, ghi chú rằng
-  lô lớn hơn thì xem theo `batchId`.
+- `GET /test-admin/coupons`:
+  - Query mới: `batchId` (lọc), `after` (cursor `seq`), `limit` (1–500, mặc định 200). Trả `{ items, next }`, `next` rỗng ở trang cuối.
+  - Mỗi dòng thêm `batchId` và `usages: [{ orderId, discountVnd, at }]`. Đây là liên kết đơn ↔ mã **chỉ có ở test-admin**
+    (Q10), để test và Test Console kiểm chứng mã nào được dùng trong đơn nào.
+  - Test Console cũ đọc `items` nên vẫn chạy; Phase 4 thêm nút tải trang sau.
 - OpenAPI `backend/src/openapi/test-admin.paths.ts` + export `docs/openapi.json`.
 
-**Test**: thiếu token admin → 401; 3 lô đúng % và số lượng; mã kéo được qua Search của TikTok router; `tiers` sai (% ngoài 1–100) → 400.
+**Test**:
+- Thiếu token admin → 401.
+- 3 lô đúng % và số lượng; mã kéo được qua Search của TikTok router; `tiers` sai (% ngoài 1–100) → 400.
+- Phân trang: lô 250 mã, `limit=100` → 3 trang, không trùng, không sót.
+- Sau checkout bằng một mã, `usages` của mã đó có đúng `orderId`.
 
 Gate: backend. Commit.
 
@@ -231,8 +272,9 @@ UI text tiếng Anh. Dùng lại `api()`, `ApiError`, `useAsync`, `vnd` trong `f
   (tạo ở client: `promo_code,coupon_id,redeemed_count,status`).
 - Lỗi API hiện ngay trong dialog (như dialog hiện tại).
 
-**`frontend/src/features/coupons.console.tsx`**: thêm cột Batch và nút "Create loyalty voucher batches"
-(gọi scenario Phase 3 qua proxy `/test-admin`).
+**`frontend/src/features/coupons.console.tsx`**:
+- Thêm cột Batch, cột Used in order (`usages[].orderId`), ô lọc theo batch và nút "Load more" (cursor `next`).
+- Thêm nút "Create loyalty voucher batches" gọi scenario Phase 3 qua proxy `/test-admin`.
 
 **`SellerHome`**: card "Active vouchers" vẫn đếm voucher lẻ, thêm dòng "Code batches: n active". Nếu muốn giữ nguyên Home thì bỏ ý này.
 
@@ -249,7 +291,8 @@ Gate: frontend. Commit ⭐.
 ## Phase 5 – Tài liệu + e2e
 
 **Tài liệu**:
-- `DECISIONS.md` mục mới **Phase 09c – voucher batches**: Q1–Q7 + 7 ràng buộc đồng bộ. Ghi thêm rằng 09a-1 vẫn đúng
+- `DECISIONS.md` mục mới **Phase 09c – voucher batches**: Q1–Q10 + 7 ràng buộc đồng bộ. Sửa dòng 09a-5 để
+  nói rõ quy tắc hoàn lượt giờ chỉ áp cho voucher lẻ (mã lô bị đốt theo Q8). Ghi thêm rằng 09a-1 vẫn đúng
   (không có route tạo trên router TikTok); lô là dữ liệu Seller Center.
 - `spec/09-coupons-loyalty.md`: thêm mục theo dõi 09c (đã làm, bằng chứng test, chưa làm).
 - `docs/smartomni-requirements/phase-09.md`: viết lại Step 5 thành luồng SmartOmni:
@@ -264,21 +307,30 @@ Gate: frontend. Commit ⭐.
 **e2e Playwright** `e2e/tests/phase09c-voucher-batches.spec.ts`:
 - Seller tạo lô 3 mã trên Seller Center, mở View codes, lấy một mã.
 - Buyer: ô chọn voucher **không** hiện mã lô; gõ mã → tổng tiền giảm đúng; đặt đơn thứ hai cùng mã → thông báo hết lượt (từ lỗi `coupon_exhausted`) hiện dưới ô voucher.
-- Seller: bảng lô hiện `Used 1 / 3`.
+- Buyer đặt đơn bằng mã thứ hai rồi hủy khi chưa thanh toán → gõ lại mã đó bị từ chối (mã đã bị đốt).
+- Seller: bảng lô hiện `Used 1 / 3`, View codes hiện mã thứ hai là `DEACTIVATED`.
 - `phase09a-coupons.spec.ts` vẫn pass.
 
 Gate: backend + frontend + `cd e2e && npm test` (cần stack chạy; nếu không chạy được thì ghi rõ lý do). Commit docs và e2e riêng.
 
 ---
 
-## Rủi ro và điểm còn mở
+## Rủi ro đã xử lý
 
-| Điểm | Ảnh hưởng | Cách xử lý trong plan |
+| Rủi ro | Giải pháp | Ở đâu |
 |---|---|---|
-| Đơn hàng không mang coupon id; `voucher_deduction_seller` cố định `'0'` | SmartOmni không nối được đơn ↔ mã | Ghi vào DECISIONS và phase-09.md như gap đã biết. Không sửa nếu bạn chưa yêu cầu. |
-| SmartOmni phải gọi Get Coupon từng mã để theo dõi | Lô 500 mã = 500 request mỗi lần đồng bộ | Ghi vào hợp đồng; SmartOmni chỉ cần poll mã đã giao mà chưa thấy dùng. |
-| `title_keyword` phân biệt hoa thường | SmartOmni lọc sai nếu gõ khác chữ | Ghi vào hợp đồng. Không đổi hành vi Search (OAS không nói rõ). |
-| `redeemed_count` có thể giảm 1 → 0 | SmartOmni tưởng mã đã dùng hẳn | Ghi vào hợp đồng (ràng buộc 3). |
-| Migration timestamp | Thứ tự với migration khác đang làm song song | Dùng `20261125000000`; đổi nếu có migration mới hơn được merge vào `develop` trước. |
-| `GET /test-admin/coupons` giới hạn 200 dòng | Test Console không thấy hết lô lớn | Lọc theo `batchId` (Phase 3). |
-| Ô Code tùy chọn ở voucher lẻ | Thay đổi nhỏ ngoài phạm vi lô | Giữ trong Phase 2/4. Bỏ nếu bạn muốn voucher lẻ luôn gõ tay. |
+| Đơn hàng không cho biết dùng mã nào | Không thêm field ngoài OAS vào router TikTok (Q10). Loyalty không cần liên kết này: chỉ cần biết mã đã dùng chưa (Get Coupon) và điểm tính theo `sub_total`. Liên kết đơn ↔ mã có ở `GET /test-admin/coupons` (`usages`) để test kiểm chứng. `voucher_deduction_seller` là mã loại giảm giá, không phải số tiền, nên không có sai lệch tiền. | Q10, ràng buộc 4, Phase 3 |
+| SmartOmni phải gọi Get Coupon cho từng mã | Chỉ poll mã đã giao mà chưa ở trạng thái cuối. Mã hết hạn hoặc bị tắt thì lọc hàng loạt bằng Search `status`. Gọi Get Coupon theo `coupon_id` đã lưu. Q8 bảo đảm trạng thái cuối không bao giờ quay lại, nên số mã cần poll chỉ giảm dần. | Ràng buộc 1–2, phase-09.md |
+| `title_keyword` phân biệt hoa thường | Search đổi sang không phân biệt hoa thường. | Q9, Phase 2 |
+| `redeemed_count` giảm 1 → 0 làm mã quay lại pool | Mã lô bị đốt (`DEACTIVATED`) khi đơn UNPAID hủy, nên không dùng lại được. | Q8, Phase 1 |
+| Trùng hoặc lệch thứ tự timestamp migration | Kiểm tra `origin/develop` trước khi commit Phase 1, đổi timestamp nếu cần; `npm test` chạy migrate trên DB mới. | Phase 1 |
+| `GET /test-admin/coupons` chỉ trả 200 dòng | Lọc `batchId` và phân trang cursor (`after`, `limit` ≤ 500). | Phase 3, Phase 4 |
+
+## Điểm còn mở (cần bạn quyết)
+
+| Điểm | Mặc định trong plan | Bỏ nếu |
+|---|---|---|
+| Ô Code của voucher lẻ thành tùy chọn (để trống thì tự sinh) | Có (Phase 2, 4) | Bạn muốn voucher lẻ luôn gõ tay |
+| Seller Home thêm dòng "Code batches: n active" | Có (Phase 4) | Bạn muốn giữ nguyên Seller Home |
+| Danh sách voucher của seller ẩn mã lô (xem theo lô ở tab riêng) | Có (Phase 2) | Bạn muốn seller thấy mọi mã trong một bảng |
+| Qua API không phân biệt "bị đốt do hủy đơn" với "seller tắt" | Chấp nhận (OAS chỉ có `DEACTIVATED`) | Bạn cần phân biệt: khi đó phải giữ `redeemed_count = 1` thay vì về 0 |
