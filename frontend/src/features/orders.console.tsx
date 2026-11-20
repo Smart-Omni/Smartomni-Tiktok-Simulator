@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
 import { OrderAuditPanel } from '../pages/console/OrderAuditPanel';
+import { statusTone } from '../components/console/statusTone';
 
 interface AdminOrder {
   id: string;
@@ -85,9 +86,9 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
                   <td><button type="button" className="admin-text-button" onClick={() => setAuditRef(o.id)} aria-label={`View history of ${o.id}`}>{o.id}</button></td>
                   <td>{o.buyerName}</td>
                   <td>{o.units}</td>
-                  <td><span className="pill">{o.status}</span></td>
+                  <td><span className="pill" data-tone={statusTone(o.status)}>{o.status}</span></td>
                   <td>{o.releaseAt && o.status === 'ON_HOLD' ? new Date(o.releaseAt).toLocaleString() : ''}</td>
-                  <td><div className="admin-table-actions">{(NEXT[o.status] ?? []).map((to) => <button key={to} onClick={() => void go(o.id, to)}>{to}</button>)}</div></td>
+                  <td><div className="admin-table-actions">{(NEXT[o.status] ?? []).map((to) => <button key={to} data-tone={statusTone(to)} onClick={() => void go(o.id, to)}>{to}</button>)}</div></td>
                 </tr>
               ))}
             </tbody>

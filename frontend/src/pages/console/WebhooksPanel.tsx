@@ -67,7 +67,7 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
                       <td><span className={`pill ${j.status === 'SUCCEEDED' ? 'ok' : j.status === 'DEAD' ? 'bad' : 'warn'}`}>{j.status}</span></td>
                       <td>{j.attemptCount}/{j.maxAttempts}</td><td>{j.status === 'PENDING' ? new Date(j.nextAttemptAt).toLocaleTimeString() : '-'}</td>
                       <td><a href="#filter" onClick={(e) => { e.preventDefault(); if (j.requestId) setRequestId(j.requestId); }}>{j.requestId ?? '-'}</a></td>
-                      <td><button onClick={() => replay(j.id)}>Replay</button></td>
+                      <td><button data-tone="info" onClick={() => replay(j.id)}>Replay</button></td>
                     </tr>
                     {j.attempts.map((a) => (
                       <tr key={a.id} className="attempt">

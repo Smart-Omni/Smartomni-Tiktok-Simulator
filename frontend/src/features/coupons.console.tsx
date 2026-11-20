@@ -2,6 +2,7 @@ import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { statusTone } from '../components/console/statusTone';
 
 interface AdminCoupon {
   id: string;
@@ -29,7 +30,7 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
                 <tr key={c.id}>
                   <td>{c.promoCode}</td>
                   <td>{c.title}</td>
-                  <td><span className="pill">{c.status}</span></td>
+                  <td><span className="pill" data-tone={statusTone(c.status)}>{c.status}</span></td>
                   <td>{c.redeemedCount}{c.redemptionLimit != null ? ` / ${c.redemptionLimit}` : ''}</td>
                   <td>{new Date(c.startAt).toLocaleString()}</td>
                   <td>{new Date(c.endAt).toLocaleString()}</td>

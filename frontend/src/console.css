@@ -134,3 +134,14 @@
 .admin-pagination label { font-size:12px; }
 .app .admin-pagination select { min-width:60px; margin-left:4px; }
 .app .admin-pagination button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:90px; min-height:36px; }
+
+/* Semantic status colors use the existing console blue, green, amber and red palette. */
+.admin-console [data-tone=info] { --status-ink:#0f6fde; --status-bg:#eef4ff; --status-border:#b2ccff; }
+.admin-console [data-tone=success] { --status-ink:var(--ok); --status-bg:#d1fadf; --status-border:#86d6a3; }
+.admin-console [data-tone=warning] { --status-ink:var(--warn); --status-bg:#fef0c7; --status-border:#e9c46a; }
+.admin-console [data-tone=danger] { --status-ink:var(--bad); --status-bg:#fee4e2; --status-border:#fda29b; }
+.admin-console [data-tone=neutral] { --status-ink:var(--muted); --status-bg:#eef0f3; --status-border:var(--line); }
+.app .admin-console button[data-tone], .app .admin-console .pill[data-tone] { color:var(--status-ink); background:var(--status-bg); border:1px solid var(--status-border); font-weight:600; }
+.app .admin-console button[data-tone] { transition:background-color .15s, border-color .15s, color .15s; }
+.app .admin-console button[data-tone]:hover:not(:disabled) { background:var(--status-ink); border-color:var(--status-ink); color:#fff; }
+.app .admin-console button[data-tone]:focus-visible { outline-color:var(--status-ink); }

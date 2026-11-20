@@ -4,6 +4,7 @@ import { api, vnd } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
 import { ArbitrationPanel } from '../pages/console/ArbitrationPanel';
+import { statusTone } from '../components/console/statusTone';
 
 interface AdminAftersale {
   id: string;
@@ -54,12 +55,12 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
                   <td>{r.orderId}</td>
                   <td>{r.kind} / {r.type}</td>
                   <td>{r.units}</td>
-                  <td><span className="pill">{r.status}</span></td>
+                  <td><span className="pill" data-tone={statusTone(r.status)}>{r.status}</span></td>
                   <td className="num">{vnd(r.refundTotalVnd)}</td>
                   <td>
                     <button onClick={() => void show(r.id)}>History</button>{' '}
-                    {r.kind === 'RETURN' && <button type="button" onClick={() => setArbitrationRef(r.id)}>Arbitrate</button>}{' '}
-                    {r.status.endsWith('REQUEST_SUCCESS') ? <button onClick={() => void complete(r.id)}>Complete refund</button> : null}
+                    {r.kind === 'RETURN' && <button type="button" data-tone="warning" onClick={() => setArbitrationRef(r.id)}>Arbitrate</button>}{' '}
+                    {r.status.endsWith('REQUEST_SUCCESS') ? <button data-tone="success" onClick={() => void complete(r.id)}>Complete refund</button> : null}
                   </td>
                 </tr>
               ))}

@@ -56,17 +56,17 @@ export function ChatPanel({ shopId }: { shopId: string }) {
                   <td>{c.messages}</td>
                   <td><div className="admin-chat-flags">
                     {c.complaintTestLabel ? <span className="pill warn">complaint test label</span> : null}
-                    {c.agentJoined ? <span className="pill">agent joined</span> : null}
+                    {c.agentJoined ? <span className="pill" data-tone="success">agent joined</span> : null}
                     {!c.canSendMessage ? <span className="pill bad">cannot send</span> : null}
                     {c.dropSendResponse ? <span className="pill bad">drops send response</span> : null}
                   </div></td>
                   <td><div className="admin-chat-controls">
-                    <button onClick={() => void run('Buyer message sent.', () => post(`${c.rowId}/buyer-message`, { text: 'Test buyer message' }))}>Buyer message</button>
-                    <button onClick={() => void run('Buyer message stored, event suppressed.', () => post(`${c.rowId}/buyer-message`, { text: 'Message with a lost event', suppressEvent: true }))}>Lose event</button>
-                    <button onClick={() => void run('Buyer message stored, event duplicated.', () => post(`${c.rowId}/buyer-message`, { text: 'Message with a duplicated event', duplicateEvent: true }))}>Duplicate event</button>
-                    <button onClick={() => void run('Agent toggled.', () => post(`${c.rowId}/agent`, { joined: !c.agentJoined }))}>{c.agentJoined ? 'Agent leaves' : 'Agent joins'}</button>
-                    <button onClick={() => void run('Flag changed.', () => post(`${c.rowId}/flags`, { canSendMessage: !c.canSendMessage }))}>{c.canSendMessage ? 'Block sending' : 'Allow sending'}</button>
-                    <button onClick={() => void run('Flag changed.', () => post(`${c.rowId}/flags`, { dropSendResponse: !c.dropSendResponse }))}>{c.dropSendResponse ? 'Stop dropping responses' : 'Drop send response'}</button>
+                    <button data-tone="info" onClick={() => void run('Buyer message sent.', () => post(`${c.rowId}/buyer-message`, { text: 'Test buyer message' }))}>Buyer message</button>
+                    <button data-tone="warning" onClick={() => void run('Buyer message stored, event suppressed.', () => post(`${c.rowId}/buyer-message`, { text: 'Message with a lost event', suppressEvent: true }))}>Lose event</button>
+                    <button data-tone="warning" onClick={() => void run('Buyer message stored, event duplicated.', () => post(`${c.rowId}/buyer-message`, { text: 'Message with a duplicated event', duplicateEvent: true }))}>Duplicate event</button>
+                    <button data-tone={c.agentJoined ? 'warning' : 'success'} onClick={() => void run('Agent toggled.', () => post(`${c.rowId}/agent`, { joined: !c.agentJoined }))}>{c.agentJoined ? 'Agent leaves' : 'Agent joins'}</button>
+                    <button data-tone={c.canSendMessage ? 'danger' : 'success'} onClick={() => void run('Flag changed.', () => post(`${c.rowId}/flags`, { canSendMessage: !c.canSendMessage }))}>{c.canSendMessage ? 'Block sending' : 'Allow sending'}</button>
+                    <button data-tone={c.dropSendResponse ? 'success' : 'danger'} onClick={() => void run('Flag changed.', () => post(`${c.rowId}/flags`, { dropSendResponse: !c.dropSendResponse }))}>{c.dropSendResponse ? 'Stop dropping responses' : 'Drop send response'}</button>
                   </div></td>
                 </tr>
               ))}

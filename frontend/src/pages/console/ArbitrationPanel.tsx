@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Scale } from 'lucide-react';
 import { arbitrateAftersale, type ArbitrationDecision } from './adminEndpoints';
+import { statusTone } from '../../components/console/statusTone';
 
 export function ArbitrationPanel({ shopId, initialRef = '' }: { shopId: string; initialRef?: string }) {
   const [ref, setRef] = useState(initialRef);
@@ -24,9 +25,9 @@ export function ArbitrationPanel({ shopId, initialRef = '' }: { shopId: string; 
         <label>Aftersale request ID<input required value={ref} disabled={busy} onChange={(e) => { setRef(e.target.value); setResult(undefined); }} placeholder="Request ID from Returns & refunds" /></label>
         <label>Target arbitration status<select value={decision} disabled={busy} onChange={(e) => setDecision(e.target.value as ArbitrationDecision)}><option value="IN_ARBITRATION">Open dispute — IN_ARBITRATION</option><option value="ARBITRATION_WIN">Resolve — ARBITRATION_WIN</option><option value="ARBITRATION_LOSS">Resolve — ARBITRATION_LOSS</option></select></label>
         <label>Operator note <span className="muted">Optional · up to 300 characters</span><textarea maxLength={300} value={note} disabled={busy} onChange={(e) => setNote(e.target.value)} /></label>
-        <button className="admin-primary" type="submit" disabled={!ref.trim() || busy}>{busy ? 'Applying decision…' : 'Apply arbitration decision'}</button>
+        <button data-tone={statusTone(decision)} type="submit" disabled={!ref.trim() || busy}>{busy ? 'Applying decision…' : 'Apply arbitration decision'}</button>
         {error && <div className="state state-error" role="alert">{error}</div>}
-        {result && <div className="state state-empty" role="status"><div><strong>{result.changed ? 'Decision applied' : 'Already in this state'}</strong><p>Request {result.id}</p><span className="pill ok">{result.arbitration_status}</span></div></div>}
+        {result && <div className="state state-empty" role="status"><div><strong>{result.changed ? 'Decision applied' : 'Already in this state'}</strong><p>Request {result.id}</p><span className="pill" data-tone={statusTone(result.arbitration_status)}>{result.arbitration_status}</span></div></div>}
       </form>
       <aside className="admin-callout"><Scale size={20} /><div><strong>Dispute lifecycle</strong><p>Use a return request from the selected shop. The API validates each transition.</p><ol><li>NO_ARBITRATION</li><li>IN_ARBITRATION</li><li>ARBITRATION_WIN or ARBITRATION_LOSS</li></ol><p>These controls affect simulator data and can emit webhook events.</p></div></aside>
     </div>

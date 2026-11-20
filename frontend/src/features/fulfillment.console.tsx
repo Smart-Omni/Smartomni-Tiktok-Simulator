@@ -3,6 +3,7 @@ import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { statusTone } from '../components/console/statusTone';
 
 interface AdminOrder {
   id: string;
@@ -38,10 +39,10 @@ export function FulfillmentPanel({ shopId }: { shopId: string }) {
                 <tr key={o.id}>
                   <td>{o.id}</td>
                   <td>{o.buyerName}</td>
-                  <td><span className="pill">{o.status}</span></td>
+                  <td><span className="pill" data-tone={statusTone(o.status)}>{o.status}</span></td>
                   <td>
-                    {STEP[o.status] ? <button onClick={() => void go(o.id, STEP[o.status])}>{STEP[o.status]}</button> : null}
-                    {o.status === 'ON_HOLD' ? <button onClick={() => void go(o.id, 'AWAITING_COLLECTION')}>Try to ship (expect refusal)</button> : null}
+                    {STEP[o.status] ? <button data-tone={statusTone(STEP[o.status])} onClick={() => void go(o.id, STEP[o.status])}>{STEP[o.status]}</button> : null}
+                    {o.status === 'ON_HOLD' ? <button data-tone="warning" onClick={() => void go(o.id, 'AWAITING_COLLECTION')}>Try to ship (expect refusal)</button> : null}
                   </td>
                 </tr>
               ))}
