@@ -14,12 +14,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { MAX_PER_LINE, type CheckoutState } from '@/lib/checkout';
-import { getCart, getMe, getStorefrontProduct, listStorefrontProducts, setCartItem } from '@/lib/endpoints';
+import { getCart, getMarketplaceProduct, inShop, listMarketplaceProducts, setCartItem } from '@/lib/endpoints';
 import { compactCount, shopPrice } from '@/lib/format';
-import type { Sku } from '@/lib/types';
+import { productPath } from '@/lib/links';
+import type { ShopRef, Sku } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
-import { enrichProduct, imageBackgrounds, mockCatalog, mockReviewSummary, normalizeTitle, originalPrice, type EnrichedProduct, type MockReview } from '@/mocks';
+import { defaultMockShop, enrichProduct, imageBackgrounds, mockCatalog, mockReviewSummary, normalizeTitle, originalPrice, type EnrichedProduct, type MockReview } from '@/mocks';
 
 const soldOut = (s: Sku) => !s.available || s.stock <= 0;
 
@@ -183,7 +184,7 @@ function VariantTiles({ label, skus, value, onChange }: { label: string; skus: S
   );
 }
 
-function BuyBox({ product, shopName }: { product: EnrichedProduct; shopName?: string }) {
+function BuyBox({ product, shop }: { product: EnrichedProduct; shop?: ShopRef }) {
   const { buyer } = useAuth();
   const navigate = useNavigate();
   const [skuId, setSkuId] = useState(() => product.skus.find((s) => !soldOut(s))?.id);
@@ -202,15 +203,16 @@ function BuyBox({ product, shopName }: { product: EnrichedProduct; shopName?: st
   /** Adds `qty` on top of what is already in the cart (PUT cart/items sets the quantity). */
   const addToCart = async (): Promise<boolean> => {
     if (!buyer) {
-      navigate(loginUrl(`/product/${encodeURIComponent(product.id)}`));
+      navigate(loginUrl(productPath({ id: product.id, shop })));
       return false;
     }
-    if (!sku) return false;
+    if (!sku || !shop) return false;
     setBusy(true);
     try {
-      const cart = await getCart(buyer);
+      const seller = inShop(buyer, shop.id);
+      const cart = await getCart(seller);
       const inCart = cart.items.find((i) => i.skuId === sku.id)?.quantity ?? 0;
-      await setCartItem(buyer, sku.id, Math.min(MAX_PER_LINE, inCart + qty));
+      await setCartItem(seller, sku.id, Math.min(MAX_PER_LINE, inCart + qty));
       return true;
     } catch (e) {
       toast.error((e as Error).message);
@@ -233,9 +235,16 @@ function BuyBox({ product, shopName }: { product: EnrichedProduct; shopName?: st
         {product.trending ? <Badge className="rounded bg-ink text-white">Trending</Badge> : null}
       </div>
       <h1 className="text-xl font-semibold leading-snug">{product.title}</h1>
-      {shopName ? (
-        <p className="text-sm text-muted-foreground">
-          Sold by <span className="font-semibold text-ink">{shopName}</span>
+      {shop ? (
+        <p className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+          <span>
+            Sold by <span className="font-semibold text-ink">{shop.name}</span>
+          </span>
+          {buyer ? (
+            <Link to={`/account/messages?shop=${encodeURIComponent(shop.id)}`} className="text-buyer hover:underline">
+              Chat with shop
+            </Link>
+          ) : null}
         </p>
       ) : null}
       <p className="flex items-center gap-2 text-sm">
@@ -261,7 +270,7 @@ function BuyBox({ product, shopName }: { product: EnrichedProduct; shopName?: st
           className="h-12 bg-buyer text-base text-white hover:bg-buyer/90"
           disabled={!sku || busy}
           onClick={async () => {
-            if (sku && (await addToCart())) navigate('/checkout', { state: { items: [{ skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
+            if (sku && shop && (await addToCart())) navigate('/checkout', { state: { items: [{ shopId: shop.id, skuId: sku.id, quantity: qty }] } satisfies CheckoutState });
           }}
         >
           Buy now
@@ -301,42 +310,52 @@ function Notice({ children }: { children: ReactNode }) {
 }
 
 type Detail =
-  | { product: EnrichedProduct; shopName?: string }
-  /** A mock product opened by a signed-in buyer: the real product it stands for, if the buyer's shop sells it. */
-  | { realId: string | null; shopName?: string }
+  | { product: EnrichedProduct; shop?: ShopRef }
+  /** A link without a shop (an old link, or a mock product opened while signed in): the real product page to go to, if any. */
+  | { redirectTo: string | null }
   | null;
 
+/** Finds the marketplace product behind a link that has no shop: the same id, or the seeded product a mock stands for. */
+async function resolveLegacy(id: string): Promise<string | null> {
+  const list = await listMarketplaceProducts();
+  const mock = mockCatalog.find((p) => p.id === id);
+  if (mock) {
+    const wantedTitle = mock.seedTitle ? normalizeTitle(mock.seedTitle) : null;
+    const wantedShop = normalizeTitle(mock.seedShop ?? defaultMockShop);
+    const sameTitle = wantedTitle ? list.filter((p) => normalizeTitle(p.title) === wantedTitle) : [];
+    const hit = sameTitle.find((p) => p.shop && normalizeTitle(p.shop.name) === wantedShop) ?? sameTitle[0];
+    return hit ? productPath(hit) : null;
+  }
+  const hit = list.find((p) => p.id === id);
+  return hit ? productPath(hit) : null;
+}
+
 export function ProductPage() {
-  const { id = '' } = useParams();
+  const { shopId, id = '' } = useParams();
   const { buyer } = useAuth();
   const navigate = useNavigate();
   const detail = useAsync<Detail>(async () => {
-    const mock = mockCatalog.find((p) => p.id === id);
-    if (!buyer) return mock ? { product: mock, shopName: mock.shopName } : null;
-    if (id.startsWith('mock-')) {
-      // A guest link to a mock product: the seeded product with the same title is the real one.
-      const [list, me] = await Promise.all([listStorefrontProducts(buyer), getMe(buyer).catch(() => null)]);
-      const wanted = mock?.seedTitle ? normalizeTitle(mock.seedTitle) : null;
-      const real = wanted ? list.items.find((p) => normalizeTitle(p.title) === wanted) : undefined;
-      return { realId: real?.id ?? null, shopName: me?.shop.name };
+    if (!buyer) {
+      const mock = mockCatalog.find((p) => p.id === id);
+      return mock ? { product: mock, shop: { id: '', name: mock.shopName ?? '' } } : null;
     }
-    const [r, me] = await Promise.all([getStorefrontProduct(buyer, id), getMe(buyer).catch(() => null)]);
-    return { product: enrichProduct(r.product), shopName: me?.shop.name };
-  }, [buyer?.sessionToken, id]);
+    if (!shopId) return { redirectTo: await resolveLegacy(id) };
+    const r = await getMarketplaceProduct(shopId, id);
+    return { product: enrichProduct({ ...r.product, shop: r.shop }), shop: r.shop };
+  }, [buyer?.sessionToken, shopId, id]);
 
-  const realId = detail.data && 'realId' in detail.data ? detail.data.realId : null;
+  const redirectTo = detail.data && 'redirectTo' in detail.data ? detail.data.redirectTo : null;
   useEffect(() => {
-    if (realId) navigate(`/product/${encodeURIComponent(realId)}`, { replace: true });
-  }, [realId, navigate]);
+    if (redirectTo) navigate(redirectTo, { replace: true });
+  }, [redirectTo, navigate]);
 
-  if ((detail.loading && !detail.data) || realId) return <PageSkeleton />;
-  if (detail.data && 'realId' in detail.data) {
-    const { shopName } = detail.data;
+  if ((detail.loading && !detail.data) || redirectTo) return <PageSkeleton />;
+  if (detail.data && 'redirectTo' in detail.data) {
     return (
       <Notice>
-        <p className="text-muted-foreground">This item is not sold in your shop</p>
+        <p className="text-muted-foreground">This item is not available.</p>
         <Button asChild variant="outline">
-          <Link to="/">{shopName ? `See products from ${shopName}` : 'See products from your shop'}</Link>
+          <Link to="/">Back to shopping</Link>
         </Button>
       </Notice>
     );
@@ -344,7 +363,7 @@ export function ProductPage() {
   if (detail.error instanceof ApiError && detail.error.status === 404) {
     return (
       <Notice>
-        <p className="text-muted-foreground">This product is not available in your shop.</p>
+        <p className="text-muted-foreground">This product is not available.</p>
         <Button asChild variant="outline">
           <Link to="/">Back to shopping</Link>
         </Button>
@@ -368,16 +387,16 @@ export function ProductPage() {
       <Notice>
         <p className="text-muted-foreground">Sign in to view this product.</p>
         <Button asChild className="bg-buyer text-white hover:bg-buyer/90">
-          <Link to={loginUrl(`/product/${encodeURIComponent(id)}`)}>Sign in</Link>
+          <Link to={loginUrl(shopId ? `/product/${encodeURIComponent(shopId)}/${encodeURIComponent(id)}` : `/product/${encodeURIComponent(id)}`)}>Sign in</Link>
         </Button>
       </Notice>
     );
   }
 
-  const { product, shopName } = detail.data;
+  const { product, shop } = detail.data;
   return (
     <div>
-      <Breadcrumb shopName={shopName} title={product.title} />
+      <Breadcrumb shopName={shop?.name} title={product.title} />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="flex min-w-0 flex-col gap-10">
           <Gallery key={product.id} product={product} />
@@ -395,7 +414,7 @@ export function ProductPage() {
         </div>
         {/* below the 64px sticky header */}
         <aside className="self-start lg:sticky lg:top-20">
-          <BuyBox key={product.id} product={product} shopName={shopName} />
+          <BuyBox key={product.id} product={product} shop={shop} />
         </aside>
       </div>
     </div>

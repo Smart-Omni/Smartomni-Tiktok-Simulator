@@ -60,13 +60,12 @@ export function preferredBuyerId(ids: Identities, next: string | null): string |
 }
 
 function toAccounts(ids: Identities): Record<Role, Account[]> {
-  const shopName = new Map(ids.sellers.flatMap((s) => s.shops.map((x) => [x.id, x.name] as const)));
   const detail = (shop: string, name: string) => [shop, identityCity(name)].filter(Boolean).join(' · ');
   return {
     BUYER: ids.buyers.map((b) => ({
       key: `buyer:${b.id}`,
       name: b.name,
-      detail: detail(shopName.get(b.shopId) ?? '', b.name),
+      detail: detail('', b.name),
       identity: { role: 'BUYER', buyerId: b.id },
     })),
     SELLER: ids.sellers.map((s) => ({
@@ -90,7 +89,7 @@ function Illustration() {
       <div className="absolute bottom-24 right-10 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">
         <Star className="size-3.5 fill-star text-star" /> 4.8
       </div>
-      <p className="max-w-[260px] text-center text-sm text-buyer-ink">Shop from your own demo shop. Everything here is fake data.</p>
+      <p className="max-w-[260px] text-center text-sm text-buyer-ink">Shop from every demo shop. Everything here is fake data.</p>
     </div>
   );
 }
@@ -226,7 +225,7 @@ export function LoginPage() {
               ))}
             </Tabs>
 
-            <p className="mt-4 text-xs text-muted-2">No password. A buyer can only buy from their own shop.</p>
+            <p className="mt-4 text-xs text-muted-2">No password. A buyer can browse and buy from every shop.</p>
 
             {error ? (
               <Alert variant="destructive" className="mt-3">

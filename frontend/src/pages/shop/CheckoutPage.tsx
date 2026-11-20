@@ -14,9 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { CheckoutState } from '@/lib/checkout';
-import { checkout, getCart, getCoupons, getMe, listStorefrontProducts, payOrder, setCartItem } from '@/lib/endpoints';
+import { checkout, getCoupons, getMarketplaceCart, getMe, inShop, listMarketplaceProducts, payOrder, setCartItem } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
-import type { CartItem, DemoSession, Order, OrderAmounts, Recipient } from '@/lib/types';
+import type { CartItem, DemoSession, Order, OrderAmounts, Recipient, ShopRef } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 import { enrichProduct, imageBackgrounds, type EnrichedProduct } from '@/mocks';
@@ -151,27 +151,183 @@ function PaymentDetails({ productTotal, amounts }: { productTotal: number; amoun
 }
 
 interface Line extends CartItem {
+  shopId: string;
   product: EnrichedProduct | undefined;
+}
+
+interface ShopLines {
+  shop: ShopRef;
+  lines: Line[];
+}
+
+type ShopErrors = { coupon?: string; items?: string; general?: string };
+
+/** Adds the amounts of several orders (one per shop) into one payment summary. */
+export function sumAmounts(list: OrderAmounts[]): OrderAmounts {
+  const zero: OrderAmounts = { currency: list[0]?.currency ?? 'VND', productTotalVnd: 0, sellerDiscountVnd: 0, platformDiscountVnd: 0, subTotalVnd: 0, shippingFeeVnd: 0, taxVnd: 0, totalVnd: 0 };
+  return list.reduce<OrderAmounts>(
+    (a, b) => ({
+      currency: a.currency,
+      productTotalVnd: a.productTotalVnd + b.productTotalVnd,
+      sellerDiscountVnd: a.sellerDiscountVnd + b.sellerDiscountVnd,
+      platformDiscountVnd: a.platformDiscountVnd + b.platformDiscountVnd,
+      subTotalVnd: a.subTotalVnd + b.subTotalVnd,
+      shippingFeeVnd: a.shippingFeeVnd + b.shippingFeeVnd,
+      taxVnd: a.taxVnd + b.taxVnd,
+      totalVnd: a.totalVnd + b.totalVnd,
+    }),
+    zero,
+  );
+}
+
+/** Vouchers the buyer can type for one shop (the former /buyer/coupons list). */
+function VoucherPicker({ buyer, shopId, value, disabled, error, onChange }: { buyer: DemoSession; shopId: string; value: string; disabled: boolean; error?: string; onChange: (v: string) => void }) {
+  const vouchers = useAsync(() => getCoupons(inShop(buyer, shopId)).catch(() => null), [buyer.sessionToken, shopId]);
+  const usable = vouchers.data?.items.filter((v) => v.status === 'ONGOING' && v.promoCode) ?? [];
+  const inputId = `coupon-${shopId}`;
+  return (
+    <div className="mt-4 flex flex-col gap-1.5">
+      <span className="flex items-center gap-1.5 text-sm font-semibold">
+        <Ticket className="size-4 text-buyer" aria-hidden /> Voucher
+      </span>
+      <Label htmlFor={inputId} className="sr-only">
+        Voucher code
+      </Label>
+      <Input
+        id={inputId}
+        value={value}
+        maxLength={20}
+        disabled={disabled}
+        placeholder="Enter a voucher code"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${inputId}-error` : undefined}
+        onChange={(e) => onChange(e.target.value.toUpperCase())}
+        className="max-w-xs"
+      />
+      {error ? <FieldError id={`${inputId}-error`}>{error}</FieldError> : null}
+      {!disabled && usable.length ? (
+        <div className="mt-1 flex flex-col gap-2">
+          <span className="text-xs font-semibold text-muted-foreground">Available vouchers</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Available vouchers">
+            {usable.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={value === v.promoCode}
+                title={v.minSpendVnd != null ? `Min spend ${shopPrice(v.minSpendVnd)}` : undefined}
+                onClick={() => onChange(value === v.promoCode ? '' : (v.promoCode ?? ''))}
+                className={cn('flex cursor-pointer flex-col items-start rounded-lg border border-dashed px-3 py-1.5 text-left', value === v.promoCode ? 'border-buyer bg-buyer-soft' : 'border-line hover:bg-surface-2')}
+              >
+                <span className="font-mono text-xs font-bold">{v.promoCode}</span>
+                <span className="text-[11px] text-muted-foreground">{v.discountText}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ShopCard({
+  buyer,
+  group,
+  placed,
+  message,
+  coupon,
+  errors,
+  onMessage,
+  onCoupon,
+}: {
+  buyer: DemoSession;
+  group: ShopLines;
+  placed: Order | undefined;
+  message: string;
+  coupon: string;
+  errors: ShopErrors;
+  onMessage: (v: string) => void;
+  onCoupon: (v: string) => void;
+}) {
+  const messageId = `buyer-message-${group.shop.id}`;
+  return (
+    <Card title={group.shop.name} icon={<Store className="size-5" aria-hidden />}>
+      <ul className="divide-y divide-line-soft" aria-label={`Items from ${group.shop.name}`}>
+        {group.lines.map((l) => (
+          <li key={l.skuId} className="flex items-center gap-3 py-3">
+            <ProductImage product={l.product ?? ({ imageUrl: '', imageBg: imageBackgrounds[0] } as EnrichedProduct)} className="w-16 shrink-0" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="line-clamp-1 text-sm font-medium">{l.productTitle}</span>
+              <span className="w-fit rounded bg-surface px-2 py-0.5 text-xs text-muted-foreground">{l.skuName}</span>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {shopPrice(l.unitPriceVnd)} × {l.quantity}
+            </span>
+            <span className="w-28 text-right text-sm font-semibold">{shopPrice(l.lineTotalVnd)}</span>
+          </li>
+        ))}
+      </ul>
+      {errors.items ? <FieldError id={`items-error-${group.shop.id}`}>{errors.items}</FieldError> : null}
+      {errors.general ? <FieldError id={`general-error-${group.shop.id}`}>{errors.general}</FieldError> : null}
+      {placed ? (
+        <p className="mt-3 flex items-center gap-2 text-sm text-free-ship" role="status">
+          <CheckCircle2 className="size-4" aria-hidden /> Placed as <span className="font-mono">{placed.id}</span> · {placed.status}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-1.5">
+        <Label htmlFor={messageId}>Message to seller</Label>
+        <Textarea
+          id={messageId}
+          value={message}
+          maxLength={MESSAGE_MAX}
+          disabled={placed !== undefined}
+          placeholder="Optional"
+          onChange={(e) => onMessage(e.target.value.slice(0, MESSAGE_MAX))}
+          className="min-h-16"
+        />
+        <span className="self-end text-xs text-muted-2">
+          {message.length}/{MESSAGE_MAX}
+        </span>
+      </div>
+
+      <VoucherPicker buyer={buyer} shopId={group.shop.id} value={coupon} disabled={placed !== undefined} error={errors.coupon} onChange={onCoupon} />
+
+      <div className="mt-4 flex items-center gap-3 rounded-lg bg-surface-2 px-4 py-3 text-sm">
+        <Truck className="size-5 text-free-ship" aria-hidden />
+        <div className="flex flex-col">
+          <span className="font-semibold">Shipping · Simulator Express</span>
+          <span className="text-xs text-muted-foreground">Fake carrier. The fee is calculated when the order is placed.</span>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 function Checkout({ buyer }: { buyer: DemoSession }) {
   const navigate = useNavigate();
   const wanted = (useLocation().state as CheckoutState | null)?.items;
-  // vouchers the buyer can type (the former /buyer/coupons list)
-  const vouchers = useAsync(() => getCoupons(buyer).catch(() => null), [buyer.sessionToken]);
   const data = useAsync(async () => {
-    const [cart, products, me] = await Promise.all([getCart(buyer), listStorefrontProducts(buyer).catch(() => null), getMe(buyer).catch(() => null)]);
-    return { cart, products: products?.items.map(enrichProduct) ?? [], me };
+    const [cart, products, me] = await Promise.all([getMarketplaceCart(buyer), listMarketplaceProducts().catch(() => null), getMe(buyer).catch(() => null)]);
+    return { cart, products: (products ?? []).map(enrichProduct), me };
   }, [buyer.sessionToken]);
 
-  const [key] = useState(newCheckoutKey);
+  // one idempotency key per shop and attempt
+  const [keys] = useState(() => new Map<string, string>());
+  const keyFor = (shopId: string) => {
+    let k = keys.get(shopId);
+    if (!k) {
+      k = newCheckoutKey();
+      keys.set(shopId, k);
+    }
+    return k;
+  };
   const [address, setAddress] = useState<Recipient | null>(null);
   const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState('');
-  const [coupon, setCoupon] = useState('');
-  const [errors, setErrors] = useState<{ coupon?: string; items?: string; general?: string }>({});
+  const [messages, setMessages] = useState<Record<string, string>>({});
+  const [coupons, setCoupons] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<{ general?: string; shops: Record<string, ShopErrors> }>({ shops: {} });
   const [placing, setPlacing] = useState(false);
-  const [order, setOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState<Record<string, Order>>({});
   const [paying, setPaying] = useState(false);
 
   if (data.loading && !data.data) {
@@ -199,18 +355,28 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
   if (!data.data) return null;
 
   const { cart, products, me } = data.data;
-  const productById = new Map(products.map((p) => [p.id, p]));
-  const cartBySku = new Map(cart.items.map((l) => [l.skuId, l]));
-  const lines: Line[] = (wanted ?? cart.items.filter((l) => l.available).map((l) => ({ skuId: l.skuId, quantity: l.quantity })))
-    .flatMap((w) => {
-      const l = cartBySku.get(w.skuId);
-      return l ? [{ ...l, quantity: w.quantity, lineTotalVnd: l.unitPriceVnd * w.quantity, product: productById.get(l.productId) }] : [];
-    });
-  const productTotal = lines.reduce((n, l) => n + l.lineTotalVnd, 0);
-  const shopName = me?.shop.name ?? 'Shop';
-  const placed = order !== null;
+  const productByKey = new Map(products.flatMap((p) => (p.shop ? [[`${p.shop.id}:${p.id}`, p] as const] : [])));
+  const cartItem = new Map(cart.shops.flatMap((g) => g.items.map((l) => [`${g.shop.id}:${l.skuId}`, l] as const)));
+  const shopOf = new Map(cart.shops.map((g) => [g.shop.id, g.shop] as const));
+  const wantedLines = wanted ?? cart.shops.flatMap((g) => g.items.filter((l) => l.available).map((l) => ({ shopId: g.shop.id, skuId: l.skuId, quantity: l.quantity })));
+  const shops: ShopLines[] = [];
+  for (const w of wantedLines) {
+    const l = cartItem.get(`${w.shopId}:${w.skuId}`);
+    const shop = shopOf.get(w.shopId);
+    if (!l || !shop) continue;
+    let group = shops.find((g) => g.shop.id === shop.id);
+    if (!group) {
+      group = { shop, lines: [] };
+      shops.push(group);
+    }
+    group.lines.push({ ...l, shopId: shop.id, quantity: w.quantity, lineTotalVnd: l.unitPriceVnd * w.quantity, product: productByKey.get(`${shop.id}:${l.productId}`) });
+  }
+  const productTotal = shops.reduce((n, g) => n + g.lines.reduce((m, l) => m + l.lineTotalVnd, 0), 0);
+  const placedOrders = shops.flatMap((g) => (orders[g.shop.id] ? [orders[g.shop.id]] : []));
+  const placedAll = shops.length > 0 && placedOrders.length === shops.length;
+  const anyPlaced = placedOrders.length > 0;
 
-  if (!lines.length && !placed) {
+  if (!shops.length && !anyPlaced) {
     return (
       <div className="mx-auto mt-10 flex max-w-md flex-col items-center gap-4 rounded-card border border-dashed border-line p-12 text-center">
         <p className="text-lg font-semibold">Nothing to check out</p>
@@ -223,58 +389,76 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
 
   const place = async () => {
     setPlacing(true);
-    setErrors({});
-    try {
-      const r = await checkout(buyer, {
-        checkoutKey: key,
-        items: lines.map((l) => ({ skuId: l.skuId, quantity: l.quantity })),
-        ...(address ? { recipient: address } : {}),
-        ...(message.trim() ? { buyerMessage: message.trim() } : {}),
-        ...(coupon.trim() ? { couponCode: coupon.trim() } : {}),
-      });
-      setOrder(r.order);
-      if (!r.replayed) {
-        // `items` was sent, so the API keeps the cart: take the bought quantities out of it
-        for (const l of lines) {
-          const inCart = cartBySku.get(l.skuId)?.quantity ?? 0;
-          await setCartItem(buyer, l.skuId, Math.max(0, inCart - l.quantity)).catch(() => undefined);
+    setErrors({ shops: {} });
+    const failed: Record<string, ShopErrors> = {};
+    for (const g of shops) {
+      if (orders[g.shop.id]) continue;
+      const shopSession = inShop(buyer, g.shop.id);
+      const message = (messages[g.shop.id] ?? '').trim();
+      const coupon = (coupons[g.shop.id] ?? '').trim();
+      try {
+        const r = await checkout(shopSession, {
+          checkoutKey: keyFor(g.shop.id),
+          items: g.lines.map((l) => ({ skuId: l.skuId, quantity: l.quantity })),
+          ...(address ? { recipient: address } : {}),
+          ...(message ? { buyerMessage: message } : {}),
+          ...(coupon ? { couponCode: coupon } : {}),
+        });
+        setOrders((prev) => ({ ...prev, [g.shop.id]: r.order }));
+        if (!r.replayed) {
+          // `items` was sent, so the API keeps the cart: take the bought quantities out of it
+          for (const l of g.lines) {
+            const inCart = cartItem.get(`${g.shop.id}:${l.skuId}`)?.quantity ?? 0;
+            await setCartItem(shopSession, l.skuId, Math.max(0, inCart - l.quantity)).catch(() => undefined);
+          }
         }
+      } catch (e) {
+        const code = e instanceof ApiError ? e.code : undefined;
+        const text = (e as Error).message;
+        if (code?.startsWith('coupon_')) failed[g.shop.id] = { coupon: text };
+        else if (code && ITEM_ERRORS.includes(code)) failed[g.shop.id] = { items: text };
+        else failed[g.shop.id] = { general: text };
       }
-    } catch (e) {
-      const code = e instanceof ApiError ? e.code : undefined;
-      const text = (e as Error).message;
-      if (code?.startsWith('coupon_')) setErrors({ coupon: text });
-      else if (code && ITEM_ERRORS.includes(code)) setErrors({ items: text });
-      else setErrors({ general: text });
-    } finally {
-      setPlacing(false);
     }
+    setErrors({ shops: failed });
+    setPlacing(false);
   };
 
   const pay = async () => {
-    if (!order) return;
     setPaying(true);
     try {
-      await payOrder(buyer, order.id);
-      toast.success('Payment successful (simulated)');
+      for (const o of placedOrders) await payOrder(inShop(buyer, o.shopId ?? o.shop?.id ?? buyer.shopId), o.id);
+      toast.success(placedOrders.length > 1 ? 'Payments successful (simulated)' : 'Payment successful (simulated)');
       navigate('/account/orders');
     } catch (e) {
-      setErrors({ general: (e as Error).message });
+      setErrors({ general: (e as Error).message, shops: {} });
       setPaying(false);
     }
   };
 
-  const recipient = order?.recipient ?? address;
+  const recipient = placedOrders[0]?.recipient ?? address;
   return (
     <div>
       <h1 className="mb-5 text-2xl font-bold">Checkout</h1>
-      {placed ? (
+      {anyPlaced ? (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-card bg-teal-soft px-5 py-4 text-ink" role="status">
           <CheckCircle2 className="size-6 text-free-ship" aria-hidden />
           <div className="flex flex-col">
-            <span className="font-bold">Order placed · {order.status}</span>
+            <span className="font-bold">
+              {placedOrders.length > 1 ? `${placedOrders.length} orders placed` : `Order placed · ${placedOrders[0].status}`}
+              {placedAll ? '' : ` (${shops.length - placedOrders.length} still to place)`}
+            </span>
             <span className="text-sm text-muted-foreground">
-              Order <span className="font-mono">{order.id}</span>. Pay now to send it to the seller.
+              {placedOrders.length > 1 ? (
+                <>
+                  Orders <span className="font-mono">{placedOrders.map((o) => o.id).join(', ')}</span>.
+                </>
+              ) : (
+                <>
+                  Order <span className="font-mono">{placedOrders[0].id}</span>.
+                </>
+              )}{' '}
+              {placedAll ? 'Pay now to send them to the sellers.' : 'Place the rest to continue.'}
             </span>
           </div>
         </div>
@@ -286,7 +470,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
             title="Shipping address"
             icon={<MapPin className="size-5 text-buyer" aria-hidden />}
             action={
-              placed ? null : (
+              anyPlaced ? null : (
                 <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                   Change
                 </Button>
@@ -310,91 +494,19 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
             )}
           </Card>
 
-          <Card title={shopName} icon={<Store className="size-5" aria-hidden />}>
-            <ul className="divide-y divide-line-soft" aria-label="Items">
-              {lines.map((l) => (
-                <li key={l.skuId} className="flex items-center gap-3 py-3">
-                  <ProductImage product={l.product ?? ({ imageUrl: '', imageBg: imageBackgrounds[0] } as EnrichedProduct)} className="w-16 shrink-0" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="line-clamp-1 text-sm font-medium">{l.productTitle}</span>
-                    <span className="w-fit rounded bg-surface px-2 py-0.5 text-xs text-muted-foreground">{l.skuName}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {shopPrice(l.unitPriceVnd)} × {l.quantity}
-                  </span>
-                  <span className="w-28 text-right text-sm font-semibold">{shopPrice(l.lineTotalVnd)}</span>
-                </li>
-              ))}
-            </ul>
-            {errors.items ? <FieldError id="items-error">{errors.items}</FieldError> : null}
-
-            <div className="mt-4 flex flex-col gap-1.5">
-              <Label htmlFor="buyer-message">Message to seller</Label>
-              <Textarea
-                id="buyer-message"
-                value={message}
-                maxLength={MESSAGE_MAX}
-                disabled={placed}
-                placeholder="Optional"
-                onChange={(e) => setMessage(e.target.value.slice(0, MESSAGE_MAX))}
-                className="min-h-16"
-              />
-              <span className="self-end text-xs text-muted-2">
-                {message.length}/{MESSAGE_MAX}
-              </span>
-            </div>
-
-            <div className="mt-2 flex items-center gap-3 rounded-lg bg-surface-2 px-4 py-3 text-sm">
-              <Truck className="size-5 text-free-ship" aria-hidden />
-              <div className="flex flex-col">
-                <span className="font-semibold">Shipping · Simulator Express</span>
-                <span className="text-xs text-muted-foreground">Fake carrier. The fee is calculated when the order is placed.</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card title="Voucher" icon={<Ticket className="size-5 text-buyer" aria-hidden />}>
-            <Label htmlFor="coupon" className="sr-only">
-              Voucher code
-            </Label>
-            <Input
-              id="coupon"
-              value={coupon}
-              maxLength={20}
-              disabled={placed}
-              placeholder="Enter a voucher code"
-              aria-invalid={errors.coupon ? true : undefined}
-              aria-describedby={errors.coupon ? 'coupon-error' : undefined}
-              onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-              className="max-w-xs"
+          {shops.map((g) => (
+            <ShopCard
+              key={g.shop.id}
+              buyer={buyer}
+              group={g}
+              placed={orders[g.shop.id]}
+              message={messages[g.shop.id] ?? ''}
+              coupon={coupons[g.shop.id] ?? ''}
+              errors={errors.shops[g.shop.id] ?? {}}
+              onMessage={(v) => setMessages((m) => ({ ...m, [g.shop.id]: v }))}
+              onCoupon={(v) => setCoupons((c) => ({ ...c, [g.shop.id]: v }))}
             />
-            {errors.coupon ? <FieldError id="coupon-error">{errors.coupon}</FieldError> : null}
-            {!placed && vouchers.data?.items.some((v) => v.status === 'ONGOING' && v.promoCode) ? (
-              <div className="mt-3 flex flex-col gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">Available vouchers</span>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Available vouchers">
-                  {vouchers.data.items
-                    .filter((v) => v.status === 'ONGOING' && v.promoCode)
-                    .map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        aria-pressed={coupon === v.promoCode}
-                        title={v.minSpendVnd != null ? `Min spend ${shopPrice(v.minSpendVnd)}` : undefined}
-                        onClick={() => setCoupon(coupon === v.promoCode ? '' : (v.promoCode ?? ''))}
-                        className={cn(
-                          'flex cursor-pointer flex-col items-start rounded-lg border border-dashed px-3 py-1.5 text-left',
-                          coupon === v.promoCode ? 'border-buyer bg-buyer-soft' : 'border-line hover:bg-surface-2',
-                        )}
-                      >
-                        <span className="font-mono text-xs font-bold">{v.promoCode}</span>
-                        <span className="text-[11px] text-muted-foreground">{v.discountText}</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-          </Card>
+          ))}
         </div>
 
         <aside className="self-start lg:sticky lg:top-20">
@@ -407,13 +519,14 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
                 <ShieldCheck /> Simulated payment
               </Badge>
             </div>
-            <PaymentDetails productTotal={productTotal} amounts={order?.amounts ?? null} />
+            {shops.length > 1 ? <p className="text-xs text-muted-foreground">{shops.length} shops: each one gets its own order.</p> : null}
+            <PaymentDetails productTotal={productTotal} amounts={placedAll ? sumAmounts(placedOrders.map((o) => o.amounts)) : null} />
             {errors.general ? (
               <Alert variant="destructive">
                 <AlertDescription>{errors.general}</AlertDescription>
               </Alert>
             ) : null}
-            {placed ? (
+            {placedAll ? (
               <>
                 <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={paying} onClick={pay}>
                   {paying ? 'Paying...' : 'Pay now (simulated)'}
@@ -424,7 +537,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
               </>
             ) : (
               <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={placing} onClick={place}>
-                {placing ? 'Placing order...' : 'Place order'}
+                {placing ? 'Placing order...' : anyPlaced ? 'Place remaining orders' : 'Place order'}
               </Button>
             )}
             <p className="text-xs text-muted-2">No real money is charged. Payment is simulated.</p>

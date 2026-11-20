@@ -18,6 +18,8 @@ export function classifyRouter(path: string): RouterKind {
 export function shouldSkipLogging(method: string, path: string): boolean {
   const kind = classifyRouter(path);
   if (kind === 'HEALTH') return true;
+  // image bytes are not worth a log row
+  if (method === 'GET' && path.startsWith('/demo/media/images/')) return true;
   if (kind === 'TEST_ADMIN' && method === 'GET') {
     return /^\/test-admin\/(http-logs|webhooks|status|clock|shops|faults)/.test(path);
   }

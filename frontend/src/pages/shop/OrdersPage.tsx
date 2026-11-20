@@ -12,13 +12,24 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
-import { cancelOrder, getFulfillment, getMe, listAftersale, listOrders, payOrder, requestCancellation, requestReturn } from '@/lib/endpoints';
+import { cancelOrder, getFulfillment, inShop, listAftersale, listBuyerOrders, payOrder, requestCancellation, requestReturn } from '@/lib/endpoints';
 import { holdTime, shopPrice } from '@/lib/format';
-import type { Aftersale, DemoSession, Order, OrderStatus, ReturnRequest } from '@/lib/types';
+import type { Aftersale, AftersaleList, DemoSession, Order, OrderStatus, ReturnRequest } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
 const POLL_MS = 10_000;
+
+/** The session pointed at the shop that sold `order`: shop-scoped calls (pay, cancel, tracking, returns) use it. */
+const inOrderShop = (buyer: DemoSession, order: Order | undefined): DemoSession => inShop(buyer, order?.shopId ?? order?.shop?.id ?? buyer.shopId);
+
+/** Aftersale requests of every shop the buyer ordered from, as one list. */
+async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promise<AftersaleList | null> {
+  const shopIds = [...new Set(orders.map((o) => o.shopId ?? o.shop?.id ?? buyer.shopId))];
+  const lists = (await Promise.all(shopIds.map((id) => listAftersale(inShop(buyer, id)).catch(() => null)))).filter((l): l is AftersaleList => l !== null);
+  if (!lists.length) return null;
+  return { items: lists.flatMap((l) => l.items), requestReasons: lists[0].requestReasons, rejectReasons: lists[0].rejectReasons };
+}
 
 export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'cancelled';
 
@@ -292,7 +303,7 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
 }
 
 function TrackingPanel({ buyer, order }: { buyer: DemoSession; order: Order | undefined }) {
-  const f = useAsync(() => (order ? getFulfillment(buyer, order.id) : Promise.resolve(null)), [buyer.sessionToken, order?.id, order?.status], POLL_MS);
+  const f = useAsync(() => (order ? getFulfillment(inOrderShop(buyer, order), order.id) : Promise.resolve(null)), [buyer.sessionToken, order?.id, order?.status], POLL_MS);
   return (
     <section aria-labelledby="tracking" className="flex flex-col gap-4 rounded-card bg-white p-5 shadow-xs ring-1 ring-line-soft">
       <div className="flex items-center gap-2">
@@ -432,9 +443,16 @@ function OrderCard({
 function Orders({ buyer }: { buyer: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const tab = (orderTabs.find((t) => t.key === params.get('tab'))?.key ?? 'all') as OrderTab;
-  const orders = useAsync(() => listOrders(buyer), [buyer.sessionToken], POLL_MS);
-  const aftersale = useAsync(() => listAftersale(buyer).catch(() => null), [buyer.sessionToken], POLL_MS);
-  const me = useAsync(() => getMe(buyer).catch(() => null), [buyer.sessionToken]);
+  const both = useAsync(
+    async () => {
+      const list = await listBuyerOrders(buyer);
+      return { orders: list, aftersale: await listAftersaleOfShops(buyer, list.items) };
+    },
+    [buyer.sessionToken],
+    POLL_MS,
+  );
+  const orders = { loading: both.loading, error: both.error, data: both.data?.orders, reload: both.reload };
+  const aftersale = { data: both.data?.aftersale, reload: both.reload };
   const [trackId, setTrackId] = useState<string>();
   const [dialog, setDialog] = useState<{ kind: 'cancel' | 'return'; order: Order } | null>(null);
 
@@ -465,18 +483,14 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   const requestByOrder = new Map<string, Aftersale>();
   for (const r of [...(aftersale.data?.items ?? [])].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))) requestByOrder.set(r.orderId, r);
   const tracked = all.find((o) => o.id === trackId) ?? all.find((o) => tabOf(o.status) === 'shipping');
-  const shopName = me.data?.shop.name ?? 'Shop';
 
-  const refresh = () => {
-    orders.reload();
-    aftersale.reload();
-  };
+  const refresh = both.reload;
   const onAction = async (order: Order, a: OrderAction) => {
     if (a === 'track') return setTrackId(order.id);
     if (a === 'cancel' || a === 'request-cancel') return setDialog({ kind: 'cancel', order });
     if (a === 'return') return setDialog({ kind: 'return', order });
     try {
-      await payOrder(buyer, order.id);
+      await payOrder(inOrderShop(buyer, order), order.id);
       toast.success('Payment successful (simulated)');
       refresh();
     } catch (e) {
@@ -513,7 +527,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
             </div>
           ) : (
             shown.map((o) => (
-              <OrderCard key={o.id} order={o} shopName={shopName} request={requestByOrder.get(o.id)} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
+              <OrderCard key={`${o.shopId}:${o.id}`} order={o} shopName={o.shop?.name ?? 'Shop'} request={requestByOrder.get(o.id)} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
             ))
           )}
         </div>
@@ -528,10 +542,10 @@ function Orders({ buyer }: { buyer: DemoSession }) {
           onClose={() => setDialog(null)}
           onConfirm={async (reason) => {
             if (dialog.order.status === 'AWAITING_SHIPMENT') {
-              await requestCancellation(buyer, dialog.order.id, reason);
+              await requestCancellation(inOrderShop(buyer, dialog.order), dialog.order.id, reason);
               toast.success('Cancellation requested');
             } else {
-              await cancelOrder(buyer, dialog.order.id, humanize(reason));
+              await cancelOrder(inOrderShop(buyer, dialog.order), dialog.order.id, humanize(reason));
               toast.success('Order cancelled');
             }
             setDialog(null);
@@ -545,7 +559,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
           reasons={aftersale.data?.requestReasons.length ? aftersale.data.requestReasons : FALLBACK_RETURN_REASONS}
           onClose={() => setDialog(null)}
           onSubmit={async (body) => {
-            await requestReturn(buyer, body);
+            await requestReturn(inOrderShop(buyer, dialog.order), body);
             toast.success('Return requested');
             setDialog(null);
             refresh();

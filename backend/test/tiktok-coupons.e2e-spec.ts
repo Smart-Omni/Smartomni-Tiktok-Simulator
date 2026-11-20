@@ -6,9 +6,8 @@ import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { distributeProportionally, computeDiscount } from '../src/coupons/coupon-rules';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { conformErrors } from './contract';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const SEARCH = '/promotion/202406/coupons/search';
@@ -35,8 +34,7 @@ describe('Phase 09a: coupons (read API, Seller data, checkout discount)', () => 
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     await app.get(PersistentBusinessClock).reset();
   });
 

@@ -60,8 +60,11 @@ test('unknown, deactivated and under-minimum coupons are refused with a visible 
   for (const code of ['NOPE1234', 'E2EOLD99', 'E2EMIN1M']) {
     await page.getByLabel('Voucher code').fill(code);
     await page.getByRole('button', { name: 'Place order' }).click();
-    // the error is shown right under the voucher field
-    const alert = page.getByRole('region', { name: 'Voucher' }).getByRole('alert');
+    // the error is shown right under the voucher field of the shop (the field points at it with aria-describedby)
+    const input = page.getByLabel('Voucher code');
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    const alert = page.locator(`[id="${await input.getAttribute('aria-describedby')}"]`);
+    await expect(alert).toHaveAttribute('role', 'alert');
     await expect(alert).toBeVisible();
     await expect(alert).not.toBeEmpty();
     await expect(page.getByText(/Order placed/)).toHaveCount(0);

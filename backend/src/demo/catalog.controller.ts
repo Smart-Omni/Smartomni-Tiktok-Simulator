@@ -17,7 +17,21 @@ import {
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
+import {
+  attributesFor,
+  BRANDS_DATA,
+  CATEGORIES_DATA,
+  categoryChain,
+  checkListing,
+  findCategory,
+  isLeafCategory,
+  rulesFor,
+  type CategoryMeta,
+  type ListingFields,
+} from '../catalog-meta';
 import { BusinessClock } from '../clock/clock';
+import { APP_CONFIG, AppConfig } from '../config/config';
+import { mediaIdFromUri, mediaUrl, MEDIA_URI_PREFIX } from '../media/media-store';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { logInventory } from '../inventory/inventory-log';
@@ -43,21 +57,47 @@ const SkuInput = z.object({
   /** Stock by warehouse external id (a warehouse that is not listed starts at 0). */
   stock: z.record(z.string(), z.number().int().min(0).max(99_999)).optional(),
 });
+const positiveNumber = z.number().positive().max(1_000_000);
+const AttributeValue = z
+  .object({ id: z.string().min(1).max(50).optional(), name: z.string().trim().min(1).max(200).optional() })
+  .refine((v) => v.id !== undefined || v.name !== undefined, 'a value needs an id or a name');
+/** Listing fields (Seller Center product page), checked with the TikTok listing rules in `listingFields`. */
+const Listing = {
+  categoryId: z.string().trim().min(1).max(50).optional(),
+  brandId: z.string().trim().min(1).max(50).nullable().optional(),
+  /** `uri` values returned by POST /demo/shops/{shopId}/media/images; the first one is the main image. */
+  images: z.array(z.string().min(1).max(200)).min(1).max(9).optional(),
+  productAttributes: z.array(z.object({ id: z.string().min(1).max(50), values: z.array(AttributeValue).min(1).max(50) })).max(100).optional(),
+  packageWeight: z.object({ value: positiveNumber, unit: z.enum(['KILOGRAM', 'POUND']).default('KILOGRAM') }).nullable().optional(),
+  packageDimensions: z
+    .object({ length: positiveNumber, width: positiveNumber, height: positiveNumber, unit: z.enum(['CENTIMETER', 'INCH']).default('CENTIMETER') })
+    .nullable()
+    .optional(),
+};
+type ListingInput = z.infer<z.ZodObject<typeof Listing>>;
+const LISTING_KEYS = Object.keys(Listing) as (keyof ListingInput)[];
 const CreateProduct = z.object({
   title: z.string().trim().min(1).max(500),
   description: z.string().max(10_000).default(''),
   status: z.enum(SELLER_STATUSES).default('ACTIVATE'),
   skus: z.array(SkuInput).min(1).max(100),
+  ...Listing,
 });
 const UpdateProduct = z
   .object({
-    title: z.string().trim().min(1).max(500),
-    description: z.string().max(10_000),
-    status: z.enum(SELLER_STATUSES),
-    isNotForSale: z.boolean(),
+    title: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(10_000).optional(),
+    status: z.enum(SELLER_STATUSES).optional(),
+    isNotForSale: z.boolean().optional(),
+    ...Listing,
   })
-  .partial()
-  .refine((v) => Object.keys(v).length > 0, 'nothing to update');
+  .refine((v) => Object.values(v).some((x) => x !== undefined), 'nothing to update');
+
+interface StoredAttribute {
+  id: string;
+  name?: string;
+  values: { id?: string; name?: string }[];
+}
 const UpdateSku = z
   .object({
     sellerSku: z.string().trim().min(1).max(100),
@@ -79,6 +119,28 @@ function principal(req: DemoRequest): DemoPrincipal {
   return req.demo!;
 }
 
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Stored `mainImages` (TikTok shape) as {uri, url, width, height}; entries without a usable URL are skipped. */
+function imagesOf(mainImages: Prisma.JsonValue): { uri: string; url: string; width: number | null; height: number | null }[] {
+  if (!Array.isArray(mainImages)) return [];
+  return mainImages.flatMap((i) => {
+    if (!isObj(i) || typeof i.uri !== 'string') return [];
+    const url = Array.isArray(i.urls) && typeof i.urls[0] === 'string' ? i.urls[0] : /^https?:\/\//i.test(i.uri) ? i.uri : undefined;
+    if (!url) return [];
+    return [{ uri: i.uri, url, width: typeof i.width === 'number' ? i.width : null, height: typeof i.height === 'number' ? i.height : null }];
+  });
+}
+
+/** TikTok stores package numbers as strings; the Seller Center reads numbers. */
+function weightOf(v: Prisma.JsonValue | null) {
+  return isObj(v) && Number(v.value) > 0 ? { value: Number(v.value), unit: typeof v.unit === 'string' ? v.unit : 'KILOGRAM' } : null;
+}
+function dimensionsOf(v: Prisma.JsonValue | null) {
+  if (!isObj(v) || !['length', 'width', 'height'].every((k) => Number(v[k]) > 0)) return null;
+  return { length: Number(v.length), width: Number(v.width), height: Number(v.height), unit: typeof v.unit === 'string' ? v.unit : 'CENTIMETER' };
+}
+
 function sellerView(p: ProductRow) {
   return {
     id: p.id,
@@ -87,6 +149,13 @@ function sellerView(p: ProductRow) {
     description: p.description,
     status: p.status,
     isNotForSale: p.isNotForSale,
+    images: imagesOf(p.mainImages),
+    categoryId: p.categoryId,
+    categoryPath: categoryChain(p.categoryId).map((c) => ({ id: c.id, name: c.local_name })),
+    brandId: p.brandId,
+    productAttributes: (Array.isArray(p.productAttributes) ? p.productAttributes : []) as unknown as StoredAttribute[],
+    packageWeight: weightOf(p.packageWeight),
+    packageDimensions: dimensionsOf(p.packageDimensions),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     skus: p.skus.map((s) => ({
@@ -138,6 +207,34 @@ function buyerView(p: ProductRow) {
   };
 }
 
+interface CategoryNode {
+  id: string;
+  name: string;
+  isLeaf: boolean;
+  children: CategoryNode[];
+}
+
+/** Categories a seller may list in (permission AVAILABLE), as a tree in data order. */
+function categoryTree(): CategoryNode[] {
+  const byParent = new Map<string, CategoryMeta[]>();
+  for (const c of CATEGORIES_DATA) {
+    if (!c.permission_statuses.includes('AVAILABLE')) continue;
+    byParent.set(c.parent_id, [...(byParent.get(c.parent_id) ?? []), c]);
+  }
+  const build = (parentId: string): CategoryNode[] =>
+    (byParent.get(parentId) ?? []).map((c) => ({ id: c.id, name: c.local_name, isLeaf: c.is_leaf, children: c.is_leaf ? [] : build(c.id) }));
+  return build('0');
+}
+
+/** A leaf category a seller may list in: unknown => 404, not a leaf or not AVAILABLE => 400. */
+function availableLeaf(categoryId: string): CategoryMeta {
+  const c = findCategory(categoryId);
+  if (!c) throw new NotFoundException('Unknown category');
+  if (!c.is_leaf) throw new BadRequestException('Choose a leaf category (one without sub-categories)');
+  if (!c.permission_statuses.includes('AVAILABLE')) throw new BadRequestException('This category is not available to the shop');
+  return c;
+}
+
 const escapeXml = (s: string): string => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
 
 /**
@@ -149,6 +246,7 @@ export class CatalogDemoController {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(BusinessClock) private readonly clock: BusinessClock,
     @Inject(WebhookEmitter) private readonly emitter: WebhookEmitter,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   // ---- Public Marketplace Storefront --------------------------------------------------------------------------
@@ -244,17 +342,56 @@ export class CatalogDemoController {
     return { currency: 'VND', warehouses, items: products.map(sellerView) };
   }
 
+  // ---- Seller: category, attribute and brand data (the same data as the TikTok router) -------------------------
+
+  @Get('shops/:shopId/catalog/categories')
+  @UseGuards(DemoSessionGuard)
+  categories(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
+    assertSellerShop(principal(req), shopId);
+    return { categories: categoryTree() };
+  }
+
+  @Get('shops/:shopId/catalog/categories/:categoryId/attributes')
+  @UseGuards(DemoSessionGuard)
+  categoryAttributes(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('categoryId') categoryId: string) {
+    assertSellerShop(principal(req), shopId);
+    availableLeaf(categoryId);
+    return {
+      attributes: attributesFor(categoryId)
+        .filter((a) => a.type === 'PRODUCT_PROPERTY')
+        .map((a) => ({ id: a.id, name: a.name, isRequired: a.is_requried, isMultipleSelection: a.is_multiple_selection, isCustomizable: a.is_customizable, values: a.values })),
+    };
+  }
+
+  @Get('shops/:shopId/catalog/categories/:categoryId/rules')
+  @UseGuards(DemoSessionGuard)
+  categoryRules(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Param('categoryId') categoryId: string) {
+    assertSellerShop(principal(req), shopId);
+    availableLeaf(categoryId);
+    const r = rulesFor(categoryId);
+    return { packageDimensionsRequired: r.package_dimension.is_required, sizeChartSupported: r.size_chart.is_supported, codSupported: r.cod.is_supported };
+  }
+
+  @Get('shops/:shopId/catalog/brands')
+  @UseGuards(DemoSessionGuard)
+  brands(@Req() req: DemoRequest, @Param('shopId') shopId: string) {
+    assertSellerShop(principal(req), shopId);
+    return { brands: BRANDS_DATA.map((b) => ({ id: b.id, name: b.name, authorized: b.authorized_status === 'AUTHORIZED' })) };
+  }
+
   @Post('shops/:shopId/catalog/products')
   @UseGuards(DemoSessionGuard)
   async create(@Req() req: DemoRequest, @Param('shopId') shopId: string, @Body(new ZodPipe(CreateProduct)) body: z.infer<typeof CreateProduct>) {
     const p = principal(req);
     assertSellerShop(p, shopId);
+    const listing = await this.listingFields(shopId, body);
     const warehouses = await this.prisma.warehouse.findMany({ where: { shopId } });
     const now = this.clock.now();
     const productId = randomUUID();
     const created = await this.prisma.$transaction(async (tx) => {
       await tx.product.create({
         data: {
+          ...(listing as Omit<Prisma.ProductUncheckedCreateInput, 'id' | 'shopId' | 'externalId' | 'title'>),
           id: productId,
           shopId,
           externalId: numericId('7500', `product:${productId}`),
@@ -283,9 +420,11 @@ export class CatalogDemoController {
     assertSellerShop(p, shopId);
     const existing = await this.ownedProduct(shopId, productId);
     if (existing.status === 'DELETED') throw new BadRequestException('A deleted product cannot be edited');
+    const { title, description, status, isNotForSale } = body;
+    const listing = await this.listingFields(shopId, body, existing);
     const updated = await this.prisma.product.update({
       where: { id: existing.id },
-      data: { ...body, updatedAt: this.clock.now() },
+      data: { title, description, status, isNotForSale, ...listing, updatedAt: this.clock.now() },
       include: productInclude,
     });
     return sellerView(updated);
@@ -408,6 +547,107 @@ export class CatalogDemoController {
   }
 
   // ---- helpers ------------------------------------------------------------------------------------------------
+
+  /**
+   * Turns the camelCase listing fields into stored columns. Checked by the TikTok `checkListing` (leaf category, brand,
+   * the DA-6 demo rules, package dimensions) plus the Seller Center rules of DECISIONS DA-14: every attribute the category
+   * flags `is_requried`, attributes and listed values of that category only, and images uploaded by this shop.
+   * Runs only when a listing field is sent; on edit the stored values stand in for the fields that are not sent.
+   */
+  private async listingFields(shopId: string, body: ListingInput, existing?: ProductRow): Promise<Prisma.ProductUncheckedUpdateInput> {
+    if (!LISTING_KEYS.some((k) => body[k] !== undefined)) return {};
+    const reasons: string[] = [];
+
+    let mainImages: Prisma.InputJsonValue[] | undefined;
+    if (body.images !== undefined) {
+      // An image already on the product (e.g. a seeded external URL) is kept as stored; a new one must be uploaded by this shop.
+      const stored = new Map<string, Prisma.InputJsonValue>();
+      if (Array.isArray(existing?.mainImages)) for (const i of existing.mainImages) if (isObj(i) && typeof i.uri === 'string') stored.set(i.uri, i as Prisma.InputJsonValue);
+      const fresh = body.images.filter((u) => !stored.has(u));
+      const ids = fresh.map((u) => mediaIdFromUri(u));
+      if (new Set(body.images).size !== body.images.length) reasons.push('images must not repeat');
+      else if (ids.some((id) => !id)) reasons.push('images must be uri values returned by the image upload');
+      else {
+        const assets = ids.length ? await this.prisma.mediaAsset.findMany({ where: { id: { in: ids as string[] }, shopId }, select: { id: true, width: true, height: true } }) : [];
+        const byId = new Map(assets.map((a) => [a.id, a]));
+        if (ids.some((id) => !byId.has(id!))) reasons.push('every image must be uploaded by this shop');
+        else
+          mainImages = body.images.map((u) => {
+            const kept = stored.get(u);
+            if (kept !== undefined) return kept;
+            const a = byId.get(mediaIdFromUri(u)!)!;
+            const url = mediaUrl(this.config.publicApiBaseUrl, a.id);
+            return { uri: `${MEDIA_URI_PREFIX}${a.id}`, urls: [url], thumb_urls: [url], width: a.width, height: a.height };
+          });
+      }
+    }
+
+    const categoryChanged = body.categoryId !== undefined && body.categoryId !== existing?.categoryId;
+    const categoryId = body.categoryId ?? existing?.categoryId ?? undefined;
+    // A new category drops the stored attributes unless new ones are sent.
+    const attrs: StoredAttribute[] = body.productAttributes ?? (categoryChanged ? [] : ((existing?.productAttributes ?? []) as unknown as StoredAttribute[]));
+
+    const snake: Record<string, unknown> = {};
+    if (body.categoryId !== undefined) snake.category_id = body.categoryId;
+    if (body.brandId) snake.brand_id = body.brandId;
+    if (mainImages !== undefined) snake.main_images = mainImages;
+    if (body.productAttributes !== undefined || categoryChanged) snake.product_attributes = attrs;
+    if (body.packageWeight) snake.package_weight = { value: String(body.packageWeight.value), unit: body.packageWeight.unit };
+    if (body.packageDimensions) {
+      const d = body.packageDimensions;
+      snake.package_dimensions = { length: String(d.length), width: String(d.width), height: String(d.height), unit: d.unit };
+    }
+    const stored: ListingFields = existing
+      ? {
+          categoryId: existing.categoryId ?? undefined,
+          productAttributes: existing.productAttributes as Prisma.InputJsonValue,
+          packageDimensions: body.packageDimensions === null ? undefined : ((existing.packageDimensions ?? undefined) as Prisma.InputJsonValue | undefined),
+        }
+      : {};
+    const checked = checkListing(snake, stored);
+    reasons.push(...checked.reasons);
+
+    const defs = categoryId && isLeafCategory(categoryId) ? attributesFor(categoryId).filter((a) => a.type === 'PRODUCT_PROPERTY') : [];
+    if (categoryId && isLeafCategory(categoryId)) {
+      if (!findCategory(categoryId)!.permission_statuses.includes('AVAILABLE')) reasons.push('this category is not available to the shop');
+      for (const a of attrs) {
+        const def = defs.find((d) => d.id === a.id);
+        if (!def) {
+          reasons.push(`attribute ${a.id} does not belong to this category`);
+          continue;
+        }
+        if (!def.is_multiple_selection && a.values.length > 1) reasons.push(`${def.name} takes one value`);
+        for (const v of a.values) {
+          if (v.id !== undefined && !def.values.some((x) => x.id === v.id)) reasons.push(`${def.name}: unknown value ${v.id}`);
+          else if (v.id === undefined && !def.is_customizable) reasons.push(`${def.name} only accepts its listed values`);
+        }
+      }
+      for (const d of defs) if (d.is_requried && !attrs.some((a) => a.id === d.id && a.values.length > 0)) reasons.push(`${d.name} is required for this category`);
+    } else if (!categoryId && attrs.length) {
+      reasons.push('choose a category before setting attributes');
+    }
+    if (reasons.length) throw new BadRequestException({ statusCode: 400, message: [...new Set(reasons)].join('; '), error: 'Bad Request' });
+
+    const out: Prisma.ProductUncheckedUpdateInput = {};
+    const f = checked.fields;
+    if (f.categoryId !== undefined) out.categoryId = f.categoryId;
+    if (body.brandId !== undefined) out.brandId = body.brandId;
+    if (f.mainImages !== undefined) out.mainImages = f.mainImages;
+    if (snake.product_attributes !== undefined) {
+      // Stored in the TikTok shape, with attribute and value names filled in from the category data.
+      out.productAttributes = attrs.map((a) => {
+        const def = defs.find((d) => d.id === a.id);
+        return {
+          id: a.id,
+          ...(def ? { name: def.name } : {}),
+          values: a.values.map((v) => ({ ...(v.id ? { id: v.id } : {}), name: v.name ?? def?.values.find((x) => x.id === v.id)?.name ?? v.id ?? '' })),
+        };
+      });
+    }
+    if (body.packageWeight !== undefined) out.packageWeight = f.packageWeight ?? Prisma.DbNull;
+    if (body.packageDimensions !== undefined) out.packageDimensions = f.packageDimensions ?? Prisma.DbNull;
+    return out;
+  }
 
   private async ownedProduct(shopId: string, productId: string): Promise<ProductRow> {
     // Accepts the row id; a product of another shop is reported as unknown (never confirmed to exist).

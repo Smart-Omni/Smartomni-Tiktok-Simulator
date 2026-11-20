@@ -2,9 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { computeApiSignature } from '../src/tiktok/signature';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 
 const SEARCH = '/product/202502/products/search';
 const WAREHOUSES = '/logistics/202309/warehouses';
@@ -26,8 +25,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   // ---------- helpers ----------
@@ -393,8 +391,7 @@ describe('Phase 04: test-admin bulk catalog', () => {
     await app.close();
   });
   it('requires the admin token, creates the requested products with unique ids, and is not reachable from the TikTok router', async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     const http = request(app.getHttpServer());
     const shop = await prisma.shop.findFirstOrThrow();
     await http.post('/test-admin/catalog/bulk').send({ shopId: shop.id, count: 3 }).expect(401);

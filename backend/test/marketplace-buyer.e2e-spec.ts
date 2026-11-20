@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
-import { cleanDb, createApp } from './helpers';
+import { createApp, resetToSeed } from './helpers';
 
 describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
   let app: INestApplication;
@@ -20,8 +19,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
   });
 
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   describe('Session Management (scope & shopId)', () => {
@@ -187,6 +185,41 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
       const placedOrder = buyerOrders.body.items.find((o: any) => o.id === checkoutRes.body.order.id);
       expect(placedOrder).toBeDefined();
       expect(placedOrder.shop).toMatchObject({ id: shopA.id, name: shopA.name });
+    });
+
+    it('places one order per shop, pays, chats and lists coupons/aftersale in a shop other than the default one', async () => {
+      const ids = (await http.get('/demo/identities')).body;
+      const buyer = ids.buyers[0];
+      const sess = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyer.id }).expect(201)).body;
+      const auth = { 'x-demo-session': sess.sessionToken };
+
+      // two shops, neither of them has to be the buyer's own one
+      const others = await prisma.shop.findMany({ where: { status: 'ACTIVE', id: { not: sess.shopId } }, include: { products: { include: { skus: true } } }, orderBy: { id: 'asc' }, take: 2 });
+      expect(others).toHaveLength(2);
+      const [one, two] = others;
+      const placed: { shopId: string; orderId: string }[] = [];
+      for (const shop of [one, two]) {
+        const sku = shop.products.find((p) => p.skus.length)!.skus[0];
+        await http.put(`/demo/shops/${shop.id}/cart/items`).set(auth).send({ skuId: sku.externalId, quantity: 1 }).expect(200);
+        const r = await http.post(`/demo/shops/${shop.id}/checkout`).set(auth).send({ checkoutKey: `cross-shop-${shop.id}` }).expect(201);
+        expect(r.body.order.shopId).toBe(shop.id);
+        placed.push({ shopId: shop.id, orderId: r.body.order.id });
+      }
+
+      const all = (await http.get('/demo/buyer/orders').set(auth).expect(200)).body.items;
+      expect(placed.every((p) => all.some((o: any) => o.id === p.orderId && o.shop.id === p.shopId))).toBe(true);
+
+      // pay in the second shop through the shop-scoped endpoint
+      const paid = await http.post(`/demo/shops/${two.id}/orders/${placed[1].orderId}/pay`).set(auth).expect(201);
+      expect(paid.body.order.shopId).toBe(two.id);
+
+      // chat, coupons and aftersale take the shop from the URL, not from the session
+      await http.post(`/demo/shops/${two.id}/chat/messages`).set(auth).send({ text: 'Hello from another shop' }).expect(201);
+      const convs = (await http.get(`/demo/shops/${two.id}/chat/conversations`).set(auth).expect(200)).body.items;
+      expect(convs).toHaveLength(1);
+      expect((await http.get(`/demo/shops/${one.id}/chat/conversations`).set(auth).expect(200)).body.items).toHaveLength(0);
+      await http.get(`/demo/shops/${two.id}/coupons`).set(auth).expect(200);
+      await http.get(`/demo/shops/${two.id}/aftersale`).set(auth).expect(200);
     });
   });
 });

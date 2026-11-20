@@ -2,9 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { conformErrors } from './contract';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const admin = { 'x-test-admin-token': ADMIN_TOKEN };
@@ -36,8 +35,7 @@ describe('Phase 06: Update Inventory (absolute quantities), faults, change log',
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
     shopBId = (await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Gốm' } } })).id;
     shopAId = (await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Mộc Lan' } } })).id;
     const ws = await prisma.warehouse.findMany({ where: { shopId: shopAId }, orderBy: { code: 'asc' } });

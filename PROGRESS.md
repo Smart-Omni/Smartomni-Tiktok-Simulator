@@ -16,6 +16,7 @@ Working repo: this one (`Smartomni-Tiktok-Simulator`). The SmartOmni platform re
 | 09a Coupons (steps 1-5) | done (read API, checkout discount) - commit `e8ee868` (merged) | BLOCKED (voucher lock message, no success email) | PARTIAL |
 | 09b Loyalty (steps 6-11) | done: boundary test data via business clock (`/test-admin/scenarios/loyalty-orders`) | BLOCKED (claim, points, tiers: docs/smartomni-requirements/phase-09.md) | PARTIAL |
 | 10 Test/handover | done on the simulator side: clean Docker build, Playwright 23/23, README, support matrix, REPORT.md | BLOCKED (steps 5 and 11 need the SmartOmni side) | PARTIAL |
+| Product media (docs/product-media-plan.md) | done: seed names, buyers buy from every shop, shared catalog-meta, images in PostgreSQL, `/demo` listing fields, Seller Center product page; Playwright 21/25 locally without Docker (the 4 phase10 restart tests need a running Docker daemon) | n/a | DONE |
 
 ## Outstanding
 - Everything SmartOmni-side (see the BLOCKED column and `REPORT.md`): the Buyer -> simulator -> SmartOmni -> inventory chain is NOT demonstrated.

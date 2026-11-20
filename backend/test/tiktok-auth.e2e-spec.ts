@@ -4,10 +4,9 @@ import { join } from 'path';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SeedService } from '../src/seed/seed.service';
 import { SCOPE_AUTHORIZED_SHOPS } from '../src/oauth/scopes';
 import { apiStringToSign, computeApiSignature } from '../src/tiktok/signature';
-import { ADMIN_TOKEN, cleanDb, createApp } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 
 const admin = { 'x-test-admin-token': ADMIN_TOKEN };
 const SHOPS_PATH = '/authorization/202309/shops';
@@ -35,8 +34,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
     await app.close();
   });
   beforeEach(async () => {
-    await cleanDb(prisma);
-    await app.get(SeedService).seedAll();
+    await resetToSeed(app, prisma);
   });
 
   // ---------- helpers ----------

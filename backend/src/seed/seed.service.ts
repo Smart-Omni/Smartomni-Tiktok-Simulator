@@ -126,7 +126,7 @@ export class SeedService {
             district: b.district,
             city: b.city,
           },
-          update: { name: b.name, phone: b.phone },
+          update: { name: b.name, phone: b.phone, addressLine: b.addressLine, district: b.district, city: b.city },
         });
       }
       for (const p of def.products) {

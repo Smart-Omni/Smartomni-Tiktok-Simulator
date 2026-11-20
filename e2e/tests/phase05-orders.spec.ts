@@ -27,7 +27,7 @@ test('a marketplace product link opens the right product for a buyer and the SKU
   await expect(page).toHaveURL(new RegExp(`${TEE}$`));
   await expect(page.getByText('Sign in to view this product.')).toBeVisible();
   await signInAs(page, 'BUYER', BUYER_A, TEE);
-  await expect(page.getByText('Sold by')).toContainText('Cửa hàng Mộc Lan (demo)');
+  await expect(page.getByText('Sold by')).toContainText('Cửa hàng Mộc Lan');
   await expect(page.getByRole('heading', { level: 1, name: 'Áo thun cotton basic' })).toBeVisible();
   await page.getByRole('radio', { name: 'Đen / M' }).click();
   await expect(page.getByTestId('price')).toHaveText('₫135.000');
