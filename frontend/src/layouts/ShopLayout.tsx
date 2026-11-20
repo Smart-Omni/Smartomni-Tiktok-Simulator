@@ -177,7 +177,7 @@ export function ShopLayout() {
               </div>
             </div>
             <div className="buyer-home-primary">
-              <Link to="/" className="buyer-home-brand">TikTok SHOP SIMULATOR</Link>
+              <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><span>TikTok</span><small>SHOP SIMULATOR</small></Link>
               <SearchPill wide />
               <div className="buyer-header-actions">
                 <Link to="/cart" className="buyer-home-cart"><ShoppingCart size={22} /><span>Cart</span></Link>

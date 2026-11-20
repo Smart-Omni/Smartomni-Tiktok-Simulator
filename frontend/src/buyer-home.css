@@ -4,8 +4,10 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-home-frame { min-height:inherit; }
 .buyer-home-header { padding:0 var(--buyer-gutter); background:#141414; color:#fff; }
 .buyer-home-utility { display:flex; align-items:center; justify-content:center; min-height:40px; gap:16px; }
-.buyer-home-primary { display:grid; grid-template-columns:220px minmax(0,540px) auto; justify-content:center; align-items:center; gap:16px; min-height:86px; padding:8px 0 16px; }
-.buyer-home-brand { color:#fff; font-size:16px; font-weight:700; letter-spacing:-.7px; white-space:nowrap; }
+.buyer-home-primary { display:grid; grid-template-columns:220px minmax(0,540px) auto; justify-content:start; align-items:center; gap:16px; min-height:86px; padding:8px 0 16px; }
+.buyer-home-brand { display:flex; flex-direction:column; align-items:flex-start; justify-self:start; gap:5px; color:#fff; white-space:nowrap; }
+.buyer-home-brand > span { font-size:32px; line-height:1; font-weight:750; letter-spacing:-1.2px; }
+.buyer-home-brand > small { font-size:10px; line-height:1.2; font-weight:500; letter-spacing:2px; }
 .buyer-home-toplinks { display:flex; align-items:center; justify-content:center; gap:12px; font-size:12px; }
 .buyer-home-toplinks > span { color:#686868; }
 .buyer-home-toplinks > a { display:flex; align-items:center; gap:7px; min-height:32px; padding:6px 10px; border-radius:6px; color:#d5d5d5; }
