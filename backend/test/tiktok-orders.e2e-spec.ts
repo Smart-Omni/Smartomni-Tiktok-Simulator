@@ -459,6 +459,18 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       expect(id).toBeTruthy();
     });
 
+    it('an API fault rule scoped to one shop hits that shop only, and is consumed once', async () => {
+      const a = await t.connect(0);
+      const b = await t.connect(1);
+      const search = (token: string) => t.call('POST', SEARCH, token, { query: { page_size: '10' }, body: {} });
+      const rule = await http.post('/test-admin/faults').set(admin).send({ shopId: shopAId, target: 'API', kind: 'HTTP_ERROR', pathMatch: '/order/', remaining: 1, params: { status: 503 } }).expect(201);
+      await search(b.accessToken).expect(200); // shop B: rule does not match
+      expect((await prisma.faultRule.findUniqueOrThrow({ where: { id: rule.body.id } })).remaining).toBe(1);
+      await search(a.accessToken).expect(503); // shop A: rule matches
+      expect((await prisma.faultRule.findUniqueOrThrow({ where: { id: rule.body.id } })).remaining).toBe(0);
+      await search(a.accessToken).expect(200); // exhausted
+    });
+
     it('DROP and DUPLICATE faults behave as documented', async () => {
       const a = await t.connect(0);
       await subscribe(a.accessToken);

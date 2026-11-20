@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { FaultService } from '../faults/fault.service';
 import { classifyRouter } from '../http-log/request-log.middleware';
 import { OAuthModule } from '../oauth/oauth.module';
+import { OAuthService } from '../oauth/oauth.service';
 import { AftersaleModule } from '../aftersale/aftersale.module';
 import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { AftersaleController } from './aftersale.controller';
@@ -31,14 +32,21 @@ import { TokenController } from './token.controller';
  */
 @Injectable()
 export class TiktokFaultMiddleware implements NestMiddleware {
-  constructor(@Inject(FaultService) private readonly faults: FaultService) {}
+  constructor(
+    @Inject(FaultService) private readonly faults: FaultService,
+    @Inject(OAuthService) private readonly oauth: OAuthService,
+  ) {}
 
   /** Applies API-target fault rules (set via /test-admin/faults) to TikTok-router requests only. */
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     const path = req.originalUrl.split('?')[0];
     if (classifyRouter(path) !== 'TIKTOK') return next();
     try {
-      const rule = await this.faults.consume('API', ((req as any).shopId as string | undefined) ?? null, path);
+      // Middleware runs before TiktokApiGuard, so the shop is not known yet: resolve it from the access token so that
+      // shop-scoped rules can match. Lookup only; authentication still happens in the guard, and req.shopId is left alone.
+      const rawAccess = req.header('x-tts-access-token');
+      const shopId = rawAccess ? await this.oauth.shopIdOfAccessToken(rawAccess) : null;
+      const rule = await this.faults.consume('API', shopId, path);
       if (!rule) return next();
       if (rule.kind === 'DELAY') {
         await new Promise((r) => setTimeout(r, Math.min(Number((rule.params as any)?.delayMs ?? 1000), 30000)));
