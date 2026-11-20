@@ -328,9 +328,17 @@ Gate: backend + frontend + `cd e2e && npm test` (cần stack chạy; nếu khôn
 
 ## Điểm còn mở (cần bạn quyết)
 
+"Voucher lẻ" = voucher tạo bằng nút **New voucher** (phase 09a): một mã dùng chung cho mọi buyer đến hết
+`redemptionLimit`, hiện công khai ở checkout, hủy đơn UNPAID thì hoàn lượt. Khác với mã thuộc lô.
+
 | Điểm | Mặc định trong plan | Bỏ nếu |
 |---|---|---|
 | Ô Code của voucher lẻ thành tùy chọn (để trống thì tự sinh) | Có (Phase 2, 4) | Bạn muốn voucher lẻ luôn gõ tay |
-| Seller Home thêm dòng "Code batches: n active" | Có (Phase 4) | Bạn muốn giữ nguyên Seller Home |
-| Danh sách voucher của seller ẩn mã lô (xem theo lô ở tab riêng) | Có (Phase 2) | Bạn muốn seller thấy mọi mã trong một bảng |
-| Qua API không phân biệt "bị đốt do hủy đơn" với "seller tắt" | Chấp nhận (OAS chỉ có `DEACTIVATED`) | Bạn cần phân biệt: khi đó phải giữ `redeemed_count = 1` thay vì về 0 |
+
+### Đã chốt
+
+| Điểm | Quyết định |
+|---|---|
+| Seller Home thêm dòng "Code batches: n active" | Có (Phase 4) |
+| Danh sách voucher của seller ẩn mã lô (xem theo lô ở tab riêng) | Có (Phase 2) |
+| Qua API không phân biệt "bị đốt do hủy đơn" với "seller tắt" | Không cần phân biệt: cả hai là `DEACTIVATED`, `redeemed_count` về 0 khi bị đốt (Q8) |
