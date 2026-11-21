@@ -24,11 +24,37 @@ it('loads the selected shop, paginates, searches without diacritics and sorts re
   fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
   expect(screen.getByRole('link', { name: /Áo khoác đẹp/ }).getAttribute('href')).toBe('/product/shop-1/product-19');
   fireEvent.change(screen.getByRole('textbox', { name: 'Search in this shop' }), { target: { value: 'ao khoac' } });
-  expect(screen.getByText('1–1 of 1')).toBeTruthy();
+  expect(screen.queryByRole('navigation', { name: 'Shop products pagination' })).toBeNull();
   fireEvent.change(screen.getByRole('textbox', { name: 'Search in this shop' }), { target: { value: '' } });
   fireEvent.change(screen.getByRole('combobox', { name: 'Sort shop products' }), { target: { value: 'price-desc' } });
   expect(within(catalog).getAllByRole('link')[0].textContent).toContain('Áo khoác đẹp');
   expect(screen.queryByText(/sold/)).toBeNull();
+});
+
+it('combines price range, SKU availability and search and can clear all filters', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => json({ items: [
+    { ...product(1), maxPriceVnd: 30000, skus: [{ available: true, stock: 2 }] },
+    { ...product(2), skus: [{ available: false, stock: 0 }] },
+    { ...product(3), skus: [{ available: true, stock: 1 }] },
+  ], nextCursor: null })));
+  show();
+  await screen.findByText('Item 1');
+  const filters = screen.getByRole('complementary', { name: 'Shop filters' });
+  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Minimum price' }), { target: { value: '25000' } });
+  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Maximum price' }), { target: { value: '20000' } });
+  expect((within(filters).getByRole('button', { name: 'Apply' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Maximum price' }), { target: { value: '30000' } });
+  fireEvent.click(within(filters).getByRole('button', { name: 'Apply' }));
+  expect(screen.getByText('Item 1')).toBeTruthy(); // its variant range overlaps the chosen price range
+  expect(screen.queryByText('Item 2')).toBeNull();
+  fireEvent.click(within(filters).getByRole('checkbox', { name: 'In stock only' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search in this shop' }), { target: { value: 'Item 2' } });
+  expect(screen.getByText('No products match your filters.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+  expect(screen.getByText('Item 2')).toBeTruthy();
+  fireEvent.click(within(filters).getByRole('checkbox', { name: 'In stock only' }));
+  expect(screen.queryByText('Item 2')).toBeNull();
+  expect(screen.getByText('Item 3')).toBeTruthy();
 });
 
 it('resets filters and old products when navigating to a different shop', async () => {
@@ -56,4 +82,19 @@ it('keeps the shop filter on every cursor request and encodes URL values', async
   vi.stubGlobal('fetch', fetcher);
   expect(await listMarketplaceProducts('shop/1')).toHaveLength(2);
   expect(fetcher.mock.calls.map((args) => args[0])).toEqual(['/demo/catalog?limit=100&shopId=shop%2F1', '/demo/catalog?limit=100&shopId=shop%2F1&cursor=next%2F1']);
+});
+
+it('uses the homepage pagination window with three numbered pages and 18 products per page', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => json({ items: Array.from({ length: 80 }, (_, i) => product(i + 1)), nextCursor: null })));
+  show();
+  const pagination = await screen.findByRole('navigation', { name: 'Shop products pagination' });
+  expect(within(pagination).getByRole('button', { name: 'Page 1' }).getAttribute('aria-current')).toBe('page');
+  fireEvent.click(within(pagination).getByRole('button', { name: 'Page 3' }));
+  expect(within(pagination).queryByRole('button', { name: 'Page 1' })).toBeNull();
+  expect(screen.getByText('Item 37')).toBeTruthy();
+  expect(within(pagination).getByRole('button', { name: 'Page 3' }).getAttribute('aria-current')).toBe('page');
+  fireEvent.click(within(pagination).getByRole('button', { name: 'Page 4' }));
+  fireEvent.click(within(pagination).getByRole('button', { name: 'Next page' }));
+  expect((within(pagination).getByRole('button', { name: 'Next page' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(within(pagination).getByRole('button', { name: 'Page 5' }).getAttribute('aria-current')).toBe('page');
 });
