@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
-import { ClipboardList, Headset, LayoutDashboard, Megaphone, Package, Store, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Headset, LayoutDashboard, Megaphone, Package, Store, ShieldCheck, ShoppingBag, ChevronRight, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -43,45 +43,21 @@ const menu: MenuGroup[] = [
   { label: 'Shop', icon: Store, to: `${base}/shop` },
 ];
 
-const linkClass = ({ isActive }: { isActive: boolean }) =>
-  cn('flex h-9 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm', isActive ? 'bg-teal-soft font-semibold text-teal' : 'text-ink hover:bg-surface-2');
-
-/** Side menu on md+; below md the same links become one horizontal strip under the header. */
+/** Same navigation hierarchy as the Console, using the existing Seller routes. */
 function SideMenu() {
   const ref = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
-  // On the mobile strip the active link can be off screen.
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [pathname]);
-  return (
-    <nav
-      ref={ref}
-      aria-label="Seller Center"
-      className="flex gap-1 overflow-x-auto border-b border-line-soft bg-white px-3 py-2 md:sticky md:top-14 md:block md:h-[calc(100vh-3.5rem)] md:w-[232px] md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r md:py-4"
-    >
-      {menu.map(({ label, icon: Icon, to, items }) =>
-        to ? (
-          <NavLink key={label} to={to} end className={(s) => cn(linkClass(s), 'gap-2.5 font-semibold md:mb-1')}>
-            <Icon className="size-[18px]" />
-            {label}
-          </NavLink>
-        ) : (
-          <div key={label} className="max-md:contents md:mb-1">
-            <div className="flex h-9 items-center gap-2.5 px-3 text-sm font-semibold text-ink max-md:hidden">
-              <Icon className="size-[18px]" />
-              {label}
-            </div>
-            {items?.map((i) => (
-              <NavLink key={i.to} to={i.to} className={(s) => cn(linkClass(s), 'md:pl-[42px]')}>
-                {i.label}
-              </NavLink>
-            ))}
-          </div>
-        ),
-      )}
-    </nav>
-  );
+  return <nav ref={ref} aria-label="Seller Center" className="seller-nav">
+    {menu.map(({ label, icon: Icon, to, items }) => <div className="seller-nav-group" key={label}>
+      <div className="seller-nav-group-label">{to === base ? 'Workspace' : label}</div>
+      {(to ? [{ to, label }] : items ?? []).map((item) => <NavLink key={item.to} to={item.to} end={item.to === base} className={({ isActive }) => cn('seller-nav-link', isActive && 'is-active')}>
+        <Icon size={16} aria-hidden="true" /><span>{item.label}</span><ChevronRight size={13} className="seller-nav-current" aria-hidden="true" />
+      </NavLink>)}
+    </div>)}
+  </nav>;
 }
 
 type SellerIdentity = Identities['sellers'][number];
@@ -94,7 +70,7 @@ function ShopPicker({ owner }: { owner: SellerIdentity | undefined }) {
   const current = shops.find((x) => x.id === seller?.shopId);
 
   if (!owner || shops.length < 2) {
-    return <span className="max-w-[140px] truncate text-sm text-white/80 sm:max-w-[220px]">{current?.name ?? ''}</span>;
+    return <span className="seller-shop-name">{current?.name ?? ''}</span>;
   }
   const change = async (shopId: string) => {
     setSwitching(true);
@@ -109,10 +85,10 @@ function ShopPicker({ owner }: { owner: SellerIdentity | undefined }) {
   };
   return (
     <Select value={seller?.shopId} onValueChange={change} disabled={switching}>
-      <SelectTrigger aria-label="Shop" size="sm" className="h-8 min-w-0 rounded-full sm:min-w-[180px] border-white/20 bg-white/10 text-white [&_svg]:text-white/70">
+      <SelectTrigger aria-label="Shop" size="sm" className="seller-shop-select">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="theme-seller">
         {shops.map((s) => (
           <SelectItem key={s.id} value={s.id}>
             {s.name}
@@ -132,7 +108,7 @@ function SellerMenu({ owner }: { owner: SellerIdentity | undefined }) {
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label="Seller account menu" className="cursor-pointer rounded-full">
           <Avatar className="size-8">
-            <AvatarFallback className="bg-teal text-xs font-semibold text-white">{name.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="!bg-[#e8e8e8] text-xs font-semibold !text-[#333]">{name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
@@ -162,30 +138,34 @@ export interface SellerContext {
 
 export const useSellerContext = () => useOutletContext<SellerContext>();
 
-/** Seller Center shell for /seller-center/*. Teal theme via .theme-seller. */
+/** Seller workspace with independent content scrolling and Console styling. */
 export function SellerLayout() {
   const { seller } = useAuth();
+  const { pathname } = useLocation();
+  const workspace = useRef<HTMLDivElement>(null);
   const ids = useAsync(getIdentities, []);
   const owner = ids.data?.sellers.find((s) => s.shops.some((x) => x.id === seller?.shopId));
+  useEffect(() => { if (workspace.current) workspace.current.scrollTop = 0; }, [pathname]);
   return (
-    <div className="theme-seller min-h-screen bg-surface-2 font-sans text-[15px] text-ink">
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 bg-ink px-4 text-white md:gap-4 md:px-5">
-        <Link to={base} className="flex shrink-0 items-center gap-2.5 font-bold">
-          <span className="flex size-8 items-center justify-center rounded-[9px] bg-white text-ink">t</span>
-          <span className="max-sm:hidden">Tiptop Shop</span>
-          {/* light teal on the black header */}
-          <span className="font-semibold text-[#5FD4CD]">Seller Center</span>
-        </Link>
-        <div className="ml-auto flex min-w-0 items-center gap-3">
-          <ShopPicker owner={owner} />
-          <SellerMenu owner={owner} />
+    <div className="seller-desktop-frame theme-seller font-sans">
+      <div className="seller-shell">
+        <aside className="seller-sidebar">
+          <Link to={base} className="seller-sidebar-brand"><ShieldCheck size={25} /><span>TikTok<small>SHOP SIMULATOR</small></span></Link>
+          <SideMenu />
+          <div className="seller-sidebar-note"><Store size={15} /><span>Seller workspace</span></div>
+        </aside>
+        <div className="seller-workspace" ref={workspace}>
+          <header className="seller-context-bar"><strong>Seller Center</strong><div className="seller-header-actions">
+            <Link to="/" className="seller-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link>
+            <Link to="/console" className="seller-role-link" aria-label="Open Test Console" title="Test Console"><ShieldCheck size={17} /></Link>
+            <SellerMenu owner={owner} />
+          </div></header>
+          <main className="seller-content">
+            <section className="seller-shop-context" aria-label="Working shop"><div><Store size={17} /><span>Working shop<small>{owner?.name ?? (ids.loading ? 'Loading seller…' : 'Seller account')}</small></span></div><ShopPicker owner={owner} /></section>
+            {ids.error && <div className="seller-load-notice" role="alert">Could not load seller information. <button onClick={ids.reload}>Retry</button></div>}
+            <div className="seller-page-content"><Outlet context={{ sellerName: owner?.name } satisfies SellerContext} /></div>
+          </main>
         </div>
-      </header>
-      <div className="flex flex-col md:flex-row">
-        <SideMenu />
-        <main className="min-w-0 flex-1 p-4 md:p-6">
-          <Outlet context={{ sellerName: owner?.name } satisfies SellerContext} />
-        </main>
       </div>
     </div>
   );

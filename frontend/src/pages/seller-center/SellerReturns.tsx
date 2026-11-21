@@ -41,7 +41,7 @@ function Returns({ seller }: { seller: DemoSession }) {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Returns & refunds</h1>
-      <p className="text-sm text-muted-foreground">A return does not change the order status. Stock is not added back here: the SmartOmni side restocks through its own receipt.</p>
+      <p className="text-sm text-muted-foreground">Review customer requests, manage return decisions and keep track of refunds.</p>
       <SellerCard>
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'open' ? { status: 'open' } : { status: 'all' }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">
@@ -58,7 +58,7 @@ function Returns({ seller }: { seller: DemoSession }) {
             const rows = tab === 'open' ? open : d.items;
             if (!rows.length) return <p className="py-12 text-center text-sm text-muted-foreground">{tab === 'open' ? 'No requests waiting for you.' : 'No cancellation or return requests.'}</p>;
             return (
-              <Table>
+              <Table className="seller-returns-table">
                 <TableHeader>
                   <TableRow className="bg-surface-2 hover:bg-surface-2">
                     <TableHead className="pl-4">Request</TableHead>
@@ -87,7 +87,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                       <TableCell className="max-w-[220px] whitespace-normal py-3 text-xs">{r.items.map((i) => `${i.quantity}× ${i.productName} (${i.skuName})`).join(', ')}</TableCell>
                       <TableCell className="py-3 text-xs">{humanize(r.reason)}</TableCell>
                       <TableCell className="py-3">
-                        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold">{humanize(r.status)}</span>
+                        <span className="seller-status" data-seller-status={r.status}>{humanize(r.status)}</span>
                         {r.rejectReason ? <div className="mt-1 text-xs text-muted-foreground">Rejected: {humanize(r.rejectReason)}</div> : null}
                         {r.returnTrackingNumber ? <div className="mt-1 font-mono text-xs text-muted-foreground">Return {r.returnTrackingNumber}</div> : null}
                       </TableCell>

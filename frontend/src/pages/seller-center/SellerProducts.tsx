@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ImageIcon, Pencil, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Pencil, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
@@ -92,6 +92,11 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   const [title, setTitle] = useState(p.title);
   const [variant, setVariant] = useState({ sellerSku: '', name: '', priceVnd: '' });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const prices = p.skus.map((s) => s.priceVnd);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  const maxPrice = prices.length ? Math.max(...prices) : null;
 
   const addVariant = async (e: FormEvent) => {
     e.preventDefault();
@@ -101,8 +106,8 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   };
 
   return (
-    <SellerCard label={`Product ${p.externalId}`} className="p-5">
-      <div className="flex flex-wrap items-center gap-3">
+    <SellerCard label={`Product ${p.externalId}`} className="seller-product-card p-4">
+      <div className="seller-product-summary">
         {p.images?.[0] ? (
           <img src={p.images[0].url} alt={`Main image of ${p.title}`} className="size-12 rounded-md object-cover ring-1 ring-line-soft" />
         ) : (
@@ -110,13 +115,21 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
             <ImageIcon className="size-5" />
           </div>
         )}
-        <div className="flex flex-col">
+        <div className="seller-product-identity">
           <h2 className="text-base font-bold">{p.title}</h2>
           {p.categoryPath?.length ? <span className="text-xs text-muted-foreground">{p.categoryPath.map((c) => c.name).join(' > ')}</span> : null}
+          <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
+        </div>
+        <div className="seller-product-numbers">
+          <strong>{minPrice === null ? 'No variants' : minPrice === maxPrice ? shopPrice(minPrice) : `${shopPrice(minPrice)} – ${shopPrice(maxPrice!)}`}</strong>
+          <span>{p.skus.length} variants · {p.skus.reduce((sum, s) => sum + s.totalStock, 0)} in stock</span>
         </div>
         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusTone(p.status))}>{humanize(p.status)}</span>
-        <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
+        <Button variant="outline" size="sm" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Collapse' : 'Manage'} <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
+        </Button>
       </div>
+      <div id={detailsId} hidden={!expanded}>
       {!deleted ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
@@ -170,7 +183,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
           </Button>
         </form>
       ) : null}
-
+      </div>
       {confirmDelete ? (
         <Dialog open onOpenChange={(o) => !o && setConfirmDelete(false)}>
           <DialogContent className="theme-seller font-sans sm:max-w-md">
@@ -196,6 +209,34 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Dialog>
       ) : null}
     </SellerCard>
+  );
+}
+
+const PRODUCTS_PER_PAGE = 10;
+
+function ProductList({ seller, catalog, lowOnly, run }: { seller: DemoSession; catalog: Catalog; lowOnly: boolean; run: Run }) {
+  const [page, setPage] = useState(1);
+  const items = lowOnly ? catalog.items.filter(isLowStock) : catalog.items;
+  const pages = Math.max(1, Math.ceil(items.length / PRODUCTS_PER_PAGE));
+  const currentPage = Math.min(page, pages);
+  const offset = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  if (!items.length) {
+    return <SellerCard className="py-12 text-center text-sm text-muted-foreground">{lowOnly ? 'No product is low on stock.' : 'No products yet. Create one with New product.'}</SellerCard>;
+  }
+  return (
+    <>
+      <div className="seller-product-list">
+        {items.slice(offset, offset + PRODUCTS_PER_PAGE).map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={catalog.warehouses} run={run} />)}
+      </div>
+      <nav aria-label="Product pagination" className="seller-product-pagination">
+        <span>{offset + 1}–{Math.min(offset + PRODUCTS_PER_PAGE, items.length)} of {items.length} products</span>
+        <div>
+          <Button variant="outline" size="sm" aria-label="Previous product page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="size-3.5" /></Button>
+          <span>Page {currentPage} of {pages}</span>
+          <Button variant="outline" size="sm" aria-label="Next product page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight className="size-3.5" /></Button>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -346,17 +387,7 @@ function Products({ seller }: { seller: DemoSession }) {
             </div>
           ) : null}
           <Loaded result={catalog} what="products">
-            {(d) => {
-              const items = lowOnly ? d.items.filter(isLowStock) : d.items;
-              if (!items.length) {
-                return (
-                  <SellerCard className="py-12 text-center text-sm text-muted-foreground">
-                    {lowOnly ? 'No product is low on stock.' : 'No products yet. Create one with New product.'}
-                  </SellerCard>
-                );
-              }
-              return items.map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={d.warehouses} run={run} />);
-            }}
+            {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} />}
           </Loaded>
         </TabsContent>
         <TabsContent value="history">

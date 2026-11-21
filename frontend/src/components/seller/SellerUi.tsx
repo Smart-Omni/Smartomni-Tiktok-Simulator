@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 /** White 12px card on the #F4F4F5 Seller Center background (board SellerOrders). */
 export function SellerCard({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <section aria-label={label} className={cn('rounded-card bg-white shadow-xs ring-1 ring-line-soft', className)}>
+    <section aria-label={label} className={cn('seller-card rounded-card bg-white shadow-xs ring-1 ring-line-soft', className)}>
       {children}
     </section>
   );

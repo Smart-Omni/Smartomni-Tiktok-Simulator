@@ -175,9 +175,34 @@ describe('Seller Center returns', () => {
 describe('Seller Center products', () => {
   const card = (externalId: string) => screen.getByRole('region', { name: `Product ${externalId}` });
 
+  it('paginates the catalog and keeps product editors collapsed until requested', async () => {
+    const fetchCatalog = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/catalog`
+      ? Promise.resolve(json({ ...catalog, items: Array.from({ length: 11 }, (_, i) => ({ ...catalog.items[0], id: `p-${i}`, externalId: `P${i + 1}` })) }))
+      : fetchCatalog(url, init)));
+    renderAt('/seller-center/products');
+    await screen.findByRole('region', { name: 'Product P1' });
+    expect(screen.getAllByRole('region', { name: /^Product P/ })).toHaveLength(10);
+    expect(screen.queryByRole('region', { name: 'Product P11' })).toBeNull();
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Manage' }));
+    expect(within(card('P1')).getByRole('row', { name: 'SKU TEE-M' })).toBeTruthy();
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Collapse' }));
+    expect(within(card('P1')).queryByRole('row', { name: 'SKU TEE-M' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next product page' }));
+    expect(screen.getAllByRole('region', { name: /^Product P/ })).toHaveLength(1);
+    expect(card('P11')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Next product page' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous product page' }));
+    expect(card('P1')).toBeTruthy();
+    expect(writes()).toHaveLength(0);
+  });
+
   it('edits price, stock and status of a SKU and adds a variant', async () => {
     renderAt('/seller-center/products');
-    const row = within(await screen.findByRole('region', { name: 'Product P1' })).getByRole('row', { name: 'SKU TEE-M' });
+    const product = await screen.findByRole('region', { name: 'Product P1' });
+    expect(within(product).queryByRole('row', { name: 'SKU TEE-M' })).toBeNull();
+    fireEvent.click(within(product).getByRole('button', { name: 'Manage' }));
+    const row = within(product).getByRole('row', { name: 'SKU TEE-M' });
     const [setPrice, setStock] = within(row).getAllByRole('button', { name: 'Set' });
 
     fireEvent.change(within(row).getByLabelText('Price of TEE-M'), { target: { value: '135000' } });
@@ -203,9 +228,11 @@ describe('Seller Center products', () => {
     renderAt('/seller-center/products');
     await screen.findByRole('region', { name: 'Product P1' });
     expect(screen.getByRole('link', { name: 'New product' }).getAttribute('href')).toBe('/seller-center/products/new');
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Manage' }));
     expect(within(card('P1')).getByRole('link', { name: 'Edit details' }).getAttribute('href')).toBe('/seller-center/products/row-p1/edit');
     expect(within(card('P1')).getByLabelText('No image')).toBeTruthy();
 
+    fireEvent.click(within(card('P2')).getByRole('button', { name: 'Manage' }));
     fireEvent.click(within(card('P2')).getByRole('button', { name: 'Delete' }));
     expect(writes()).toHaveLength(0);
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Delete product?' })).getByRole('button', { name: 'Delete product' }));

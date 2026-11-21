@@ -136,7 +136,7 @@ describe('SellerHome', () => {
     expect(within(card).getByRole('link', { name: /Code batches/ }).getAttribute('href')).toBe('/seller-center/vouchers?tab=batches');
   });
 
-  it('lists the 5 latest orders with View all, and marks Business overview as mock', async () => {
+  it('lists the 5 latest orders and derives Business overview from API orders', async () => {
     renderHome();
     const latest = await screen.findByRole('region', { name: 'Latest orders' });
     await vi.waitFor(() => expect(within(latest).getAllByRole('listitem')).toHaveLength(5));
@@ -146,7 +146,9 @@ describe('SellerHome', () => {
     expect(within(latest).getByRole('link', { name: 'View all' }).getAttribute('href')).toBe('/seller-center/orders');
 
     const overview = screen.getByRole('region', { name: 'Business overview' });
-    expect(overview.closest('[data-mock]')).toBeTruthy();
-    expect(within(overview.closest('[data-mock]') as HTMLElement).getByText('MOCK')).toBeTruthy();
+    expect(overview.closest('[data-mock]')).toBeNull();
+    expect(within(overview).getByText('Total orders')).toBeTruthy();
+    expect(within(overview).getByText('8')).toBeTruthy();
+    expect(within(overview).getByText('All shop orders')).toBeTruthy();
   });
 });
