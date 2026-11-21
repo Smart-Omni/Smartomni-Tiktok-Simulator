@@ -208,7 +208,7 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-home-frame { min-height:inherit; }
 .buyer-home-header { padding:0 var(--buyer-gutter); background:#141414; color:#fff; }
 .buyer-home-utility { display:flex; align-items:center; justify-content:center; min-height:40px; gap:16px; }
-.buyer-home-primary { display:grid; grid-template-columns:200px minmax(0,1fr) 36px; align-items:center; gap:24px; min-height:86px; padding:8px 0 16px; }
+.buyer-home-primary { display:grid; grid-template-columns:128px minmax(0,1fr) 36px; align-items:center; gap:24px; min-height:84px; padding:8px 0 12px; }
 .buyer-header-cart { position:relative; display:grid; place-items:center; width:36px; height:40px; color:#fff; border-radius:7px; }
 .buyer-cart-count { position:absolute; top:0; right:-5px; display:grid; place-items:center; min-width:18px; height:18px; padding:0 4px; border:2px solid #111; border-radius:999px; background:#fff; color:#111; font-size:9px; font-weight:700; line-height:1; }
 [data-sonner-toast].shop-cart-toast { width:max-content; min-width:200px; margin:auto; padding:15px 22px; border:0; border-radius:12px; background:#171717; color:#fff; box-shadow:0 8px 30px #0002; font-size:13px; }
@@ -226,8 +226,8 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 .buyer-quick-dialog { max-height:90vh; overflow-y:auto; }
 @media(hover:none) { .buyer-quick-add { opacity:1; } }
 @media(max-width:650px) { .buyer-quick-content { grid-template-columns:1fr; gap:20px; } .buyer-quick-content > div:first-child { max-width:180px; width:100%; margin:auto; } }
-.buyer-home-brand { display:flex; flex-direction:column; align-items:flex-start; justify-self:start; gap:5px; color:#fff; white-space:nowrap; }
-.buyer-home-brand > img { display:block; width:76px; height:82px; object-fit:contain; }
+.buyer-home-brand { display:flex; align-items:center; justify-content:center; justify-self:center; color:#fff; white-space:nowrap; }
+.buyer-home-brand > img { display:block; width:56px; height:60px; object-fit:contain; }
 .buyer-home-toplinks { display:flex; align-items:center; justify-content:center; gap:12px; font-size:12px; }
 .buyer-home-toplinks > span { color:#686868; }
 .buyer-home-toplinks > a { display:flex; align-items:center; gap:7px; min-height:32px; padding:6px 10px; border-radius:6px; color:#d5d5d5; }
