@@ -75,7 +75,8 @@ export class CouponsController {
     const now = this.clock.now();
     const where: Prisma.CouponWhereInput = { shopId: shop.id };
     if (displayTypes) where.displayType = { in: displayTypes };
-    if (typeof keyword === 'string') where.title = { contains: keyword };
+    // case-insensitive substring (DECISIONS 09c-Q9: the OAS is silent; SmartOmni filters by batch title)
+    if (typeof keyword === 'string') where.title = { contains: keyword, mode: 'insensitive' };
     if (statuses?.length) {
       // the status is derived from the window, the deactivation flag and the BUSINESS clock
       const byStatus: Record<string, Prisma.CouponWhereInput> = {

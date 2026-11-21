@@ -7,7 +7,7 @@ import { MockBadge } from '@/components/ui/mock-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSellerContext } from '@/layouts/SellerLayout';
 import { useAuth } from '@/lib/auth';
-import { getCatalog, getCoupons, getShop, listAftersale, listConversations, listOrders } from '@/lib/endpoints';
+import { getCatalog, getCoupons, getShop, listAftersale, listConversations, listCouponBatches, listOrders } from '@/lib/endpoints';
 import { compactCount, shopPrice } from '@/lib/format';
 import { countByTab, OPEN_AFTERSALE } from '@/lib/sellerOrders';
 import type { Aftersale, Conversation, DemoSession, Order } from '@/lib/types';
@@ -126,6 +126,7 @@ function ShopCard({ seller }: { seller: DemoSession }) {
   const shop = useAsync(() => getShop(seller), [seller.sessionToken, seller.shopId]);
   const catalog = useAsync(() => getCatalog(seller), [seller.sessionToken, seller.shopId]);
   const coupons = useAsync(() => getCoupons(seller), [seller.sessionToken, seller.shopId]);
+  const batches = useAsync(() => listCouponBatches(seller), [seller.sessionToken, seller.shopId]);
   const lowStock = catalog.data?.items.flatMap((p) => p.skus).filter((s) => s.status === 'NORMAL' && s.totalStock <= LOW_STOCK).length;
   const value = (r: AsyncResult<unknown>, v: ReactNode) => (r.loading && !r.data ? <Skeleton className="h-4 w-8" /> : r.error && !r.data ? '—' : v);
   return (
@@ -159,6 +160,9 @@ function ShopCard({ seller }: { seller: DemoSession }) {
               </Link>
             ))}
           </div>
+          <Link to="/seller-center/vouchers?tab=batches" className="mt-3 flex items-center gap-1 text-sm text-muted-foreground hover:text-teal">
+            Code batches: {value(batches, batches.data?.items.filter((b) => b.status === 'ONGOING').length)} active
+          </Link>
         </>
       )}
     </Panel>

@@ -13,6 +13,8 @@ import type {
   Conversation,
   Conversations,
   Coupon,
+  CouponBatch,
+  CouponBatchDetail,
   DemoSession,
   Fulfillment,
   Identities,
@@ -145,6 +147,12 @@ export const rejectAftersale = (s: DemoSession, requestId: string, reason: strin
 
 export const createCoupon = (s: DemoSession, body: Body) => api(shop(s, '/coupons'), { method: 'POST', body, ...auth(s) });
 export const patchCoupon = (s: DemoSession, couponId: string, body: Body) => api(shop(s, `/coupons/${id(couponId)}`), { method: 'PATCH', body, ...auth(s) });
+export const listCouponBatches = (s: DemoSession) => api<{ items: CouponBatch[] }>(shop(s, '/coupon-batches'), auth(s));
+export const getCouponBatch = (s: DemoSession, batchId: string) => api<CouponBatchDetail>(shop(s, `/coupon-batches/${id(batchId)}`), auth(s));
+export const createCouponBatch = (s: DemoSession, body: Body) =>
+  api<{ batch: CouponBatch; codes: { id: string; promoCode: string }[] }>(shop(s, '/coupon-batches'), { method: 'POST', body, ...auth(s) });
+export const deactivateCouponBatch = (s: DemoSession, batchId: string) =>
+  api<CouponBatchDetail>(shop(s, `/coupon-batches/${id(batchId)}`), { method: 'PATCH', body: { deactivated: true }, ...auth(s) });
 
 export const getConversationMessages = (s: DemoSession, conversationId: string) =>
   api<{ conversation: Conversation; items: ChatMessage[] }>(shop(s, `/chat/conversations/${id(conversationId)}/messages`), auth(s));
