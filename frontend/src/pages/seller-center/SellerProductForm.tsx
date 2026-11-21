@@ -384,7 +384,6 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
       </div>
 
       <div className="seller-listing-grid">
-      <div className="seller-listing-main">
       <Section title="Basic info">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-title">Title *</Label>
@@ -399,6 +398,60 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
 
       <Section title="Images *">
         <ImagesField seller={seller} slots={slots} setSlots={setSlots} error={shown(errors.images)} />
+      </Section>
+
+      <Section title="Category & brand">
+        <div className="seller-listing-classification"><div>
+        <Loaded result={categories} what="categories">
+          {() => <CategoryField tree={tree} value={categoryId} onChange={setCategoryId} error={shown(errors.category)} />}
+        </Loaded>
+              </div><div className="seller-listing-brand"><Label>Brand</Label>
+        <Loaded result={brands} what="brands">
+          {(d) => (
+            <NativeSelect aria-label="Brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="h-9 w-64">
+              <option value="">No brand selected</option>
+              {d.brands.map((b: Brand) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.authorized ? '' : ' (not authorized)'}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Loaded>
+              </div></div>
+      </Section>
+
+      <Section title="Attributes">
+        {!leaf ? <p className="text-sm text-muted-foreground">Select a category first.</p> : null}
+        {leaf && attributes.length === 0 ? <p className="text-sm text-muted-foreground">This category has no attributes.</p> : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {attributes.map((a) => (
+            <div key={a.id} className="flex flex-col gap-1">
+              <AttributeInput attr={a} value={attrValues[a.id] ?? []} onChange={(v) => setAttrValues({ ...attrValues, [a.id]: v })} />
+              <FieldError id={`attr-${a.id}-error`} message={shown(errors[`attr:${a.id}`])} />
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Shipping">
+        <div className="seller-listing-shipping">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="package-weight">Weight (kg)</Label>
+            <Input id="package-weight" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="w-32" />
+          </div>
+          {(['length', 'width', 'height'] as const).map((k) => (
+            <div key={k} className="flex flex-col gap-1">
+              <Label htmlFor={`package-${k}`}>
+                {k.charAt(0).toUpperCase() + k.slice(1)} (cm){rules?.packageDimensionsRequired ? ' *' : ''}
+              </Label>
+              <Input id={`package-${k}`} inputMode="decimal" value={dims[k]} onChange={(e) => setDims({ ...dims, [k]: e.target.value })} className="w-28" />
+            </div>
+          ))}
+        </div>
+        <FieldError id="weight-error" message={shown(errors.weight)} />
+        <FieldError id="dimensions-error" message={shown(errors.dimensions)} />
       </Section>
 
       <Section title="Variants">
@@ -435,64 +488,6 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
           </div>
         )}
       </Section>
-
-      </div>
-      <div className="seller-listing-aside">
-      <Section title="Category *">
-        <Loaded result={categories} what="categories">
-          {() => <CategoryField tree={tree} value={categoryId} onChange={setCategoryId} error={shown(errors.category)} />}
-        </Loaded>
-      </Section>
-
-      <Section title="Brand">
-        <Loaded result={brands} what="brands">
-          {(d) => (
-            <NativeSelect aria-label="Brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="h-9 w-64">
-              <option value="">No brand selected</option>
-              {d.brands.map((b: Brand) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.authorized ? '' : ' (not authorized)'}
-                </option>
-              ))}
-            </NativeSelect>
-          )}
-        </Loaded>
-      </Section>
-
-      <Section title="Attributes">
-        {!leaf ? <p className="text-sm text-muted-foreground">Select a category first.</p> : null}
-        {leaf && attributes.length === 0 ? <p className="text-sm text-muted-foreground">This category has no attributes.</p> : null}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {attributes.map((a) => (
-            <div key={a.id} className="flex flex-col gap-1">
-              <AttributeInput attr={a} value={attrValues[a.id] ?? []} onChange={(v) => setAttrValues({ ...attrValues, [a.id]: v })} />
-              <FieldError id={`attr-${a.id}-error`} message={shown(errors[`attr:${a.id}`])} />
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Shipping">
-        <div className="seller-listing-shipping">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="package-weight">Weight (kg)</Label>
-            <Input id="package-weight" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="w-32" />
-          </div>
-          {(['length', 'width', 'height'] as const).map((k) => (
-            <div key={k} className="flex flex-col gap-1">
-              <Label htmlFor={`package-${k}`}>
-                {k.charAt(0).toUpperCase() + k.slice(1)} (cm){rules?.packageDimensionsRequired ? ' *' : ''}
-              </Label>
-              <Input id={`package-${k}`} inputMode="decimal" value={dims[k]} onChange={(e) => setDims({ ...dims, [k]: e.target.value })} className="w-28" />
-            </div>
-          ))}
-        </div>
-        <FieldError id="weight-error" message={shown(errors.weight)} />
-        <FieldError id="dimensions-error" message={shown(errors.dimensions)} />
-      </Section>
-
-      </div>
       </div>
 
       {serverError ? (
