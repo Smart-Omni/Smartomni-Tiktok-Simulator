@@ -69,16 +69,15 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
-      <PageActions>
-        <button className="admin-icon-action" title="Release orders whose hold period has ended" onClick={() => void releaseDue()}><TimerReset size={14} aria-hidden="true" />Release due holds</button>
-        <button className="admin-primary admin-icon-action" title="Create loyalty test orders before and after the 15-day boundary" disabled={!shopId} onClick={() => void loyalty()}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
-      </PageActions>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <div className="admin-log-filters admin-order-filters">
         <label>Search orders<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Order ID or buyer name" /></label>
         <label>Status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">All statuses</option>{Object.keys(NEXT).map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
         <button className="admin-icon-action" type="button" onClick={list.reload}><RefreshCw size={13} aria-hidden="true" />Refresh</button>
-        <span className="admin-order-count">{list.data ? `${list.data.items.length} loaded ${list.data.items.length === 1 ? 'order' : 'orders'}` : 'Loading…'}</span>
+      <PageActions>
+        <button className="admin-icon-action" title="Release orders whose hold period has ended" onClick={() => void releaseDue()}><TimerReset size={14} aria-hidden="true" />Release due holds</button>
+        <button className="admin-primary admin-icon-action" title="Create loyalty test orders before and after the 15-day boundary" disabled={!shopId} onClick={() => void loyalty()}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
+      </PageActions>
       </div>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (

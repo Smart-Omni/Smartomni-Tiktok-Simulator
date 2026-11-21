@@ -1,9 +1,6 @@
-import { useLayoutEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import type { ReactNode } from 'react';
 
-/** Keep each panel's handlers in place while presenting its actions beside the page title. */
+/** Keep controls inside the panel that owns them. */
 export function PageActions({ children }: { children: ReactNode }) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useLayoutEffect(() => { setHost(document.getElementById('admin-page-actions')); }, []);
-  return host ? createPortal(children, host) : <div className="admin-inline-actions">{children}</div>;
+  return <div className="admin-inline-actions" role="group" aria-label="Panel actions">{children}</div>;
 }

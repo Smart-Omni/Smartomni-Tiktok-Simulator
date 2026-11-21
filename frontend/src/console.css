@@ -48,10 +48,6 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .app .admin-shop-context .admin-shop-picker select { min-width:210px; max-width:310px; padding:8px 0; }
 .admin-shop-context-status { display:flex; align-items:center; gap:6px; color:#777; font-size:10px; white-space:nowrap; }
 .admin-shop-context-status > span { width:5px; height:5px; background:#777; border-radius:50%; }
-.admin-page-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:26px; }
-.admin-page-heading .admin-eyebrow { display:none; }
-.app .admin-page-heading h1 { margin:0 0 6px; font-size:22px; font-weight:500; letter-spacing:-.65px; }
-.admin-page-heading p { color:var(--muted); font-size:11px; margin:0; }
 .admin-environment { display:flex; align-items:center; gap:6px; border-radius:20px; padding:7px 11px; font-size:10px; color:#646464; white-space:nowrap; }
 .admin-environment > span { width:5px; height:5px; border-radius:50%; background:var(--accent); }
 .admin-overview-strip { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; background:#fff; border-radius:18px; padding:8px 0; margin-bottom:28px; }
@@ -209,15 +205,12 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-page-info p:last-child { margin-bottom:0; }
 .admin-connection-details { margin:16px 0; font-size:11px; color:#777; }
 .admin-connection-details summary { cursor:pointer; }
-.admin-heading-actions,#admin-page-actions,.admin-inline-actions { display:flex; align-items:center; gap:12px; }
-.admin-heading-actions { margin-left:auto; }
-#admin-page-actions:empty { display:none; }
+.admin-inline-actions { display:flex; align-items:center; gap:12px; }
 .admin-inline-actions { justify-content:flex-end; margin-bottom:20px; }
 .app .admin-console .admin-icon-action { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
 .app .admin-console .admin-panel .scroll:first-child { margin-top:0; }
 .admin-panel table { border-radius:16px; overflow:hidden; }
 .admin-order-filters { margin-bottom:20px; }
-.admin-order-count { margin-left:auto; align-self:center; font-size:10px; color:#888; }
 .admin-orders-table { min-width:940px; }
 .admin-orders-table th:first-child { min-width:170px; }
 .admin-orders-table th:nth-child(2) { min-width:125px; }
@@ -333,6 +326,27 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-reset-confirmation > label { display:flex; flex-wrap:wrap; gap:10px; margin:20px 0; }
 .app .admin-reset-confirmation .danger-btn { color:#fff; background:#a2534e; border-color:#a2534e; }
 .admin-panel .admin-catalog-scroll { max-height:none; }
+
+/* Panel controls stay with their data instead of occupying a page-title tier. */
+.admin-shop-context { margin-bottom:18px; }
+.admin-register-panel { padding:16px 18px; border:1px solid #e7e7e7; border-radius:16px; background:#fff; }
+.admin-inline-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin:0 0 14px; padding:0 0 12px; border-bottom:1px solid #eee; }
+.app .admin-console .admin-inline-actions button { min-height:34px; border-radius:8px; padding:7px 12px; }
+.app .admin-console .admin-register-panel button:not(.admin-text-button) { border-radius:8px; }
+.admin-register-panel .admin-log-filters { gap:10px; padding:0 0 14px; margin:0 0 12px; border-radius:0; border-bottom:1px solid #eee; }
+.admin-log-filters > .admin-inline-actions { margin:0 0 0 auto; padding:0; border:0; }
+.app .admin-register-panel > div > .scroll,.app .admin-register-panel .scroll { margin:12px 0 0; border:1px solid #eee; border-radius:10px; }
+.admin-register-panel .admin-pagination { margin:12px 0; gap:10px; }
+.app .admin-console .admin-register-panel .card { padding:16px; margin:0 0 14px; border:1px solid #eee; border-radius:10px; }
+.admin-register-panel .admin-section-title { margin:16px 0 12px; }
+.admin-register-panel .admin-surface { padding:16px; border:1px solid #eee; border-radius:10px; }
+.admin-register-panel .state { margin:10px 0; }
+.admin-coupon-register-heading { padding:14px 18px; gap:12px; border-bottom:1px solid #eee; }
+.admin-coupon-register-heading .admin-inline-actions { justify-content:flex-start; margin:0; padding:0; border:0; }
+.admin-coupon-filters { padding:14px 18px; gap:10px; }
+.admin-coupon-metrics { gap:12px; margin-bottom:16px; }
+.admin-coupon-metrics > div { padding:16px 18px; }
+.admin-clock-card > p:first-of-type { margin-top:0; }
 .admin-panel .admin-catalog-scroll thead { position:static; }
 .admin-sandbox .admin-pagination { gap:10px; }
 .admin-sandbox .admin-pagination-controls { gap:6px; }

@@ -28,7 +28,6 @@ export function ClockPanel() {
     <AsyncState {...clock} onRetry={clock.reload}>
       {(c) => (
         <div className="card admin-clock-card">
-          <h3>Business clock</h3>
           <p>Now: <code>{c.now}</code> {c.frozen ? <span className="pill warn">frozen</span> : null}</p>
           <p className="muted">System time: {c.systemNow}</p>
           {msg ? <div className="state state-error" role="alert">{msg}</div> : null}

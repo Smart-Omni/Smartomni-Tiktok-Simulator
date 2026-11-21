@@ -84,10 +84,6 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
 
   return (
     <div className="admin-coupons">
-      <PageActions>
-        <button className="admin-icon-action" onClick={first.reload} disabled={first.loading}><RefreshCw size={14} />Refresh</button>
-        <button className="admin-primary admin-icon-action" disabled={creating || !shopId} onClick={() => void loyaltyVouchers()}><Plus size={14} />{creating ? 'Creating batches…' : 'Create loyalty voucher batches'}</button>
-      </PageActions>
       {msg && <div className={failed ? 'state state-error' : 'admin-coupon-notice'} role={failed ? 'alert' : 'status'}>{!failed && <Check size={16} />}{msg}<button type="button" aria-label="Dismiss notification" onClick={() => setMsg('')}><X size={14} /></button></div>}
       <div className="admin-coupon-metrics" aria-label="Loaded coupon summary">
         {[
@@ -96,8 +92,11 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
           { label: 'Redemptions', value: items.reduce((sum, c) => sum + c.redeemedCount, 0), icon: Check },
         ].map(({ label, value, icon: Icon }) => <div key={label}><span className="admin-coupon-metric-icon"><Icon size={18} /></span><div><span>{label}</span><strong>{first.data ? value.toLocaleString() : '—'}</strong></div></div>)}
       </div>
-      <section className="admin-coupon-register" aria-labelledby="coupon-register-title">
-        <div className="admin-coupon-register-heading"><div><h2 id="coupon-register-title">Voucher register</h2><p>Single vouchers and private codes, in one place.</p></div><span className="admin-coupon-live"><span />Auto refresh · 5s</span></div>
+      <section className="admin-coupon-register" aria-label="Coupon register">
+        <div className="admin-coupon-register-heading"><PageActions>
+        <button className="admin-icon-action" onClick={first.reload} disabled={first.loading}><RefreshCw size={14} />Refresh</button>
+        <button className="admin-primary admin-icon-action" disabled={creating || !shopId} onClick={() => void loyaltyVouchers()}><Plus size={14} />{creating ? 'Creating batches…' : 'Create loyalty voucher batches'}</button>
+      </PageActions><span className="admin-coupon-live"><span />Auto refresh · 5s</span></div>
         <div className="admin-coupon-filters">
           <label className="admin-coupon-search"><Search size={15} aria-hidden="true" /><input aria-label="Search coupons" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code or voucher name" /></label>
           <label>Status<select aria-label="Coupon status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option><option value="ONGOING">Ongoing</option><option value="NOT_START">Not started</option><option value="EXPIRED">Expired</option><option value="DEACTIVATED">Deactivated</option></select></label>

@@ -21,7 +21,6 @@ export function ArbitrationPanel({ shopId, initialRef = '' }: { shopId: string; 
   return (
     <div className="admin-arbitration-layout">
       <form onSubmit={submit} className="admin-surface admin-form">
-        <h2>Arbitration decision</h2>
         <label>Aftersale request ID<input required value={ref} disabled={busy} onChange={(e) => { setRef(e.target.value); setResult(undefined); }} placeholder="Request ID from Returns & refunds" /></label>
         <label>Target arbitration status<select value={decision} disabled={busy} onChange={(e) => setDecision(e.target.value as ArbitrationDecision)}><option value="IN_ARBITRATION">Open dispute — IN_ARBITRATION</option><option value="ARBITRATION_WIN">Resolve — ARBITRATION_WIN</option><option value="ARBITRATION_LOSS">Resolve — ARBITRATION_LOSS</option></select></label>
         <label>Operator note <span className="muted">Optional · up to 300 characters</span><textarea maxLength={300} value={note} disabled={busy} onChange={(e) => setNote(e.target.value)} /></label>

@@ -43,9 +43,6 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
 
   return (
     <div>
-      <PageActions>
-        <button className="admin-primary admin-icon-action" onClick={() => setShowComposer((open) => !open)} aria-expanded={showComposer} aria-controls="webhook-composer"><Plus size={14} />Queue webhook</button>
-      </PageActions>
       {showComposer && <section className="card admin-webhook-composer" id="webhook-composer" aria-label="Queue a test webhook">
         <div className="admin-webhook-composer-heading"><h3>Queue a test webhook</h3><button aria-label="Close webhook form" onClick={() => setShowComposer(false)}><X size={14} /></button></div>
         <div className="admin-webhook-form">
@@ -62,7 +59,9 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
           </select>
         </label>
         <button className="admin-icon-action" onClick={jobs.reload}><RefreshCw size={13} />Refresh</button>
-        {jobs.data && <span className="admin-order-count">{jobs.data.items.length} loaded {jobs.data.items.length === 1 ? 'webhook' : 'webhooks'}</span>}
+      <PageActions>
+        <button className="admin-primary admin-icon-action" onClick={() => setShowComposer((open) => !open)} aria-expanded={showComposer} aria-controls="webhook-composer"><Plus size={14} />Queue webhook</button>
+      </PageActions>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...jobs} onRetry={jobs.reload} isEmpty={(d) => d.items.length === 0} emptyText="No webhook jobs for this filter.">

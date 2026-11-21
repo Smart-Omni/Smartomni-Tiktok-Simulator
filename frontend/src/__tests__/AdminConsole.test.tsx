@@ -6,6 +6,27 @@ import { MemoryRouter } from 'react-router-dom';
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
+it('omits repeated page headings, hides shop context only for scenarios and keeps actions inside the active panel', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/test-admin/shops') return json({ items: [{ id: 'shop-1', name: 'Test shop', status: 'ACTIVE', region: 'VN', currency: 'VND', tiktokShopId: 'tts-1', activeScenarioId: null, scenarios: [], counts: { products: 0, buyers: 0, webhookJobs: 0 } }] });
+    if (url === '/test-admin/status') return json({ database: { status: 'up', name: 'simulator' }, worker: { running: true }, clock: { now: '2026-11-20T12:00:00Z', offsetMs: 0 }, webhookJobs: {}, seed: { shops: 1 } });
+    return json({ items: [] });
+  }));
+  render(<MemoryRouter><ConsolePage /></MemoryRouter>);
+  await screen.findByText('simulator');
+  expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  expect(screen.getByRole('region', { name: 'Shop context' })).toBeTruthy();
+  const nav = screen.getByRole('navigation', { name: 'Test Console navigation' });
+  fireEvent.click(within(nav).getByRole('button', { name: 'Shops & scenarios' }));
+  expect(screen.queryByRole('region', { name: 'Shop context' })).toBeNull();
+  expect(await screen.findByRole('button', { name: 'Add 50 test products' })).toBeTruthy();
+  fireEvent.click(within(nav).getByRole('button', { name: 'Orders' }));
+  expect(screen.getByRole('combobox', { name: 'Selected shop' })).toBeTruthy();
+  const orders = screen.getByRole('region', { name: 'Orders controls' });
+  expect(within(orders).getByRole('button', { name: 'Create loyalty orders' })).toBeTruthy();
+  expect(within(orders).getByRole('button', { name: 'Refresh' })).toBeTruthy();
+});
+
 it('clears SKU selections when the Admin switches shops, so a previous shop cannot be submitted', async () => {
   const shops = ['shop-1', 'shop-2'].map((id) => ({ id, name: id, status: 'ACTIVE', counts: { products: 1, buyers: 1, webhookJobs: 0 } }));
   const fetcher = vi.fn(async (url: string) => {

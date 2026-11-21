@@ -96,8 +96,7 @@ export function ConsolePage() {
           <div className="admin-header-actions"><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
         </div>
         <div className="admin-content">
-          <header className="admin-page-heading"><h1>{screen.title}</h1><div className="admin-heading-actions"><div id="admin-page-actions" /><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></div></header>
-          <section className="admin-shop-context" aria-label="Shop context">
+          {tab !== 'Shop & scenario' && <section className="admin-shop-context" aria-label="Shop context">
             <div className="admin-shop-context-label"><Store size={17} aria-hidden="true" /><span>Working shop<small>Choose the shop for this workspace</small></span></div>
             <label className="admin-shop-picker"><Store size={15} />
             <select value={selected} onChange={(e) => setShopId(e.target.value)} disabled={list.length === 0} aria-label="Selected shop">
@@ -106,7 +105,8 @@ export function ConsolePage() {
             </select>
           </label>
             {currentShop && <span className="admin-shop-context-status"><span />{currentShop.status === 'ACTIVE' ? 'Active shop' : currentShop.status}</span>}
-          </section>
+            <details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details>
+          </section>}
           {shops.error ? <div className="state state-error" role="alert">Could not load shops: {shops.error.message}<button onClick={shops.reload}>Retry</button></div> : null}
           {tab === 'Status' && (
             <>
@@ -126,7 +126,7 @@ export function ConsolePage() {
               ].map(([target, title]) => <button key={target} onClick={() => select(target)}><ArrowUpRight size={18} /><strong>{title}</strong></button>)}</div>
             </>
           )}
-          <div className="admin-panel" key={`${tab}:${selected}`}>
+          <div className={`admin-panel${['Orders', 'Fulfillment', 'Aftersale', 'Inventory', 'Chat', 'Authorization', 'Webhooks', 'HTTP log', 'Faults'].includes(tab) ? ' admin-register-panel' : ''}`} role="region" aria-label={`${screen.title} controls`} key={`${tab}:${selected}`}>
             {tab === 'Shop & scenario' && <ShopsPanel shops={shops} />}
             {tab === 'Reset' && <ResetPanel shops={list} defaultShopId={selected} onDone={shops.reload} />}
             {tab === 'Clock' && <ClockPanel />}

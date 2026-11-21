@@ -60,7 +60,6 @@ export function ResetPanel({ shops, defaultShopId, onDone }: { shops: ShopSummar
   return (
     <div>
       <div className="card">
-        <h3>Reset simulator data</h3>
         <div className="admin-log-filters admin-reset-fields">
         <label>Scope{' '}
           <select value={scope} onChange={(e) => { setScope(e.target.value as (typeof SCOPES)[number]); setPlan(undefined); }}>
