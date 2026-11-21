@@ -447,6 +447,6 @@ export interface ProductListingBody {
   brandId: string | null;
   images: string[];
   productAttributes: ProductAttribute[];
-  packageWeight: { value: number; unit: 'KILOGRAM' } | null;
-  packageDimensions: { length: number; width: number; height: number; unit: 'CENTIMETER' } | null;
+  packageWeight: { value: number; unit: 'KILOGRAM' | 'POUND' } | null;
+  packageDimensions: { length: number; width: number; height: number; unit: 'CENTIMETER' | 'INCH' } | null;
 }

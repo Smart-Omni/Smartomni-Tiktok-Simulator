@@ -152,8 +152,8 @@ export const uploadProductImage = (s: DemoSession, file: File) => {
 export const getInventoryHistory = (s: DemoSession) => api<InventoryHistory>(shop(s, '/inventory/history'), auth(s));
 
 export const approveAftersale = (s: DemoSession, requestId: string) => api(shop(s, `/aftersale/${id(requestId)}/approve`), { method: 'POST', body: {}, ...auth(s) });
-export const rejectAftersale = (s: DemoSession, requestId: string, reason: string) =>
-  api(shop(s, `/aftersale/${id(requestId)}/reject`), { method: 'POST', body: { reason }, ...auth(s) });
+export const rejectAftersale = (s: DemoSession, requestId: string, reason: string, comment?: string) =>
+  api(shop(s, `/aftersale/${id(requestId)}/reject`), { method: 'POST', body: { reason, ...(comment?.trim() ? { comment: comment.trim() } : {}) }, ...auth(s) });
 
 export const createCoupon = (s: DemoSession, body: Body) => api(shop(s, '/coupons'), { method: 'POST', body, ...auth(s) });
 export const patchCoupon = (s: DemoSession, couponId: string, body: Body) => api(shop(s, `/coupons/${id(couponId)}`), { method: 'PATCH', body, ...auth(s) });

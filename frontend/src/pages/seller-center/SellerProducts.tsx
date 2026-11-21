@@ -13,10 +13,13 @@ import { shopPrice } from '@/lib/format';
 import type { Catalog, CatalogProduct, CatalogSku, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
+import { emptyVariant, MAX_SKUS, validPrice, validStock, variantBody, variantError } from '@/lib/catalogValidation';
+import { VariantExtras } from '@/components/seller/VariantExtras';
+import { EditSkuDialog } from '@/components/seller/EditSkuDialog';
 
 /** Rules from the former /seller catalog (SellerCatalog). */
 const STATUSES = ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED'];
-export const isWholeVnd = (v: string): boolean => /^\d+$/.test(v) && Number(v) >= 1;
+export const isWholeVnd = validPrice;
 const LOW_STOCK = 5;
 export const isLowStock = (p: CatalogProduct) => p.skus.some((s) => s.status === 'NORMAL' && s.totalStock <= LOW_STOCK);
 
@@ -25,11 +28,12 @@ type Run = (fn: () => Promise<unknown>, done: string) => Promise<boolean>;
 const statusTone = (s: string) => (s === 'ACTIVATE' ? 'bg-teal-soft text-teal' : s === 'DELETED' ? 'bg-buyer-soft text-buyer-ink' : 'bg-[#FFF4E0] text-[#9A5B00]');
 const productStatus = (status: string) => ({ ACTIVATE: 'Active', SELLER_DEACTIVATED: 'Inactive', DRAFT: 'Draft', DELETED: 'Deleted' })[status] ?? humanize(status);
 
-function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; warehouses: Catalog['warehouses']; disabled: boolean; onPatch: (body: Record<string, unknown>, done: string) => void }) {
+function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; warehouses: Catalog['warehouses']; disabled: boolean; onPatch: (body: Record<string, unknown>, done: string) => Promise<boolean> }) {
   const [price, setPrice] = useState(String(sku.priceVnd));
   const [stock, setStock] = useState<Record<string, string>>(Object.fromEntries(sku.stock.map((s) => [s.warehouseId, String(s.quantity)])));
   const priceValid = isWholeVnd(price);
-  const stockValid = !Object.values(stock).some((v) => !/^\d+$/.test(v));
+  const stockValid = Object.values(stock).every(validStock);
+  const [editing, setEditing] = useState(false);
   const normal = sku.status === 'NORMAL';
   return (
     <TableRow aria-label={`SKU ${sku.sellerSku}`} className="seller-sku-row">
@@ -37,6 +41,8 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
         <div className="flex flex-col">
           <span className="font-medium">{sku.sellerSku}</span>
           <span className="font-mono text-xs text-muted-foreground">{sku.externalId}</span>
+          <Button variant="ghost" size="sm" className="w-fit" disabled={disabled} onClick={() => setEditing(true)}><Pencil size={12} />Edit SKU</Button>
+          {editing && <EditSkuDialog sku={sku} onClose={() => setEditing(false)} onSave={(body) => onPatch(body, 'SKU updated')} />}
         </div>
       </TableCell>
       <TableCell className="py-3">
@@ -51,7 +57,7 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
             <Check size={14} />
           </Button>
         </div>
-        {!priceValid && <span className="text-xs text-destructive">Enter a whole VND amount</span>}
+        {!priceValid && <span className="text-xs text-destructive">Price: 1–2,000,000,000 VND.</span>}
       </TableCell>
       <TableCell className="py-3">
         <div className="seller-sku-stock">
@@ -79,6 +85,7 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
             <Check size={14} />
           </Button>
         </div>
+        {!stockValid && <span className="text-xs text-destructive">Stock: 0–99,999 per warehouse.</span>}
       </TableCell>
       <TableCell className="py-3 text-right">
         <Button size="sm" variant="outline" className={cn('seller-sku-toggle', normal && 'is-active')} disabled={disabled} onClick={() => onPatch({ status: normal ? 'DEACTIVATED' : 'NORMAL' }, normal ? 'Variant deactivated' : 'Variant activated')}>
@@ -93,7 +100,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   const deleted = p.status === 'DELETED';
   const known = STATUSES.includes(p.status);
   const [title, setTitle] = useState(p.title);
-  const [variant, setVariant] = useState({ sellerSku: '', name: '', priceVnd: '' });
+  const [variant, setVariant] = useState(emptyVariant);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
@@ -103,8 +110,9 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
 
   const addVariant = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => addSku(seller, p.id, { sellerSku: variant.sellerSku, name: variant.name, priceVnd: Number(variant.priceVnd) }), 'Variant added')) {
-      setVariant({ sellerSku: '', name: '', priceVnd: '' });
+    if (variantError(variant) || p.skus.length >= MAX_SKUS) return;
+    if (await run(() => addSku(seller, p.id, variantBody(variant)), 'Variant added')) {
+      setVariant(emptyVariant());
     }
   };
 
@@ -130,7 +138,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
           <span>{p.skus.length} variants</span>
         </div>
         <div className="seller-product-stock"><strong>{p.skus.reduce((sum, s) => sum + s.totalStock, 0).toLocaleString()}</strong><span className={cn(isLowStock(p) && 'is-low')}>{isLowStock(p) ? 'Low stock' : 'Units available'}</span></div>
-        <div><span className={cn('seller-product-status', statusTone(p.status))}><i />{productStatus(p.status)}</span></div>
+        <div><span className={cn('seller-product-status', statusTone(p.status))}><i />{productStatus(p.status)}</span>{p.isNotForSale && <span className="mt-1 block text-xs text-muted-foreground">Not for sale</span>}</div>
         <Button variant="outline" size="sm" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(!expanded)}>
           {expanded ? 'Collapse' : 'Manage'} <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
         </Button>
@@ -139,8 +147,8 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
       {!deleted ? (
         <div className="seller-product-settings">
           <label className="seller-product-title-field"><span>Name</span><div>
-          <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
-          <Button size="sm" variant="outline" disabled={!title.trim() || title === p.title} onClick={() => run(() => patchProduct(seller, p.id, { title }), 'Product renamed')}>
+          <Input aria-label={`Title of ${p.externalId}`} maxLength={500} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
+          <Button size="sm" variant="outline" disabled={!title.trim() || title.trim().length > 500 || title === p.title} onClick={() => run(() => patchProduct(seller, p.id, { title: title.trim() }), 'Product renamed')}>
             Rename
           </Button>
           </div></label>
@@ -188,14 +196,16 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
       {!deleted ? (
         <form onSubmit={addVariant} className="seller-add-variant" aria-label={`Add variant to ${p.externalId}`}>
           <label><span>Seller SKU</span>
-          <Input aria-label="New seller SKU" placeholder="Seller SKU" required value={variant.sellerSku} onChange={(e) => setVariant({ ...variant, sellerSku: e.target.value })} className="h-8 w-36" />
+          <Input aria-label="New seller SKU" placeholder="Seller SKU" required maxLength={100} value={variant.sellerSku} onChange={(e) => setVariant({ ...variant, sellerSku: e.target.value })} className="h-8 w-36" />
           </label><label><span>Variant</span>
-          <Input aria-label="New variant name" placeholder="Variant" required value={variant.name} onChange={(e) => setVariant({ ...variant, name: e.target.value })} className="h-8 w-36" />
+          <Input aria-label="New variant name" placeholder="Variant" required maxLength={200} value={variant.name} onChange={(e) => setVariant({ ...variant, name: e.target.value })} className="h-8 w-36" />
           </label><label><span>Price (VND)</span>
-          <Input aria-label="New variant price" placeholder="Price VND" inputMode="numeric" required value={variant.priceVnd} onChange={(e) => setVariant({ ...variant, priceVnd: e.target.value })} className="h-8 w-32" />
-          </label><Button type="submit" size="sm" disabled={!isWholeVnd(variant.priceVnd)}>
+          <Input aria-label="New variant price" placeholder="Price VND" inputMode="numeric" required value={variant.price} onChange={(e) => setVariant({ ...variant, price: e.target.value })} className="h-8 w-32" />
+          </label><Button type="submit" size="sm" disabled={!!variantError(variant) || p.skus.length >= MAX_SKUS}>
             <Plus /> Add variant
           </Button>
+          <VariantExtras value={variant} onChange={setVariant} warehouses={warehouses} label={`for ${p.externalId}`} />
+          {p.skus.length >= MAX_SKUS ? <span className="text-xs text-muted-foreground">Maximum 100 variants reached.</span> : variant.price && variantError(variant) ? <span className="text-xs text-destructive">{variantError(variant)}</span> : null}
         </form>
       ) : null}
       </div>

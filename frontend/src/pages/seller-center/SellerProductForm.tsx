@@ -28,7 +28,8 @@ import {
 import type { Brand, CatalogProduct, CategoryAttribute, CategoryNode, CategoryRules, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
-import { isWholeVnd } from './SellerProducts';
+import { emptyVariant, MAX_SKUS, variantBody, variantError, type VariantDraft } from '@/lib/catalogValidation';
+import { VariantExtras } from '@/components/seller/VariantExtras';
 
 interface ImageSlot {
   key: string;
@@ -38,12 +39,6 @@ interface ImageSlot {
   /** Uploaded URL, or a local object URL while uploading. */
   src: string;
   error?: string;
-}
-
-interface Variant {
-  sellerSku: string;
-  name: string;
-  price: string;
 }
 
 let slotSeq = 0;
@@ -280,7 +275,7 @@ function AttributeInput({ attr, value, onChange }: { attr: CategoryAttribute; va
   );
 }
 
-function ProductForm({ seller, product }: { seller: DemoSession; product?: CatalogProduct }) {
+function ProductForm({ seller, product, warehouses }: { seller: DemoSession; product?: CatalogProduct; warehouses: { externalId: string; name: string }[] }) {
   const navigate = useNavigate();
   const editing = Boolean(product);
   const categories = useAsync(() => getCategories(seller), [seller.sessionToken]);
@@ -293,12 +288,15 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
   const [brandId, setBrandId] = useState(product?.brandId ?? '');
   const [attrValues, setAttrValues] = useState<AttributeValues>(() => (product ? attributeValuesOf(product) : {}));
   const [weightKg, setWeightKg] = useState(product?.packageWeight ? String(product.packageWeight.value) : '');
+  const [weightUnit, setWeightUnit] = useState<'KILOGRAM' | 'POUND'>(product?.packageWeight?.unit === 'POUND' ? 'POUND' : 'KILOGRAM');
+  const [dimensionsUnit, setDimensionsUnit] = useState<'CENTIMETER' | 'INCH'>(product?.packageDimensions?.unit === 'INCH' ? 'INCH' : 'CENTIMETER');
+  const [notForSale, setNotForSale] = useState(product?.isNotForSale ?? false);
   const [dims, setDims] = useState({
     length: product?.packageDimensions ? String(product.packageDimensions.length) : '',
     width: product?.packageDimensions ? String(product.packageDimensions.width) : '',
     height: product?.packageDimensions ? String(product.packageDimensions.height) : '',
   });
-  const [variants, setVariants] = useState<Variant[]>([{ sellerSku: '', name: '', price: '' }]);
+  const [variants, setVariants] = useState<VariantDraft[]>([emptyVariant()]);
   const [attributes, setAttributes] = useState<CategoryAttribute[]>([]);
   const [rules, setRules] = useState<CategoryRules>();
   const [touched, setTouched] = useState(false);
@@ -339,11 +337,13 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
     brandId,
     attributes: attrValues,
     weightKg,
+    weightUnit,
+    dimensionsUnit,
     ...dims,
   };
   const errors: FormErrors = validateProductForm(state, leaf, attributes, rules);
-  const variantErrors = editing ? [] : variants.map((v) => (!v.sellerSku.trim() || !v.name.trim() ? 'Enter a seller SKU and a variant name' : !isWholeVnd(v.price) ? 'Enter a whole VND price' : undefined));
-  const valid = Object.keys(errors).length === 0 && variantErrors.every((e) => !e);
+  const variantErrors = editing ? [] : variants.map(variantError);
+  const valid = Object.keys(errors).length === 0 && variantErrors.every((e) => !e) && (editing || (variants.length >= 1 && variants.length <= MAX_SKUS));
   const shown = (e?: string) => (touched ? e : undefined);
 
   const submit = async (e: FormEvent) => {
@@ -355,10 +355,10 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
     const listing = listingBody(state, attributes);
     try {
       if (product) {
-        await patchProduct(seller, product.id, { title: title.trim(), description, ...listing });
+        await patchProduct(seller, product.id, { title: title.trim(), description, ...listing, ...(notForSale !== product.isNotForSale ? { isNotForSale: notForSale } : {}) });
         toast.success('Product saved');
       } else {
-        await createProduct(seller, { title: title.trim(), description, ...listing, skus: variants.map((v) => ({ sellerSku: v.sellerSku.trim(), name: v.name.trim(), priceVnd: Number(v.price) })) });
+        await createProduct(seller, { title: title.trim(), description, ...listing, skus: variants.map(variantBody) });
         toast.success('Product created');
       }
       navigate('/seller-center/products');
@@ -388,7 +388,9 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-description">Description</Label>
           <Textarea id="product-description" rows={5} maxLength={10000} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <FieldError id="description-error" message={shown(errors.description)} />
         </div>
+        {editing && <label className="flex items-center gap-2"><input type="checkbox" checked={notForSale} onChange={(e) => setNotForSale(e.target.checked)} />Not for sale</label>}
       </Section>
 
       <Section title="Images *">
@@ -431,15 +433,16 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
       </Section>
 
       <Section title="Shipping">
+        <div className="seller-listing-shipping"><label className="flex flex-col gap-2"><span>Weight unit</span><NativeSelect aria-label="Weight unit" value={weightUnit} onChange={(e) => setWeightUnit(e.target.value as typeof weightUnit)}><option value="KILOGRAM">Kilogram</option><option value="POUND">Pound</option></NativeSelect></label><label className="flex flex-col gap-2"><span>Dimensions unit</span><NativeSelect aria-label="Dimensions unit" value={dimensionsUnit} onChange={(e) => setDimensionsUnit(e.target.value as typeof dimensionsUnit)}><option value="CENTIMETER">Centimeter</option><option value="INCH">Inch</option></NativeSelect></label></div>
         <div className="seller-listing-shipping">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="package-weight">Weight (kg)</Label>
+            <Label htmlFor="package-weight">Weight ({weightUnit === 'KILOGRAM' ? 'kg' : 'lb'})</Label>
             <Input id="package-weight" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="w-32" />
           </div>
           {(['length', 'width', 'height'] as const).map((k) => (
             <div key={k} className="flex flex-col gap-1">
               <Label htmlFor={`package-${k}`}>
-                {k.charAt(0).toUpperCase() + k.slice(1)} (cm){rules?.packageDimensionsRequired ? ' *' : ''}
+                {k.charAt(0).toUpperCase() + k.slice(1)} ({dimensionsUnit === 'CENTIMETER' ? 'cm' : 'in'}){rules?.packageDimensionsRequired ? ' *' : ''}
               </Label>
               <Input id={`package-${k}`} inputMode="decimal" value={dims[k]} onChange={(e) => setDims({ ...dims, [k]: e.target.value })} className="w-28" />
             </div>
@@ -463,9 +466,9 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
             {variants.map((v, i) => (
               <div key={i} className="seller-listing-variant" aria-label={`Variant ${i + 1}`} role="group">
                 <label><span>Seller SKU *</span>
-                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
+                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" maxLength={100} value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
                 </label><label><span>Variant *</span>
-                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
+                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" maxLength={200} value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
                 </label><label><span>Price (VND) *</span>
                 <Input aria-label={`Price ${i + 1}`} placeholder="Price VND" inputMode="numeric" value={v.price} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} className="h-8 w-32" />
                 </label>
@@ -474,10 +477,11 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
                     <X />
                   </Button>
                 ) : null}
+                <VariantExtras value={v} onChange={(value) => setVariants(variants.map((x, j) => j === i ? value : x))} warehouses={warehouses} label={String(i + 1)} />
                 {touched && variantErrors[i] ? <span className="seller-listing-variant-error text-xs text-destructive">{variantErrors[i]}</span> : null}
               </div>
             ))}
-            <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => setVariants([...variants, { sellerSku: '', name: '', price: '' }])}>
+            <Button type="button" size="sm" variant="outline" className="w-fit" disabled={variants.length >= MAX_SKUS} onClick={() => setVariants([...variants, emptyVariant()])}>
               <Plus /> Add variant
             </Button>
           </div>
@@ -511,7 +515,7 @@ export function SellerProductForm() {
             </SellerCard>
           );
         }
-        return <ProductForm key={product?.id ?? 'new'} seller={seller} product={product} />;
+        return <ProductForm key={product?.id ?? 'new'} seller={seller} product={product} warehouses={d.warehouses} />;
       }}
     </Loaded>
   );

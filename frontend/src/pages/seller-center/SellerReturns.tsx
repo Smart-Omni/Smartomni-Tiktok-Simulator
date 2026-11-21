@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
@@ -20,13 +21,14 @@ function Returns({ seller }: { seller: DemoSession }) {
   const tab = params.get('status') === 'all' ? 'all' : 'open';
   const list = useAsync(() => listAftersale(seller), [seller.sessionToken, seller.shopId], 5000);
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const act = async (r: Aftersale, action: 'approve' | 'reject') => {
     setBusy(r.id);
     try {
       if (action === 'approve') await approveAftersale(seller, r.id);
-      else await rejectAftersale(seller, r.id, reasons[r.id] ?? list.data?.rejectReasons[0]?.name ?? 'OTHER');
+      else await rejectAftersale(seller, r.id, reasons[r.id] ?? list.data?.rejectReasons[0]?.name ?? 'OTHER', comments[r.id]);
       toast.success(action === 'approve' ? 'Request approved' : 'Request rejected');
       list.reload();
     } catch (e) {
@@ -108,6 +110,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                                 </option>
                               ))}
                             </NativeSelect>
+                            <Textarea aria-label={`Reject comment for ${r.id}`} placeholder="Rejection note (optional)" maxLength={500} value={comments[r.id] ?? ''} onChange={(e) => setComments({ ...comments, [r.id]: e.target.value })} className="min-h-16 w-full" />
                             <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => act(r, 'reject')}>
                               Reject
                             </Button>

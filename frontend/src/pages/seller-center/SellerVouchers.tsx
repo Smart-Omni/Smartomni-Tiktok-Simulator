@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Copy, Download, Plus } from 'lucide-react';
+import { Copy, Download, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { createCoupon, createCouponBatch, deactivateCouponBatch, getBusinessClock, getCoupons, getCouponBatch, listCouponBatches, patchCoupon } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
-import type { CouponBatchCode, DemoSession } from '@/lib/types';
+import type { Coupon, CouponBatchCode, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
@@ -223,8 +223,32 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
   );
 }
 
+const localDateTime = (iso: string) => {
+  const date = new Date(iso);
+  return Number.isFinite(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 19) : '';
+};
+export interface VoucherEdit { title: string; startAt: string; endAt: string; limit: string; minSpend: string }
+export function voucherEditError(f: VoucherEdit, redeemed: number): string | undefined {
+  if (!f.title.trim() || f.title.trim().length > 100) return 'Title must contain 1–100 characters.';
+  const start = Date.parse(f.startAt), end = Date.parse(f.endAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'End time must be after start time.';
+  if (f.limit !== '' && (!wholeInRange(f.limit, 1_000_000) || Number(f.limit) < redeemed)) return `Redemption limit must be between ${Math.max(1, redeemed)} and 1,000,000.`;
+  if (f.minSpend !== '' && !wholeInRange(f.minSpend, 2_000_000_000)) return 'Minimum spend must be 1–2,000,000,000 VND, or empty.';
+}
+export const voucherEditBody = (f: VoucherEdit) => ({ title: f.title.trim(), startAt: new Date(f.startAt).toISOString(), endAt: new Date(f.endAt).toISOString(), redemptionLimit: f.limit === '' ? null : Number(f.limit), minSpendVnd: f.minSpend === '' ? null : Number(f.minSpend) });
+
+function EditVoucherDialog({ coupon, onClose, onSave }: { coupon: Coupon; onClose: () => void; onSave: (body: ReturnType<typeof voucherEditBody>) => Promise<void> }) {
+  const [f, setF] = useState<VoucherEdit>({ title: coupon.title, startAt: localDateTime(coupon.startAt), endAt: localDateTime(coupon.endAt), limit: coupon.redemptionLimit == null ? '' : String(coupon.redemptionLimit), minSpend: coupon.minSpendVnd == null ? '' : String(coupon.minSpendVnd) });
+  const error = voucherEditError(f, coupon.redeemedCount);
+  return <FormDialog title="Edit voucher" description={coupon.promoCode ?? coupon.id} submit="Save voucher" canSubmit={!error} onClose={onClose} onSubmit={() => onSave({ ...voucherEditBody(f), startAt: f.startAt === localDateTime(coupon.startAt) ? coupon.startAt : new Date(f.startAt).toISOString(), endAt: f.endAt === localDateTime(coupon.endAt) ? coupon.endAt : new Date(f.endAt).toISOString() })}>
+    {([['title', 'Title', 'text'], ['startAt', 'Starts at', 'datetime-local'], ['endAt', 'Ends at', 'datetime-local'], ['limit', 'Redemption limit (optional)', 'text'], ['minSpend', 'Minimum spend VND (optional)', 'text']] as const).map(([key, label, type]) => <label key={key} className="flex flex-col gap-2 text-xs"><span>{label}</span><Input aria-label={label} type={type} step={type === 'datetime-local' ? 1 : undefined} maxLength={key === 'title' ? 100 : undefined} inputMode={key === 'limit' || key === 'minSpend' ? 'numeric' : undefined} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} /></label>)}
+    {error && <p role="alert" className="text-xs text-destructive sm:col-span-2">{error}</p>}
+  </FormDialog>;
+}
+
 function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchId: string; onClose: () => void }) {
   const detail = useAsync(() => getCouponBatch(seller, batchId), [seller.sessionToken, seller.shopId, batchId]);
+  const [deactivating, setDeactivating] = useState<CouponBatchCode>();
   const copyAll = async (codes: CouponBatchCode[]) => {
     try {
       await navigator.clipboard.writeText(codes.map((c) => c.promoCode).join('\n'));
@@ -269,6 +293,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
                       <TableHead className="pl-4">Code</TableHead>
                       <TableHead>Used</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -279,6 +304,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
                         <TableCell>
                           <StatusPill status={c.status} />
                         </TableCell>
+                        <TableCell className="text-right"><Button variant="outline" size="sm" disabled={c.status === 'DEACTIVATED'} aria-label={`Deactivate ${c.promoCode}`} onClick={() => setDeactivating(c)}>Deactivate</Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -287,6 +313,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
             </div>
           )}
         </Loaded>
+        {deactivating && <FormDialog title="Deactivate code?" description={`${deactivating.promoCode} cannot be reactivated afterwards.`} submit="Deactivate code" canSubmit onClose={() => setDeactivating(undefined)} onSubmit={async () => { await patchCoupon(seller, deactivating.id, { deactivated: true }); setDeactivating(undefined); detail.reload(); toast.success('Code deactivated'); }}><span className="text-xs text-muted-foreground sm:col-span-2">Other codes in this batch stay available.</span></FormDialog>}
       </DialogContent>
     </Dialog>
   );
@@ -296,6 +323,7 @@ function SingleVouchers({ seller, tabs }: { seller: DemoSession; tabs: ReactNode
   const list = useAsync(() => getCoupons(seller), [seller.sessionToken, seller.shopId], 10000);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Coupon>();
 
   const toggle = async (id: string, deactivated: boolean) => {
     setBusy(id);
@@ -354,6 +382,7 @@ function SingleVouchers({ seller, tabs }: { seller: DemoSession; tabs: ReactNode
                         <StatusPill status={c.status} />
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><Pencil size={13} />Edit</Button>
                         <Button size="sm" variant="outline" disabled={busy === c.id} onClick={() => toggle(c.id, c.status !== 'DEACTIVATED')}>
                           {c.status === 'DEACTIVATED' ? 'Reactivate' : 'Deactivate'}
                         </Button>
@@ -366,6 +395,7 @@ function SingleVouchers({ seller, tabs }: { seller: DemoSession; tabs: ReactNode
           }
         </Loaded>
       </SellerCard>
+      {editing && <EditVoucherDialog coupon={editing} onClose={() => setEditing(undefined)} onSave={async (body) => { await patchCoupon(seller, editing.id, body); toast.success('Voucher saved'); setEditing(undefined); list.reload(); }} />}
 
       {creating ? (
         <NewVoucherDialog

@@ -1,6 +1,5 @@
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
-import { ComingSoon } from './components/ComingSoon';
 import { RequireRole } from './components/RequireRole';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -20,6 +19,7 @@ import { ProductPage } from './pages/shop/ProductPage';
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => lazy(() => load().then((m) => ({ default: m[name] })));
 const SellerLayout = named(() => import('./layouts/SellerLayout'), 'SellerLayout');
 const SellerHome = named(() => import('./pages/seller-center/SellerHome'), 'SellerHome');
+const SellerShop = named(() => import('./pages/seller-center/SellerShop'), 'SellerShop');
 const SellerOrders = named(() => import('./pages/seller-center/SellerOrders'), 'SellerOrders');
 const SellerOrderDetail = named(() => import('./pages/seller-center/SellerOrderDetail'), 'SellerOrderDetail');
 const SellerReturns = named(() => import('./pages/seller-center/SellerReturns'), 'SellerReturns');
@@ -78,7 +78,7 @@ export function App() {
             <Route path="products/:id/edit" element={page(SellerProductForm)} />
             <Route path="vouchers" element={page(SellerVouchers)} />
             <Route path="messages" element={page(SellerMessages)} />
-            <Route path="shop" element={<ComingSoon title="Shop" hideTitle />} />
+            <Route path="shop" element={page(SellerShop)} />
           </Route>
 
           {/* links to the removed /buyer and /seller pages */}
