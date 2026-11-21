@@ -328,7 +328,6 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-panel .admin-catalog-scroll { max-height:none; }
 
 /* Panel controls stay with their data instead of occupying a page-title tier. */
-.admin-dispute-note { font-size:11px; margin:0 0 14px; }
 .admin-dispute-order { display:block; color:var(--muted); margin-top:5px; }
 .admin-dispute-form,.admin-dispute-detail { border:1px solid #e7e7e7; border-radius:10px; padding:16px; margin:14px 0; }
 .admin-dispute-form-bar,.admin-dispute-form-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
