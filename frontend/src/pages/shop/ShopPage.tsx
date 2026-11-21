@@ -12,6 +12,14 @@ import { useAsync } from '@/lib/useAsync';
 
 const normalized = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
 const PAGE_SIZE = 18;
+/** VND amounts accept plain digits or grouped thousands, without browser number-input coercion. */
+export function parseShopPrice(value: string): number | undefined {
+  const text = value.trim();
+  if (!text) return undefined;
+  if (!/^\d+$/.test(text) && !/^\d{1,3}([., ])\d{3}(?:\1\d{3})*$/.test(text)) return NaN;
+  const amount = Number(text.replace(/[., ]/g, ''));
+  return Number.isSafeInteger(amount) ? amount : NaN;
+}
 
 function ShopCatalog({ shopId }: { shopId: string }) {
   const { buyer } = useAuth();
@@ -23,13 +31,16 @@ function ShopCatalog({ shopId }: { shopId: string }) {
   const [minDraft, setMinDraft] = useState('');
   const [maxDraft, setMaxDraft] = useState('');
   const [price, setPrice] = useState<{ min?: number; max?: number }>({});
+  const [priceApplied, setPriceApplied] = useState(false);
   const [requestedPage, setPage] = useState(1);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const shopItems = (products.data ?? []).filter((p) => p.shop?.id === shopId);
   const name = shopItems[0]?.shop?.name ?? (typeof location.state?.shopName === 'string' ? location.state.shopName : 'Shop');
-  const validPrice = [minDraft, maxDraft].every((n) => n === '' || (Number.isSafeInteger(Number(n)) && Number(n) >= 0)) && (minDraft === '' || maxDraft === '' || Number(minDraft) <= Number(maxDraft));
+  const min = parseShopPrice(minDraft);
+  const max = parseShopPrice(maxDraft);
+  const validPrice = !Number.isNaN(min) && !Number.isNaN(max) && (min === undefined || max === undefined || min <= max);
   const filtered = !!query || inStock || price.min !== undefined || price.max !== undefined;
-  function clearFilters() { setQuery(''); setInStock(false); setMinDraft(''); setMaxDraft(''); setPrice({}); setPage(1); }
+  function clearFilters() { setQuery(''); setInStock(false); setMinDraft(''); setMaxDraft(''); setPrice({}); setPriceApplied(false); setPage(1); }
   const items = shopItems.filter((p) => normalized(`${p.title} ${p.description}`).includes(normalized(query)) && (!inStock || p.skus.some((sku) => sku.available && sku.stock > 0)) && (price.min === undefined || p.maxPriceVnd >= price.min) && (price.max === undefined || p.minPriceVnd <= price.max));
   if (sort === 'price-asc') items.sort((a, b) => a.minPriceVnd - b.minPriceVnd);
   if (sort === 'price-desc') items.sort((a, b) => b.minPriceVnd - a.minPriceVnd);
@@ -44,9 +55,10 @@ function ShopCatalog({ shopId }: { shopId: string }) {
     <aside className="buyer-shop-filters" aria-label="Shop filters">
       <div className="buyer-shop-filter-heading"><h2><SlidersHorizontal size={15} />Filters</h2><button onClick={clearFilters} disabled={!filtered && !minDraft && !maxDraft}>Reset</button></div>
       <div className="buyer-shop-filter-section"><label className="buyer-shop-filter-label" htmlFor="shop-search">Search</label><div className="buyer-shop-filter-search"><Search size={14} /><input id="shop-search" aria-label="Search in this shop" placeholder="Find a product" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div></div>
-      <form className="buyer-shop-filter-section" aria-label="Price filter" onSubmit={(event) => { event.preventDefault(); if (validPrice) { setPrice({ min: minDraft === '' ? undefined : Number(minDraft), max: maxDraft === '' ? undefined : Number(maxDraft) }); setPage(1); } }}>
-        <h3>Price range <span>VND</span></h3><div className="buyer-shop-price-inputs"><label>Min<input aria-label="Minimum price" type="number" min={0} step={1} placeholder="From" value={minDraft} onChange={(e) => setMinDraft(e.target.value)} /></label><span aria-hidden="true">–</span><label>Max<input aria-label="Maximum price" type="number" min={0} step={1} placeholder="To" value={maxDraft} onChange={(e) => setMaxDraft(e.target.value)} /></label></div>
-        {!validPrice && <p className="buyer-shop-filter-error" role="alert">Enter valid prices with Min no greater than Max.</p>}<button className="buyer-shop-apply" disabled={!validPrice}>Apply</button>
+      <form className="buyer-shop-filter-section" aria-label="Price filter" noValidate onSubmit={(event) => { event.preventDefault(); if (validPrice) { setPrice({ min, max }); setPriceApplied(true); setPage(1); } }}>
+        <h3>Price range <span>VND</span></h3><div className="buyer-shop-price-inputs"><label>Min<input aria-label="Minimum price" aria-invalid={!validPrice} type="text" inputMode="numeric" placeholder="From" value={minDraft} onChange={(e) => setMinDraft(e.target.value)} /></label><span aria-hidden="true">–</span><label>Max<input aria-label="Maximum price" aria-invalid={!validPrice} type="text" inputMode="numeric" placeholder="To" value={maxDraft} onChange={(e) => setMaxDraft(e.target.value)} /></label></div>
+        {!validPrice && <p className="buyer-shop-filter-error" role="alert">Enter whole VND amounts with Min no greater than Max.</p>}<button type="submit" className="buyer-shop-apply" disabled={!validPrice}>Apply</button>
+        {priceApplied && <p className="buyer-shop-price-applied" role="status">{price.min === undefined && price.max === undefined ? 'All prices' : price.min !== undefined && price.max !== undefined ? `${shopPrice(price.min)} – ${shopPrice(price.max)}` : price.min !== undefined ? `From ${shopPrice(price.min)}` : `Up to ${shopPrice(price.max!)}`}</p>}
       </form>
       <div className="buyer-shop-filter-section"><h3>Availability</h3><label className="buyer-shop-stock-check"><input type="checkbox" checked={inStock} onChange={(e) => { setInStock(e.target.checked); setPage(1); }} />In stock only</label></div>
     </aside>

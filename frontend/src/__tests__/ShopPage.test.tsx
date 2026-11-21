@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/lib/auth';
-import { ShopPage } from '@/pages/shop/ShopPage';
+import { parseShopPrice, ShopPage } from '@/pages/shop/ShopPage';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -40,10 +40,10 @@ it('combines price range, SKU availability and search and can clear all filters'
   show();
   await screen.findByText('Item 1');
   const filters = screen.getByRole('complementary', { name: 'Shop filters' });
-  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Minimum price' }), { target: { value: '25000' } });
-  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Maximum price' }), { target: { value: '20000' } });
+  fireEvent.change(within(filters).getByRole('textbox', { name: 'Minimum price' }), { target: { value: '25.000' } });
+  fireEvent.change(within(filters).getByRole('textbox', { name: 'Maximum price' }), { target: { value: '20,000' } });
   expect((within(filters).getByRole('button', { name: 'Apply' }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.change(within(filters).getByRole('spinbutton', { name: 'Maximum price' }), { target: { value: '30000' } });
+  fireEvent.change(within(filters).getByRole('textbox', { name: 'Maximum price' }), { target: { value: '30,000' } });
   fireEvent.click(within(filters).getByRole('button', { name: 'Apply' }));
   expect(screen.getByText('Item 1')).toBeTruthy(); // its variant range overlaps the chosen price range
   expect(screen.queryByText('Item 2')).toBeNull();
@@ -55,6 +55,13 @@ it('combines price range, SKU availability and search and can clear all filters'
   fireEvent.click(within(filters).getByRole('checkbox', { name: 'In stock only' }));
   expect(screen.queryByText('Item 2')).toBeNull();
   expect(screen.getByText('Item 3')).toBeTruthy();
+});
+
+it('accepts whole VND with thousands separators and rejects malformed amounts', () => {
+  for (const value of ['200000', '200.000', '200,000', '200 000']) expect(parseShopPrice(value)).toBe(200000);
+  expect(parseShopPrice('1.200.000')).toBe(1200000);
+  expect(parseShopPrice('')).toBeUndefined();
+  for (const value of ['-1', '1.5', '1e5', '20.00', '1.000,000', 'abc', '9007199254740992']) expect(Number.isNaN(parseShopPrice(value))).toBe(true);
 });
 
 it('resets filters and old products when navigating to a different shop', async () => {

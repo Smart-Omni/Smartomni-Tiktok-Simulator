@@ -498,8 +498,11 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
 .buyer-shop-filter-section + .buyer-shop-filter-section { border-top:1px solid #eee; padding-top:20px; margin-top:20px; }
 .buyer-shop-filter-section h3,.buyer-shop-filter-label { display:block; margin:0 0 12px; font-size:11px; font-weight:500; color:#444; }
 .buyer-shop-filter-section h3 span { float:right; color:#aaa; font-size:10px; font-weight:400; }
-.buyer-shop-filter-search { display:flex; align-items:center; gap:7px; border:1px solid #e5e5e5; border-radius:6px; padding:0 9px; color:#888; }
-.buyer-shop-filter-search input { min-width:0; width:100%; background:transparent; border:0; padding:9px 0; font-size:11px; }
+.buyer-shop-filter-search { display:flex; align-items:center; gap:8px; border:1px solid #e6e6e6; border-radius:8px; padding:0 10px; color:#888; background:#fafafa; transition:border-color .15s,box-shadow .15s; }
+.buyer-shop-filter-search svg { flex-shrink:0; }
+.buyer-shop-filter-search:focus-within { border-color:#777; box-shadow:0 0 0 2px #eee; background:#fff; }
+.buyer-shop-filter-search input { display:block; min-width:0; width:100%; height:36px; background:transparent; border:0; border-radius:0; padding:0; font-size:11px; }
+.buyer-shop-filter-search input:focus,.buyer-shop-filter-search input:focus-visible { outline:none !important; box-shadow:none; }
 .buyer-shop-price-inputs { display:flex; gap:6px; align-items:end; }
 .buyer-shop-price-inputs > span { align-self:center; padding-top:15px; color:#aaa; }
 .buyer-home-shell .buyer-shop-price-inputs label { display:flex; flex-direction:column; align-items:stretch; min-width:0; flex:1; font-size:10px; color:#888; gap:6px; }
@@ -507,6 +510,7 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
 .buyer-shop-apply { width:100%; margin-top:12px; padding:8px; border:1px solid #222; border-radius:6px; background:#222; color:#fff; font-size:11px; }
 .buyer-shop-apply:disabled { opacity:.4; }
 .buyer-shop-filter-error { font-size:10px; line-height:1.5; color:#a84545; margin:10px 0 0; }
+.buyer-shop-price-applied { margin:10px 0 0; font-size:10px; color:#56745c; line-height:1.5; overflow-wrap:anywhere; }
 .buyer-home-shell .buyer-shop-stock-check { display:flex; align-items:center; gap:8px; font-size:11px; }
 .buyer-shop-stock-check input { width:14px; height:14px; accent-color:#222; }
 .buyer-shop-catalog { min-width:0; }
