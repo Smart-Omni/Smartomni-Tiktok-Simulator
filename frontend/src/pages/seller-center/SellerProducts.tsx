@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
   const stockValid = !Object.values(stock).some((v) => !/^\d+$/.test(v));
   const normal = sku.status === 'NORMAL';
   return (
-    <TableRow aria-label={`SKU ${sku.sellerSku}`} className="align-top">
+    <TableRow aria-label={`SKU ${sku.sellerSku}`} className="seller-sku-row">
       <TableCell className="py-3">
         <div className="flex flex-col">
           <span className="font-medium">{sku.sellerSku}</span>
@@ -44,16 +44,17 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
         {normal ? null : <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-muted-foreground">{humanize(sku.status)}</span>}
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex items-center gap-1.5">
+        <div className="seller-sku-price">
+          <span>₫</span>
           <Input aria-label={`Price of ${sku.sellerSku}`} inputMode="numeric" value={price} disabled={disabled} onChange={(e) => setPrice(e.target.value)} className="h-8 w-28" />
-          <Button size="sm" variant="outline" disabled={disabled || !priceValid || Number(price) === sku.priceVnd} onClick={() => onPatch({ priceVnd: Number(price) }, 'Price updated')}>
-            Set
+          <Button size="icon" variant="ghost" aria-label="Set" title="Save price" disabled={disabled || !priceValid || Number(price) === sku.priceVnd} onClick={() => onPatch({ priceVnd: Number(price) }, 'Price updated')}>
+            <Check size={14} />
           </Button>
         </div>
-        <span className={cn('text-xs', priceValid ? 'text-muted-foreground' : 'text-destructive')}>{priceValid ? shopPrice(Number(price)) : 'Enter a whole VND amount'}</span>
+        {!priceValid && <span className="text-xs text-destructive">Enter a whole VND amount</span>}
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex flex-wrap items-end gap-1.5">
+        <div className="seller-sku-stock">
           {warehouses.map((w) => (
             <label key={w.externalId} className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
               {w.name}
@@ -68,17 +69,19 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
             </label>
           ))}
           <Button
-            size="sm"
+            size="icon"
             variant="outline"
+            aria-label="Set"
+            title="Save stock"
             disabled={disabled || !stockValid}
             onClick={() => onPatch({ stock: Object.fromEntries(Object.entries(stock).map(([k, v]) => [k, Number(v)])) }, 'Stock updated')}
           >
-            Set
+            <Check size={14} />
           </Button>
         </div>
       </TableCell>
       <TableCell className="py-3 text-right">
-        <Button size="sm" variant="ghost" disabled={disabled} onClick={() => onPatch({ status: normal ? 'DEACTIVATED' : 'NORMAL' }, normal ? 'Variant deactivated' : 'Variant activated')}>
+        <Button size="sm" variant="outline" className={cn('seller-sku-toggle', normal && 'is-active')} disabled={disabled} onClick={() => onPatch({ status: normal ? 'DEACTIVATED' : 'NORMAL' }, normal ? 'Variant deactivated' : 'Variant activated')}>
           {normal ? 'Deactivate' : 'Activate'}
         </Button>
       </TableCell>
@@ -133,32 +136,37 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Button>
       </div>
       <div id={detailsId} hidden={!expanded} className="seller-product-editor">
-      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong></div>
       {!deleted ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="seller-product-settings">
+          <label className="seller-product-title-field"><span>Name</span><div>
           <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
           <Button size="sm" variant="outline" disabled={!title.trim() || title === p.title} onClick={() => run(() => patchProduct(seller, p.id, { title }), 'Product renamed')}>
             Rename
           </Button>
+          </div></label>
+          <label className="seller-product-status-field"><span>Status</span>
           <NativeSelect aria-label={`Status of ${p.externalId}`} value={known ? p.status : ''} onChange={(e) => run(() => patchProduct(seller, p.id, { status: e.target.value }), 'Status updated')}>
             {known ? null : <option value="">{humanize(p.status)}</option>}
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {humanize(s)}
+                {productStatus(s)}
               </option>
             ))}
           </NativeSelect>
-          <Button asChild size="sm" variant="outline" className="ml-auto">
+          </label>
+          <div className="seller-product-settings-actions"><Button asChild size="sm" variant="outline">
             <Link to={`/seller-center/products/${encodeURIComponent(p.id)}/edit`}>
               <Pencil /> Edit details
             </Link>
           </Button>
           <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-            Delete
+            <Trash2 size={14} /> Delete
           </Button>
+          </div>
         </div>
       ) : null}
-      <div className="mt-3">
+      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong><span className="seller-sku-count">{p.skus.length}</span></div>
+      <div className="seller-sku-table">
         <Table>
           <TableHeader>
             <TableRow>
@@ -166,7 +174,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
               <TableHead>Variant</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Stock per warehouse</TableHead>
-              <TableHead />
+              <TableHead className="text-right">Availability</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,11 +186,14 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Table>
       </div>
       {!deleted ? (
-        <form onSubmit={addVariant} className="mt-3 flex flex-wrap items-center gap-2 border-t border-line-soft pt-3" aria-label={`Add variant to ${p.externalId}`}>
+        <form onSubmit={addVariant} className="seller-add-variant" aria-label={`Add variant to ${p.externalId}`}>
+          <label><span>Seller SKU</span>
           <Input aria-label="New seller SKU" placeholder="Seller SKU" required value={variant.sellerSku} onChange={(e) => setVariant({ ...variant, sellerSku: e.target.value })} className="h-8 w-36" />
+          </label><label><span>Variant</span>
           <Input aria-label="New variant name" placeholder="Variant" required value={variant.name} onChange={(e) => setVariant({ ...variant, name: e.target.value })} className="h-8 w-36" />
+          </label><label><span>Price (VND)</span>
           <Input aria-label="New variant price" placeholder="Price VND" inputMode="numeric" required value={variant.priceVnd} onChange={(e) => setVariant({ ...variant, priceVnd: e.target.value })} className="h-8 w-32" />
-          <Button type="submit" size="sm" variant="outline" disabled={!isWholeVnd(variant.priceVnd)}>
+          </label><Button type="submit" size="sm" disabled={!isWholeVnd(variant.priceVnd)}>
             <Plus /> Add variant
           </Button>
         </form>
