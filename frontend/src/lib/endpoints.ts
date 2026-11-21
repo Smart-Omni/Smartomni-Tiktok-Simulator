@@ -119,6 +119,12 @@ export const requestReturn = (s: DemoSession, body: ReturnRequest) =>
   api<{ request: Aftersale }>(shop(s, '/aftersale/returns'), { method: 'POST', body, ...auth(s) });
 export const requestCancellation = (s: DemoSession, orderId: string, reason?: string) =>
   api<{ request: Aftersale }>(shop(s, '/aftersale/cancellations'), { method: 'POST', body: { orderId, ...(reason ? { reason } : {}) }, ...auth(s) });
+export const cancelReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/cancel`), { method: 'POST', ...auth(s) });
+export const shipReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/ship-back`), { method: 'POST', ...auth(s) });
+export const disputeReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ changed: boolean; request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/dispute`), { method: 'POST', ...auth(s) });
 
 // Seller Center writes (same paths and bodies as the legacy SellerCatalog, aftersale/coupons/chat/inventory seller tabs)
 type Body = Record<string, unknown>;

@@ -1,4 +1,5 @@
 import { ShopFooter } from '@/components/shop/ShopFooter';
+import { BuyerAftersaleRequests } from '@/components/shop/BuyerAftersaleRequests';
 import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PackageSearch, Store, Truck } from 'lucide-react';
@@ -25,11 +26,12 @@ const POLL_MS = 10_000;
 const inOrderShop = (buyer: DemoSession, order: Order | undefined): DemoSession => inShop(buyer, order?.shopId ?? order?.shop?.id ?? buyer.shopId);
 
 /** Aftersale requests of every shop the buyer ordered from, as one list. */
-async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promise<AftersaleList | null> {
+type BuyerAftersaleList = Omit<AftersaleList, 'items'> & { items: (Aftersale & { shopId: string })[]; unavailableShopIds: string[] };
+async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promise<BuyerAftersaleList> {
   const shopIds = [...new Set(orders.map((o) => o.shopId ?? o.shop?.id ?? buyer.shopId))];
-  const lists = (await Promise.all(shopIds.map((id) => listAftersale(inShop(buyer, id)).catch(() => null)))).filter((l): l is AftersaleList => l !== null);
-  if (!lists.length) return null;
-  return { items: lists.flatMap((l) => l.items), requestReasons: lists[0].requestReasons, rejectReasons: lists[0].rejectReasons };
+  const results = await Promise.all(shopIds.map(async (id) => ({ shopId: id, data: await listAftersale(inShop(buyer, id)).catch(() => null) })));
+  const lists = results.flatMap((r) => r.data ? [{ ...r.data, items: r.data.items.map((item) => ({ ...item, shopId: r.shopId })) }] : []);
+  return { items: lists.flatMap((l) => l.items), requestReasons: lists[0]?.requestReasons ?? [], rejectReasons: lists[0]?.rejectReasons ?? [], unavailableShopIds: results.filter((r) => !r.data).map((r) => r.shopId) };
 }
 
 export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'cancelled';
@@ -360,12 +362,18 @@ function OrderCard({
   order,
   shopName,
   request,
+  requests,
+  buyer,
+  onReturnChanged,
   tracked,
   onAction,
 }: {
   order: Order;
   shopName: string;
   request: Aftersale | undefined;
+  requests: Aftersale[];
+  buyer: DemoSession;
+  onReturnChanged: () => void;
   tracked: boolean;
   onAction: (a: OrderAction) => void;
 }) {
@@ -437,6 +445,7 @@ function OrderCard({
         </div>
         <div className="flex gap-2">{actions.map(button)}</div>
       </footer>
+      <BuyerAftersaleRequests session={inOrderShop(buyer, order)} requests={requests} onChanged={onReturnChanged} />
     </article>
   );
 }
@@ -481,8 +490,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   const all = [...(orders.data?.items ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const count = (t: OrderTab) => (t === 'all' ? all.length : all.filter((o) => tabOf(o.status) === t).length);
   const shown = tab === 'all' ? all : all.filter((o) => tabOf(o.status) === tab);
-  const requestByOrder = new Map<string, Aftersale>();
-  for (const r of [...(aftersale.data?.items ?? [])].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))) requestByOrder.set(r.orderId, r);
+  const requestsForOrder = (order: Order) => (aftersale.data?.items ?? []).filter((r) => r.orderId === order.id && r.shopId === inOrderShop(buyer, order).shopId);
   const tracked = all.find((o) => o.id === trackId) ?? all.find((o) => tabOf(o.status) === 'shipping');
 
   const refresh = both.reload;
@@ -502,6 +510,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">My orders</h1>
+      {!!aftersale.data?.unavailableShopIds.length && <Alert variant="destructive" className="mb-4"><AlertDescription>Could not load return requests for some shops. Your orders are still available.<Button variant="outline" size="sm" className="ml-3" onClick={refresh}>Retry returns</Button></AlertDescription></Alert>}
       <div className="orders-workspace">
       <Tabs orientation="vertical" className="orders-status-sidebar !flex !flex-col !gap-0" value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
         <h2>Order status</h2>
@@ -530,7 +539,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
             </div>
           ) : (
             shown.map((o) => (
-              <OrderCard key={`${o.shopId}:${o.id}`} order={o} shopName={o.shop?.name ?? 'Shop'} request={requestByOrder.get(o.id)} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
+              <OrderCard key={`${o.shopId}:${o.id}`} order={o} shopName={o.shop?.name ?? 'Shop'} requests={requestsForOrder(o)} buyer={buyer} onReturnChanged={refresh} request={[...requestsForOrder(o)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
             ))
           )}
         </div>

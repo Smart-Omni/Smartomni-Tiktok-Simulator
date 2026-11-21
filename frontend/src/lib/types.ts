@@ -265,6 +265,7 @@ export interface Aftersale {
   role: string;
   rejectReason: string | null;
   returnTrackingNumber: string | null;
+  arbitrationStatus: 'NO_ARBITRATION' | 'IN_ARBITRATION' | 'ARBITRATION_WIN' | 'ARBITRATION_LOSS';
   buyer: { id: string; name: string };
   refund: { subtotalVnd: number; shippingVnd: number; totalVnd: number };
   createdAt: string;
