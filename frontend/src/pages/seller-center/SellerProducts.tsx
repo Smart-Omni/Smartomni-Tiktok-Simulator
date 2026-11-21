@@ -218,7 +218,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
 
 const PRODUCTS_PER_PAGE = 10;
 
-function ProductList({ seller, catalog, lowOnly, run }: { seller: DemoSession; catalog: Catalog; lowOnly: boolean; run: Run }) {
+function ProductList({ seller, catalog, lowOnly, run, onHistory }: { seller: DemoSession; catalog: Catalog; lowOnly: boolean; run: Run; onHistory: () => void }) {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -241,6 +241,7 @@ function ProductList({ seller, catalog, lowOnly, run }: { seller: DemoSession; c
       <div className="seller-catalog-toolbar">
         <label className="seller-catalog-search"><Search size={16} /><Input aria-label="Search products" placeholder="Search product name, ID or SKU…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />{query && <button type="button" aria-label="Clear product search" onClick={() => { setQuery(''); setPage(1); }}><X size={14} /></button>}</label>
         <label className="seller-catalog-sort"><ArrowUpDown size={14} /><NativeSelect aria-label="Sort products" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="default">Default order</option><option value="name">Name: A to Z</option><option value="stock">Stock: low to high</option></NativeSelect></label>
+        <Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Stock history" title="Stock history" onClick={onHistory}><History size={14} /></Button>
       </div>
       <div className="seller-catalog-columns" aria-hidden="true"><span>Product information</span><span>Price / Variants</span><span>Inventory</span><span>Status</span><span>Actions</span></div>
       <div className="seller-product-list">
@@ -380,10 +381,8 @@ function Products({ seller }: { seller: DemoSession }) {
   return (
     <div className="seller-products-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" size="icon" className="ml-auto" aria-label={tab === 'history' ? 'Back to list' : 'Stock history'} title={tab === 'history' ? 'Back to list' : 'Stock history'} onClick={() => setTab(tab === 'history' ? 'products' : 'history')}>
-          {tab === 'history' ? <ArrowLeft size={14} /> : <History size={14} />}
-        </Button>
-        <Button asChild>
+        {tab === 'history' && <Button variant="outline" size="icon" aria-label="Back to list" title="Back to list" onClick={() => setTab('products')}><ArrowLeft size={14} /></Button>}
+        <Button asChild className="ml-auto">
           <Link to="/seller-center/products/new">
             <Plus /> New product
           </Link>
@@ -399,7 +398,7 @@ function Products({ seller }: { seller: DemoSession }) {
             </div>
           ) : null}
           <Loaded result={catalog} what="products">
-            {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} />}
+            {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} onHistory={() => setTab('history')} />}
           </Loaded>
         </div> : <StockHistory seller={seller} />}
 
