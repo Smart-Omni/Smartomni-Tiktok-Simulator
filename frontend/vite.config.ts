@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       host: '127.0.0.1',
       proxy: {
+        '/api/v2/simulator/dispute': proxy(),
         '/demo': proxy(),
         '/health': proxy(),
         '/test-admin': proxy({ 'x-test-admin-token': adminToken }),

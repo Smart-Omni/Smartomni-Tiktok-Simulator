@@ -328,6 +328,21 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-panel .admin-catalog-scroll { max-height:none; }
 
 /* Panel controls stay with their data instead of occupying a page-title tier. */
+.admin-dispute-note { font-size:11px; margin:0 0 14px; }
+.admin-dispute-order { display:block; color:var(--muted); margin-top:5px; }
+.admin-dispute-form,.admin-dispute-detail { border:1px solid #e7e7e7; border-radius:10px; padding:16px; margin:14px 0; }
+.admin-dispute-form-bar,.admin-dispute-form-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.admin-dispute-form-actions { justify-content:flex-end; margin:14px 0 0; }
+.admin-dispute-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:14px; border:0; padding:0; margin:0; min-width:0; }
+.app .admin-dispute-fields label { display:flex; flex-direction:column; align-items:stretch; gap:7px; font-size:11px; text-align:left; min-width:0; }
+.app .admin-dispute-fields :is(input,select,textarea) { width:100%; min-width:0; }
+.app .admin-dispute-fields textarea { min-height:62px; resize:vertical; }
+.admin-dispute-wide { grid-column:1 / -1; }
+.admin-dispute-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:14px; margin:0 0 16px; }
+.admin-dispute-facts dt { font-size:10px; color:var(--muted); margin-bottom:5px; }
+.admin-dispute-facts dd { font-size:12px; margin:0; overflow-wrap:anywhere; }
+.admin-dispute-detail pre { overflow:auto; max-height:240px; }
+.admin-dispute-result { display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:8px; background:#f3f8f5; margin:12px 0; overflow-wrap:anywhere; font-size:11px; }
 .admin-shop-context { margin-bottom:18px; }
 .admin-register-panel { padding:16px 18px; border:1px solid #e7e7e7; border-radius:16px; background:#fff; }
 .admin-inline-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin:0 0 14px; padding:0 0 12px; border-bottom:1px solid #eee; }

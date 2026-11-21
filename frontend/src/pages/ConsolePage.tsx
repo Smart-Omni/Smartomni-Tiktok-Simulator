@@ -11,6 +11,7 @@ import { FaultsPanel } from './console/FaultsPanel';
 import { TokensPanel } from './console/TokensPanel';
 import { SandboxPanel } from './console/SandboxPanel';
 import { ArbitrationPanel } from './console/ArbitrationPanel';
+import { DisputesPanel } from './console/DisputesPanel';
 import { consoleTabs } from '../features/registry';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -33,6 +34,7 @@ const GROUPS: { label: string; screens: Screen[] }[] = [
     { label: 'Chat', title: 'Chat testing', description: 'Simulate buyer messages, agent activity and delivery faults.', icon: MessageSquare },
   ] },
   { label: 'Integration', screens: [
+    { label: 'Disputes', title: 'Dispute events', description: 'Inspect simulator disputes and trigger status changes and compensation webhooks.', icon: Scale },
     { label: 'Authorization', title: 'Authorization', description: 'Inspect granted scopes and test token expiry or revocation.', icon: KeyRound },
     { label: 'Webhooks', title: 'Webhooks', description: 'Inspect deliveries, queue test events and replay jobs.', icon: Webhook },
     { label: 'HTTP log', title: 'HTTP request log', description: 'Trace requests and responses across simulator routers.', icon: ScrollText },
@@ -52,6 +54,7 @@ const SCOPE_NOTES: Record<string, string> = {
   Faults: 'Rules from all shops are shown. Use the form to choose a shop-specific or global rule.',
   'HTTP log': 'Requests from all shops are shown unless “selected shop only” is enabled.',
   Reset: 'The reset scope is chosen in the form. Review its impact before confirming.',
+  Disputes: 'Only disputes for the selected shop are shown. These simulator records are separate from aftersale arbitration and are cleared when the API restarts.',
 };
 
 export function ConsolePage() {
@@ -126,7 +129,8 @@ export function ConsolePage() {
               ].map(([target, title]) => <button key={target} onClick={() => select(target)}><ArrowUpRight size={18} /><strong>{title}</strong></button>)}</div>
             </>
           )}
-          <div className={`admin-panel${['Orders', 'Fulfillment', 'Aftersale', 'Inventory', 'Chat', 'Authorization', 'Webhooks', 'HTTP log', 'Faults'].includes(tab) ? ' admin-register-panel' : ''}`} role="region" aria-label={`${screen.title} controls`} key={`${tab}:${selected}`}>
+          <div className={`admin-panel${['Orders', 'Fulfillment', 'Aftersale', 'Inventory', 'Chat', 'Authorization', 'Webhooks', 'HTTP log', 'Faults', 'Disputes'].includes(tab) ? ' admin-register-panel' : ''}`} role="region" aria-label={`${screen.title} controls`} key={`${tab}:${selected}`}>
+            {tab === 'Disputes' && <DisputesPanel shopId={selected} />}
             {tab === 'Shop & scenario' && <ShopsPanel shops={shops} />}
             {tab === 'Reset' && <ResetPanel shops={list} defaultShopId={selected} onDone={shops.reload} />}
             {tab === 'Clock' && <ClockPanel />}
