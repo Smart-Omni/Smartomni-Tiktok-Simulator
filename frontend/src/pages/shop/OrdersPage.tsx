@@ -1,8 +1,8 @@
 import { ShopFooter } from '@/components/shop/ShopFooter';
 import { BuyerAftersaleRequests } from '@/components/shop/BuyerAftersaleRequests';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { PackageSearch, Store, Truck, RotateCcw, CreditCard, Package } from 'lucide-react';
+import { PackageSearch, Store, Truck, RotateCcw, CreditCard, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -34,7 +34,7 @@ async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promis
   return { items: lists.flatMap((l) => l.items), requestReasons: lists[0]?.requestReasons ?? [], rejectReasons: lists[0]?.rejectReasons ?? [], unavailableShopIds: results.filter((r) => !r.data).map((r) => r.shopId) };
 }
 
-export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'cancelled';
+export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'completed' | 'cancelled';
 
 export const orderTabs: { key: OrderTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -42,6 +42,7 @@ export const orderTabs: { key: OrderTab; label: string }[] = [
   { key: 'to-ship', label: 'To ship' },
   { key: 'shipping', label: 'Shipping' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -58,8 +59,9 @@ export function tabOf(status: OrderStatus): Exclude<OrderTab, 'all'> {
     case 'IN_TRANSIT':
       return 'shipping';
     case 'DELIVERED':
-    case 'COMPLETED':
       return 'delivered';
+    case 'COMPLETED':
+      return 'completed';
     case 'CANCELLED':
       return 'cancelled';
   }
@@ -91,14 +93,6 @@ export function actionsFor(order: Pick<Order, 'status' | 'buyerRequestedCancel'>
       return [];
   }
 }
-
-const statusStyle: Record<Exclude<OrderTab, 'all'>, string> = {
-  'to-pay': 'bg-buyer-soft text-buyer-ink',
-  'to-ship': 'bg-[#FFF4E0] text-[#9A5B00]',
-  shipping: 'bg-teal-soft text-teal',
-  delivered: 'bg-free-ship/10 text-free-ship',
-  cancelled: 'bg-surface text-muted-foreground',
-};
 
 const statusLabel: Record<OrderStatus, string> = {
   UNPAID: 'To pay',
@@ -142,7 +136,7 @@ const CANCEL_REASONS = ['CHANGED_MIND', 'ORDERED_BY_MISTAKE', 'WRONG_ADDRESS', '
 const FALLBACK_RETURN_REASONS = ['CHANGED_MIND', 'DAMAGED_ITEM', 'NOT_AS_DESCRIBED', 'WRONG_ITEM', 'OTHER'];
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusStyle[tabOf(status)])}>{statusLabel[status]}</span>;
+  return <span className="buyer-order-status" data-status={status}><span />{statusLabel[status]}</span>;
 }
 
 function ReasonList({ id, reasons, value, onChange }: { id: string; reasons: string[]; value: string; onChange: (v: string) => void }) {
@@ -388,6 +382,8 @@ function OrderCard({
   tracked: boolean;
   onAction: (a: OrderAction) => void;
 }) {
+  const [expanded, setExpanded] = useState(true);
+  const detailsId = useId();
   const actions = actionsFor(order);
   const button = (a: OrderAction): ReactNode => {
     switch (a) {
@@ -419,15 +415,18 @@ function OrderCard({
     }
   };
   return (
-    <article aria-label={`Order ${order.id}`} className={cn('rounded-card bg-white p-5 shadow-xs ring-1', tracked ? 'ring-teal' : 'ring-line-soft')}>
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-soft pb-3">
+    <article aria-label={`Order ${order.id}`} data-expanded={expanded} className={cn('buyer-order-card rounded-card bg-white p-5 shadow-xs ring-1', tracked ? 'ring-teal' : 'ring-line-soft')}>
+      <header className="buyer-order-card-heading flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-soft pb-3">
         <Store className="size-4" aria-hidden />
         <span className="text-sm font-semibold">{shopName}</span>
         <span className="font-mono text-xs text-muted-foreground">#{order.id}</span>
         <span className="ml-auto">
           <StatusBadge status={order.status} />
         </span>
+        {!expanded && <strong className="buyer-order-collapsed-total">{shopPrice(order.amounts.totalVnd)}</strong>}
+        <button type="button" className="buyer-order-toggle" aria-expanded={expanded} aria-controls={detailsId} aria-label={`${expanded ? 'Collapse' : 'Expand'} order ${order.id}`} title={expanded ? 'Collapse order' : 'Expand order'} onClick={() => setExpanded(!expanded)}>{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button>
       </header>
+      <div id={detailsId} hidden={!expanded} className="buyer-order-details">
       <ul className="divide-y divide-line-soft">
         {order.items.map((i) => (
           <li key={i.skuId} className="flex items-center gap-3 py-3 text-sm">
@@ -448,7 +447,7 @@ function OrderCard({
       <footer className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col text-sm">
           <span className="text-muted-foreground">{hint(order)}</span>
-          {request ? (
+          {request && request.kind !== 'RETURN' ? (
             <span className="text-xs text-muted-2">
               {request.kind === 'RETURN' ? 'Return request' : 'Cancellation request'}: {humanize(request.status)}
             </span>
@@ -457,6 +456,7 @@ function OrderCard({
         <div className="flex gap-2">{actions.map(button)}</div>
       </footer>
       <BuyerAftersaleRequests session={inOrderShop(buyer, order)} requests={requests} onChanged={onReturnChanged} />
+      </div>
     </article>
   );
 }

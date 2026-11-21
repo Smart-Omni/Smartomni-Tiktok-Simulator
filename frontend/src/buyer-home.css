@@ -4,23 +4,64 @@
 .buyer-orders-page article > footer { padding-top:4px; }
 .buyer-orders-page article button { border-radius:7px; font-size:12px; }
 .buyer-orders-page article [aria-pressed=true] { border-color:#777; }
-.buyer-aftersale { margin-top:20px; padding-top:20px; border-top:1px solid #e9e9e9; }
-.buyer-aftersale-heading { display:flex; align-items:center; gap:8px; color:#6c6568; margin-bottom:12px; }
-.buyer-orders-page .buyer-aftersale-heading h3 { margin:0; font-size:12px; font-weight:600; }
-.buyer-aftersale-heading > span { margin-left:auto; font-size:10px; color:#999; }
-.buyer-return-request { padding:16px; border:1px solid #e8e4e5; border-radius:10px; background:#fcfbfc; }
-.buyer-return-request + .buyer-return-request { margin-top:10px; }
-.buyer-return-topline { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; font-size:12px; font-weight:500; }
-.buyer-return-status { padding:4px 8px; border-radius:6px; background:#f0edef; color:#76626d; font-size:10px; }
-.buyer-return-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-top:11px; color:#9a9296; font-size:10px; }
-.buyer-return-meta strong { margin-left:auto; color:#575057; font-size:12px; font-weight:500; }
-.buyer-return-items { margin:13px 0 5px; font-size:11px; line-height:1.7; color:#696168; }
-.buyer-return-reason { font-size:10px; color:#9b9298; margin:0; }
-.buyer-return-tracking,.buyer-return-arbitration { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; font-size:11px; color:#70626b; }
+.buyer-order-status { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:7px; font-size:10px; font-weight:500; color:#687281; background:#f0f2f5; white-space:nowrap; }
+.buyer-order-status > span { width:5px; height:5px; background:currentColor; border-radius:50%; }
+.buyer-order-status[data-status=UNPAID] { color:#b2506c; background:#fff0f4; }
+.buyer-order-status:is([data-status=ON_HOLD],[data-status=AWAITING_SHIPMENT]) { color:#a87924; background:#fff5df; }
+.buyer-order-status:is([data-status=AWAITING_COLLECTION],[data-status=IN_TRANSIT]) { color:#447bb0; background:#ebf3fd; }
+.buyer-order-status[data-status=PARTIALLY_SHIPPING] { color:#8f65b4; background:#f3ecfc; }
+.buyer-order-status[data-status=DELIVERED] { color:#298a85; background:#e7f5f3; }
+.buyer-order-status[data-status=COMPLETED] { color:#39825c; background:#eaf5ee; }
+.buyer-order-status[data-status=CANCELLED] { color:#ab6569; background:#fbeeee; }
+.buyer-orders-page .buyer-order-toggle { display:grid; place-items:center; width:28px; min-height:28px; padding:0; flex-shrink:0; border:1px solid #e9e4e7; background:#fff; color:#a08e99; border-radius:8px; }
+.buyer-orders-page .buyer-order-toggle:hover { color:#5f4655; background:#f7f3f5; }
+.buyer-order-toggle:focus-visible { outline:2px solid #ac8b9f; outline-offset:3px; }
+.buyer-orders-page .buyer-order-card[data-expanded=false] > header { border-bottom:0 !important; padding-bottom:0 !important; }
+.buyer-order-collapsed-total { color:#5f515b; font-size:13px; font-weight:500; white-space:nowrap; }
+.buyer-order-details > footer { padding-top:4px; }
+.buyer-aftersale { margin-top:22px; padding-top:18px; border-top:1px solid #eeebed; }
+.buyer-aftersale-heading { display:flex; align-items:center; gap:8px; color:#93878d; margin-bottom:12px; }
+.buyer-orders-page .buyer-aftersale-heading h3 { margin:0; font-size:11px; font-weight:500; }
+.buyer-aftersale-heading > svg { width:14px; }
+.buyer-aftersale-heading > span { display:grid; place-items:center; min-width:19px; height:19px; font-size:9px; background:#f3f1f2; border-radius:5px; color:#aaa; }
+.buyer-return-request { padding:18px 20px; border:1px solid #ebe7e9; border-radius:12px; background:linear-gradient(110deg,#fdfbfc,#fff); }
+.buyer-return-request + .buyer-return-request { margin-top:12px; }
+.buyer-return-summary { display:flex; align-items:center; gap:12px; }
+.buyer-return-summary-icon { display:grid; place-items:center; width:36px; height:36px; background:#f1ecef; color:#a08090; border:1px solid #ebe1e6; border-radius:11px; flex-shrink:0; }
+.buyer-return-summary > div > strong { display:block; color:#54454f; font-size:12px; font-weight:600; }
+.buyer-return-summary > div > span { display:block; margin-top:4px; color:#b1a2aa; font-size:10px; }
+.buyer-return-summary .buyer-return-refund { margin-left:auto; text-align:right; }
+.buyer-return-refund small { display:block; margin-bottom:4px; font-size:9px; color:#b1a2aa; }
+.buyer-return-summary .buyer-return-refund strong { font-size:15px; letter-spacing:-.3px; font-weight:500; font-variant-numeric:tabular-nums; }
+.buyer-return-state-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; margin:17px 0; }
+.buyer-return-status { display:inline-flex; align-items:center; gap:6px; color:#9c7228; background:#fff4dc; padding:5px 8px; border-radius:6px; font-size:10px; }
+.buyer-return-status > span { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.buyer-return-status[data-tone=success] { color:#39825c; background:#eaf5ee; }
+.buyer-return-status[data-tone=info] { color:#447bb0; background:#ebf3fd; }
+.buyer-return-status[data-tone=declined] { color:#ad5e65; background:#fbeeee; }
+.buyer-return-status[data-tone=neutral] { color:#86808a; background:#f0eef2; }
+.buyer-return-arbitration { display:inline-flex; align-items:center; gap:6px; color:#9163aa; background:#f5edfb; padding:5px 8px; border-radius:6px; font-size:10px; }
+.buyer-return-arbitration[data-status=ARBITRATION_WIN] { color:#39825c; background:#eaf5ee; }
+.buyer-return-arbitration[data-status=ARBITRATION_LOSS] { color:#ad5e65; background:#fbeeee; }
+.buyer-return-tracking { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:12px 0; font-size:10px; color:#8f7d88; }
 .buyer-return-tracking strong { font-family:ui-monospace,monospace; font-weight:500; overflow-wrap:anywhere; }
-.buyer-return-arbitration { padding:10px 12px; border-radius:8px; background:#f2eef0; }
-.buyer-return-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.buyer-return-details { border-top:1px solid #f0ecef; padding-top:13px; }
+.buyer-return-details summary { display:flex; align-items:center; gap:7px; width:fit-content; cursor:pointer; list-style:none; font-size:10px; color:#a18d99; }
+.buyer-return-details summary::-webkit-details-marker { display:none; }
+.buyer-return-details[open] summary svg { transform:rotate(180deg); }
+.buyer-return-details > div { padding:14px 0 2px; }
+.buyer-return-details dl { display:flex; flex-direction:column; gap:8px; margin:0; }
+.buyer-return-details dl > div { display:grid; grid-template-columns:90px minmax(0,1fr); gap:10px; font-size:10px; }
+.buyer-return-details dt { color:#b0a1aa; }
+.buyer-return-details dd { margin:0; color:#8d7b87; overflow-wrap:anywhere; }
+.buyer-return-details ul { margin:14px 0 0; padding:12px 0 0; border-top:1px solid #f1edf0; list-style:none; }
+.buyer-return-details li { font-size:11px; color:#897784; line-height:1.6; }
+.buyer-return-details li small { display:block; color:#b0a1aa; font-size:10px; }
+.buyer-return-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .buyer-return-actions:empty { display:none; }
+.buyer-orders-page .buyer-return-actions button { min-height:30px; height:auto; font-size:10px; padding:6px 10px; border-radius:7px; border-color:#e5dce2; color:#8a7482; background:#fff; box-shadow:none; }
+.buyer-return-actions button svg { width:12px; height:12px; }
+@media(max-width:550px) { .buyer-return-request { padding:15px; } .buyer-return-summary { flex-wrap:wrap; gap:10px; } .buyer-return-summary .buyer-return-refund { margin-left:48px; text-align:left; width:100%; } .buyer-return-arbitration { padding-left:0; border-left:0; } }
 .buyer-return-confirm { display:flex; flex-direction:column; gap:6px; padding:16px; border-radius:10px; background:#f7f5f6; font-size:12px; color:#8b7e86; overflow-wrap:anywhere; }
 .buyer-return-confirm strong { color:#4c4349; font-family:ui-monospace,monospace; font-size:12px; font-weight:500; }
 /* Return dialog has its own layout because the portal sits outside the order page. */
@@ -96,7 +137,7 @@
 .transaction-content h1 { font-size:25px !important; font-weight:500 !important; margin-bottom:24px; letter-spacing:-.5px; }
 .transaction-grid { display:grid; grid-template-columns:minmax(0,1fr) 310px; align-items:start; gap:24px; }
 .transaction-grid > aside { position:sticky; top:24px; }
-.transaction-content section { border-radius:12px !important; box-shadow:none !important; border:1px solid #e5e5e5; --tw-ring-shadow:0 0 #0000; }
+.transaction-content section:not(.buyer-aftersale) { border-radius:12px !important; box-shadow:none !important; border:1px solid #e5e5e5; --tw-ring-shadow:0 0 #0000; }
 .transaction-content section h2 { font-size:16px !important; font-weight:600 !important; }
 .transaction-content section > div:first-child:has(h2) { flex-wrap:wrap; }
 .transaction-content .text-buyer { color:#333 !important; }

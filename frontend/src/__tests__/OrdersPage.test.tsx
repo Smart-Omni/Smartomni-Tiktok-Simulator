@@ -69,7 +69,7 @@ describe('tab and action rules', () => {
       PARTIALLY_SHIPPING: 'shipping',
       IN_TRANSIT: 'shipping',
       DELIVERED: 'delivered',
-      COMPLETED: 'delivered',
+      COMPLETED: 'completed',
       CANCELLED: 'cancelled',
     };
     for (const [status, tab] of Object.entries(expected)) expect(tabOf(status as OrderStatus)).toBe(tab);
@@ -98,6 +98,7 @@ describe('tab and action rules', () => {
 describe('OrdersPage', () => {
   const calls: { url: string; method: string; body?: unknown }[] = [];
   let returns: Aftersale[];
+  let listedOrders: Order[];
   let returnFailure = false;
   const returnRequest = (id: string, status: string, arbitrationStatus: Aftersale['arbitrationStatus'] = 'NO_ARBITRATION'): Aftersale => ({
     id, orderId: 'o4', kind: 'RETURN', type: 'RETURN_AND_REFUND', status, arbitrationStatus,
@@ -109,6 +110,7 @@ describe('OrdersPage', () => {
   beforeEach(() => {
     calls.length = 0;
     returns = [];
+    listedOrders = [...orders];
     returnFailure = false;
     sessionStorage.clear();
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
@@ -118,7 +120,7 @@ describe('OrdersPage', () => {
         const method = init?.method ?? 'GET';
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url, method, body });
-        if (url === '/demo/buyer/orders') return json({ items: orders });
+        if (url === '/demo/buyer/orders') return json({ items: listedOrders });
         if ((url === '/demo/shops/shop-1/aftersale' || url === '/demo/shops/shop-2/aftersale') && method === 'GET') {
           return json({ items: url.includes('shop-2') ? returns : [], requestReasons: ['CHANGED_MIND', 'DAMAGED_ITEM', 'OTHER'], rejectReasons: [] });
         }
@@ -158,6 +160,17 @@ describe('OrdersPage', () => {
     expect(within(card('o5')).getByText('Cancelled: Changed mind')).toBeTruthy();
   });
 
+  it('counts and filters completed orders separately from delivered orders', async () => {
+    listedOrders.push(order('o6', 'COMPLETED', '2026-10-22T00:00:00Z'));
+    renderOrders();
+    const completed = await screen.findByRole('tab', { name: 'Completed (1)' });
+    expect(screen.getByRole('tab', { name: 'Delivered (1)' })).toBeTruthy();
+    fireEvent.mouseDown(completed);
+    expect(screen.getAllByRole('article').map((item) => item.getAttribute('aria-label'))).toEqual(['Order o6']);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Delivered (1)' }));
+    expect(screen.getAllByRole('article').map((item) => item.getAttribute('aria-label'))).toEqual(['Order o4']);
+  });
+
   it('lists the orders of every shop and names the shop on each card', async () => {
     renderOrders();
     await screen.findByRole('article', { name: 'Order o1' });
@@ -169,12 +182,28 @@ describe('OrdersPage', () => {
   it('shows the actions of each status on the cards', async () => {
     renderOrders();
     await screen.findByRole('article', { name: 'Order o1' });
-    const names = (id: string) => within(card(id)).queryAllByRole('button').map((b) => b.textContent);
+    const names = (id: string) => within(card(id)).queryAllByRole('button').filter((b) => !b.hasAttribute('aria-controls')).map((b) => b.textContent);
     expect(names('o1')).toEqual(['Cancel', 'Pay now']);
     expect(names('o2')).toEqual(['Cancel']);
     expect(names('o3')).toEqual(['Track']);
     expect(names('o4')).toEqual(['Track', 'Request return']);
     expect(names('o5')).toEqual([]);
+  });
+
+  it('collapses each order independently while keeping its summary and total visible', async () => {
+    renderOrders();
+    const unpaid = await screen.findByRole('article', { name: 'Order o1' });
+    const toggle = within(unpaid).getByRole('button', { name: 'Collapse order o1' });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(within(unpaid).queryByRole('button', { name: 'Pay now' })).toBeNull();
+    const header = unpaid.querySelector('header')!;
+    expect(within(header).getByText('Mộc Lan Shop')).toBeTruthy();
+    expect(within(header).getByText('To pay')).toBeTruthy();
+    expect(header.textContent).toContain('283.000');
+    expect(within(card('o4')).getByRole('button', { name: 'Request return' })).toBeTruthy();
+    fireEvent.click(within(unpaid).getByRole('button', { name: 'Expand order o1' }));
+    expect(within(unpaid).getByRole('button', { name: 'Pay now' })).toBeTruthy();
   });
 
   it('pays an unpaid order', async () => {

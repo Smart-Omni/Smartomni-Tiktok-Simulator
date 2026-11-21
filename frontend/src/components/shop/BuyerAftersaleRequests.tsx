@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PackageCheck, RotateCcw, Scale, Truck } from 'lucide-react';
+import { ArrowDownLeft, ChevronDown, PackageCheck, RotateCcw, Scale, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,17 @@ import type { Aftersale, DemoSession } from '@/lib/types';
 
 type ReturnAction = 'cancel' | 'ship-back' | 'dispute';
 const label = (value: string) => value.charAt(0) + value.slice(1).toLowerCase().replaceAll('_', ' ');
+const RETURN_STATUS: Record<string, { label: string; tone: string }> = {
+  RETURN_OR_REFUND_REQUEST_PENDING: { label: 'Awaiting seller review', tone: 'pending' },
+  AWAITING_BUYER_RESPONSE: { label: 'Your response needed', tone: 'pending' },
+  REFUND_OR_RETURN_REQUEST_REJECT: { label: 'Request declined', tone: 'declined' },
+  AWAITING_BUYER_SHIP: { label: 'Ready to ship back', tone: 'pending' },
+  BUYER_SHIPPED_ITEM: { label: 'Return in transit', tone: 'info' },
+  REJECT_RECEIVE_PACKAGE: { label: 'Return parcel declined', tone: 'declined' },
+  RETURN_OR_REFUND_REQUEST_SUCCESS: { label: 'Return approved', tone: 'success' },
+  RETURN_OR_REFUND_REQUEST_CANCEL: { label: 'Request cancelled', tone: 'neutral' },
+  RETURN_OR_REFUND_REQUEST_COMPLETE: { label: 'Return completed', tone: 'success' },
+};
 
 /** Mirrors buyerCancelReturn, buyerShipBack and arbitrate in the existing backend. */
 export function buyerReturnActions(request: Aftersale): ReturnAction[] {
@@ -37,12 +48,12 @@ export function BuyerAftersaleRequests({ session, requests, onChanged }: { sessi
   return <section className="buyer-aftersale" aria-label="Return requests">
     <div className="buyer-aftersale-heading"><PackageCheck size={16} /><h3>Returns & refunds</h3><span>{returns.length}</span></div>
     {returns.map((request) => <div className="buyer-return-request" key={request.id} role="group" aria-label={`Return ${request.id}`}>
-      <div className="buyer-return-topline"><span>{label(request.type)}</span><span className="buyer-return-status">{label(request.status)}</span></div>
-      <div className="buyer-return-meta"><span className="font-mono">#{request.id}</span><span>Requested {new Date(request.createdAt).toLocaleDateString()}</span><strong>{shopPrice(request.refund.totalVnd)}</strong></div>
-      <p className="buyer-return-items">{request.items.map((item) => `${item.quantity} × ${item.productName} (${item.skuName})`).join(' · ')}</p>
-      <p className="buyer-return-reason">Reason: {label(request.reason)}{request.rejectReason ? ` · Seller response: ${label(request.rejectReason)}` : ''}</p>
+      <div className="buyer-return-summary"><span className="buyer-return-summary-icon"><ArrowDownLeft size={18} /></span><div><strong>{label(request.type)}</strong><span>Requested {new Date(request.createdAt).toLocaleDateString()}</span></div><div className="buyer-return-refund"><small>Requested amount</small><strong>{shopPrice(request.refund.totalVnd)}</strong></div></div>
+      <div className="buyer-return-state-row"><span className="buyer-return-status" data-tone={RETURN_STATUS[request.status]?.tone ?? 'neutral'}><span />{RETURN_STATUS[request.status]?.label ?? label(request.status)}</span>
+      {request.arbitrationStatus && request.arbitrationStatus !== 'NO_ARBITRATION' && <span className="buyer-return-arbitration" data-status={request.arbitrationStatus} role="status"><Scale size={13} /><span>{request.arbitrationStatus === 'IN_ARBITRATION' ? 'Dispute under review' : label(request.arbitrationStatus)}</span></span>}
+      </div>
       {request.returnTrackingNumber && <div className="buyer-return-tracking"><Truck size={14} />Return tracking <strong>{request.returnTrackingNumber}</strong></div>}
-      {request.arbitrationStatus && request.arbitrationStatus !== 'NO_ARBITRATION' && <div className="buyer-return-arbitration" role="status"><Scale size={14} /><span>{request.arbitrationStatus === 'IN_ARBITRATION' ? 'Dispute under review' : label(request.arbitrationStatus)}</span></div>}
+      <details className="buyer-return-details"><summary>Request details<ChevronDown size={13} /></summary><div><dl><div><dt>Request ID</dt><dd className="font-mono">{request.id}</dd></div><div><dt>Reason</dt><dd>{label(request.reason)}</dd></div>{request.rejectReason && <div><dt>Seller response</dt><dd>{label(request.rejectReason)}</dd></div>}</dl><ul>{request.items.map((item) => <li key={item.skuId}><span>{item.quantity} × {item.productName}</span><small>{item.skuName}</small></li>)}</ul></div></details>
       <div className="buyer-return-actions">{buyerReturnActions(request).map((key) => {
         const item = ACTIONS[key];
         return <Button key={key} variant="outline" size="sm" onClick={() => { setError(undefined); setSelected({ request, action: key }); }}><item.icon size={14} />{key === 'ship-back' ? 'I shipped the return' : item.button}</Button>;
