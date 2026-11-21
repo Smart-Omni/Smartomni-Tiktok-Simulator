@@ -512,7 +512,8 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
 .buyer-shop-catalog { min-width:0; }
 .buyer-shop-toolbar { display:flex; align-items:center; justify-content:flex-end; gap:16px; margin-bottom:20px; min-height:36px; }
 .buyer-shop-toolbar select { border:1px solid #e5e5e5; border-radius:8px; padding:8px 12px; font-size:12px; background:#fff; }
-.buyer-shop-photo { display:flex; align-items:center; justify-content:center; aspect-ratio:4/5; background:#ededed; overflow:hidden; color:#aaa; }
+.buyer-shop-photo { display:flex; align-items:center; justify-content:center; aspect-ratio:4/5; overflow:hidden; color:#aaa; }
+.buyer-shop-grid .buyer-product-photo > .buyer-shop-photo { background-color:#fff !important; }
 .buyer-shop-photo img { width:100%; height:100%; object-fit:contain; transition:transform .2s; }
 .buyer-shop-price-range { font-size:10px; color:#888; }
 .buyer-shop-empty { display:flex; align-items:center; flex-direction:column; gap:14px; padding:50px 15px; color:#888; font-size:13px; }
