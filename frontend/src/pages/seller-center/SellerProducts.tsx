@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
@@ -252,7 +252,7 @@ function ProductList({ seller, catalog, lowOnly, run, onHistory }: { seller: Dem
       <div className="seller-catalog-toolbar">
         <label className="seller-catalog-search"><Search size={16} /><Input aria-label="Search products" placeholder="Search product name, ID or SKU…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />{query && <button type="button" aria-label="Clear product search" onClick={() => { setQuery(''); setPage(1); }}><X size={14} /></button>}</label>
         <label className="seller-catalog-sort"><ArrowUpDown size={14} /><NativeSelect aria-label="Sort products" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="default">Default order</option><option value="name">Name: A to Z</option><option value="stock">Stock: low to high</option></NativeSelect></label>
-        <Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Stock history" title="Stock history" onClick={onHistory}><History size={14} /></Button>
+        <div className="seller-catalog-actions"><Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Stock history" title="Stock history" onClick={onHistory}><History size={14} /></Button><Button asChild><Link to="/seller-center/products/new"><Plus size={14} /> New product</Link></Button></div>
       </div>
       <div className="seller-catalog-columns" aria-hidden="true"><span>Product information</span><span>Price / Variants</span><span>Inventory</span><span>Status</span><span>Actions</span></div>
       <div className="seller-product-list">
@@ -276,12 +276,12 @@ function StockHistory({ seller, onBack }: { seller: DemoSession; onBack: () => v
   const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
   return (
     <>
-    {!history.data && <div className="flex justify-end"><Button variant="outline" size="icon" aria-label="Back to products" title="Back to products" onClick={onBack}><ArrowLeft size={14} /></Button></div>}
+    <nav className="seller-stock-breadcrumb" aria-label="Stock history navigation"><button type="button" aria-label="Back to products" onClick={onBack}>Products</button><ChevronRight size={12} aria-hidden="true" /><span aria-current="page">Stock history</span></nav>
     <Loaded result={history} what="stock history">
       {(d) => (
         <div className="flex flex-col gap-4">
           <SellerCard label="Stock changes" className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-bold">Stock changes (before / after)</h2><Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Back to products" title="Back to products" onClick={onBack}><ArrowLeft size={14} /></Button></div>
+            <h2 className="mb-3 text-base font-bold">Stock changes (before / after)</h2>
             {d.changes.length === 0 ? (
               <p className="text-sm text-muted-foreground">No stock changes yet.</p>
             ) : (
@@ -394,13 +394,6 @@ function Products({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="seller-products-page flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild className="ml-auto">
-          <Link to="/seller-center/products/new">
-            <Plus /> New product
-          </Link>
-        </Button>
-      </div>
       <div className={cn('flex-col gap-4', tab === 'products' ? 'flex' : 'hidden')}>
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">

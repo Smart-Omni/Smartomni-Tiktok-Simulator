@@ -292,7 +292,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
   );
 }
 
-function SingleVouchers({ seller }: { seller: DemoSession }) {
+function SingleVouchers({ seller, tabs }: { seller: DemoSession; tabs: ReactNode }) {
   const list = useAsync(() => getCoupons(seller), [seller.sessionToken, seller.shopId], 10000);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -312,17 +312,17 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-
-        <Button className="ml-auto" onClick={() => setCreating(true)}>
+      <SellerCard className="seller-voucher-panel">
+      <div className="seller-voucher-toolbar">
+        {tabs}
+        <Button onClick={() => setCreating(true)}>
           <Plus /> New voucher
         </Button>
       </div>
-      <SellerCard>
         <Loaded result={list} what="vouchers">
           {(d) =>
             d.items.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No vouchers yet. Create one with New voucher.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">No vouchers yet.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -383,7 +383,7 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
   );
 }
 
-function CodeBatches({ seller }: { seller: DemoSession }) {
+function CodeBatches({ seller, tabs }: { seller: DemoSession; tabs: ReactNode }) {
   const list = useAsync(() => listCouponBatches(seller), [seller.sessionToken, seller.shopId], 10000);
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -404,17 +404,17 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-
-        <Button className="ml-auto" onClick={() => setCreating(true)}>
+      <SellerCard className="seller-voucher-panel">
+      <div className="seller-voucher-toolbar">
+        {tabs}
+        <Button onClick={() => setCreating(true)}>
           <Plus /> New code batch
         </Button>
       </div>
-      <SellerCard>
         <Loaded result={list} what="code batches">
           {(d) =>
             d.items.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No code batches yet. Create one with New code batch.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">No code batches yet.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -488,22 +488,15 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
 function Vouchers({ seller }: { seller: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'batches' ? 'batches' : 'vouchers';
-  return (
-    <div className="flex flex-col gap-4">
-
+  const tabs = (
       <Tabs value={tab} onValueChange={(v) => setParams(v === 'batches' ? { tab: 'batches' } : {}, { replace: true })}>
-        <TabsList variant="line" className="h-11 justify-start gap-2 border-b border-line-soft">
-          <TabsTrigger value="vouchers" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Vouchers
-          </TabsTrigger>
-          <TabsTrigger value="batches" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Code batches
-          </TabsTrigger>
+        <TabsList variant="line" className="h-11 justify-start gap-2">
+          <TabsTrigger value="vouchers">Vouchers</TabsTrigger>
+          <TabsTrigger value="batches">Code batches</TabsTrigger>
         </TabsList>
       </Tabs>
-      {tab === 'batches' ? <CodeBatches seller={seller} /> : <SingleVouchers seller={seller} />}
-    </div>
   );
+  return <div className="seller-vouchers-page">{tab === 'batches' ? <CodeBatches seller={seller} tabs={tabs} /> : <SingleVouchers seller={seller} tabs={tabs} />}</div>;
 }
 
 export function SellerVouchers() {
