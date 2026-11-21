@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -57,14 +57,13 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   ) : null;
 }
 
-function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <SellerCard label={title} className="flex flex-col gap-4 p-5">
-      <div>
-        <h2 className="text-base font-bold">{title}</h2>
-        {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
-      </div>
+    <SellerCard label={title} className="seller-listing-section">
+      <div className="seller-listing-section-heading"><h2>{title}</h2></div>
+      <div className="seller-listing-section-body">
       {children}
+      </div>
     </SellerCard>
   );
 }
@@ -100,7 +99,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-3" role="list" aria-label="Product images">
+      <div className="seller-listing-images" role="list" aria-label="Product images">
         {slots.map((s, i) => (
           <div key={s.key} role="listitem" aria-label={`Image ${i + 1}${i === 0 ? ' (main)' : ''}`} className={cn('relative flex size-28 flex-col overflow-hidden rounded-lg ring-1', s.status === 'error' ? 'ring-destructive' : 'ring-line-soft')}>
             {s.src ? <img src={s.src} alt={`Product image ${i + 1}`} className="size-full object-cover" /> : <div className="size-full bg-surface" />}
@@ -138,7 +137,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
             className={cn('flex size-28 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-xs text-muted-foreground', dragging ? 'border-teal bg-teal-soft' : 'border-line-soft')}
           >
             <ImagePlus className="size-5" />
-            Add or drop
+            Add images
             <span>
               {slots.length}/{MAX_IMAGES}
             </span>
@@ -164,7 +163,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
             {s.error}
           </p>
         ))}
-      <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, up to 5 MB each. The first image is the main image.</p>
+      <span className="seller-listing-file-limits">JPEG / PNG / WebP · 5 MB</span>
       <FieldError id="images-error" message={error} />
     </div>
   );
@@ -281,7 +280,7 @@ function AttributeInput({ attr, value, onChange }: { attr: CategoryAttribute; va
   );
 }
 
-function ProductForm({ seller, product, warehouses }: { seller: DemoSession; product?: CatalogProduct; warehouses: { externalId: string; name: string }[] }) {
+function ProductForm({ seller, product }: { seller: DemoSession; product?: CatalogProduct }) {
   const navigate = useNavigate();
   const editing = Boolean(product);
   const categories = useAsync(() => getCategories(seller), [seller.sessionToken]);
@@ -370,17 +369,22 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
   };
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4" aria-label={editing ? 'Edit product' : 'New product'}>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild variant="ghost" size="sm">
+    <form onSubmit={submit} noValidate className="seller-listing-form" aria-label={editing ? 'Edit product' : 'New product'}>
+      <div className="seller-listing-actions">
+        <Button asChild variant="outline" size="icon">
           <Link to="/seller-center/products">
-            <ArrowLeft /> Products
+            <ArrowLeft aria-hidden="true" /><span className="sr-only">Back to products</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">{editing ? 'Edit product' : 'New product'}</h1>
         {product ? <span className="font-mono text-xs text-muted-foreground">#{product.externalId}</span> : null}
+        <div className="seller-listing-save">
+          <Button asChild type="button" variant="outline"><Link to="/seller-center/products">Cancel</Link></Button>
+          <Button type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Save size={14} />}{editing ? 'Save product' : 'Create product'}</Button>
+        </div>
       </div>
 
+      <div className="seller-listing-grid">
+      <div className="seller-listing-main">
       <Section title="Basic info">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-title">Title *</Label>
@@ -393,10 +397,47 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </div>
       </Section>
 
-      <Section title="Images *" hint={`Up to ${MAX_IMAGES} images. Each one uploads as soon as it is picked.`}>
+      <Section title="Images *">
         <ImagesField seller={seller} slots={slots} setSlots={setSlots} error={shown(errors.images)} />
       </Section>
 
+      <Section title="Variants">
+        {product ? (
+          <ul className="seller-listing-existing-skus">
+            {product.skus.map((s) => (
+              <li key={s.id}>
+                <div><strong>{s.sellerSku}</strong><span>{s.name}</span></div><strong>{shopPrice(s.priceVnd)}</strong><span>{s.totalStock} in stock</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {variants.map((v, i) => (
+              <div key={i} className="seller-listing-variant" aria-label={`Variant ${i + 1}`} role="group">
+                <label><span>Seller SKU *</span>
+                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
+                </label><label><span>Variant *</span>
+                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
+                </label><label><span>Price (VND) *</span>
+                <Input aria-label={`Price ${i + 1}`} placeholder="Price VND" inputMode="numeric" value={v.price} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} className="h-8 w-32" />
+                </label>
+                {variants.length > 1 ? (
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Remove variant ${i + 1}`} onClick={() => setVariants(variants.filter((_, j) => j !== i))}>
+                    <X />
+                  </Button>
+                ) : null}
+                {touched && variantErrors[i] ? <span className="seller-listing-variant-error text-xs text-destructive">{variantErrors[i]}</span> : null}
+              </div>
+            ))}
+            <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => setVariants([...variants, { sellerSku: '', name: '', price: '' }])}>
+              <Plus /> Add variant
+            </Button>
+          </div>
+        )}
+      </Section>
+
+      </div>
+      <div className="seller-listing-aside">
       <Section title="Category *">
         <Loaded result={categories} what="categories">
           {() => <CategoryField tree={tree} value={categoryId} onChange={setCategoryId} error={shown(errors.category)} />}
@@ -419,7 +460,8 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </Loaded>
       </Section>
 
-      <Section title="Attributes" hint={leaf ? 'Fields marked * are required by the category.' : 'Choose a category to see its attributes.'}>
+      <Section title="Attributes">
+        {!leaf ? <p className="text-sm text-muted-foreground">Select a category first.</p> : null}
         {leaf && attributes.length === 0 ? <p className="text-sm text-muted-foreground">This category has no attributes.</p> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           {attributes.map((a) => (
@@ -431,8 +473,8 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </div>
       </Section>
 
-      <Section title="Shipping" hint={rules?.packageDimensionsRequired ? 'This category requires the package dimensions.' : undefined}>
-        <div className="flex flex-wrap items-end gap-3">
+      <Section title="Shipping">
+        <div className="seller-listing-shipping">
           <div className="flex flex-col gap-1">
             <Label htmlFor="package-weight">Weight (kg)</Label>
             <Input id="package-weight" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="w-32" />
@@ -450,36 +492,8 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         <FieldError id="dimensions-error" message={shown(errors.dimensions)} />
       </Section>
 
-      <Section title="Variants" hint={editing ? 'Edit variants, prices and stock from the Products list.' : `Stock starts at 0 in every warehouse (${warehouses.map((w) => w.name).join(', ') || 'none'}); set it per variant afterwards.`}>
-        {product ? (
-          <ul className="text-sm">
-            {product.skus.map((s) => (
-              <li key={s.id}>
-                {s.sellerSku} · {s.name} · {shopPrice(s.priceVnd)} · stock {s.totalStock}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {variants.map((v, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2" aria-label={`Variant ${i + 1}`} role="group">
-                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
-                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
-                <Input aria-label={`Price ${i + 1}`} placeholder="Price VND" inputMode="numeric" value={v.price} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} className="h-8 w-32" />
-                {variants.length > 1 ? (
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Remove variant ${i + 1}`} onClick={() => setVariants(variants.filter((_, j) => j !== i))}>
-                    <X />
-                  </Button>
-                ) : null}
-                {touched && variantErrors[i] ? <span className="text-xs text-destructive">{variantErrors[i]}</span> : null}
-              </div>
-            ))}
-            <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => setVariants([...variants, { sellerSku: '', name: '', price: '' }])}>
-              <Plus /> Add variant
-            </Button>
-          </div>
-        )}
-      </Section>
+      </div>
+      </div>
 
       {serverError ? (
         <Alert variant="destructive">
@@ -487,14 +501,6 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </Alert>
       ) : null}
       {touched && !valid ? <p className="text-sm text-destructive">Fix the highlighted fields before saving.</p> : null}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={busy}>
-          {editing ? 'Save product' : 'Create product'}
-        </Button>
-        <Button asChild type="button" variant="outline">
-          <Link to="/seller-center/products">Cancel</Link>
-        </Button>
-      </div>
     </form>
   );
 }
@@ -515,7 +521,7 @@ export function SellerProductForm() {
             </SellerCard>
           );
         }
-        return <ProductForm key={product?.id ?? 'new'} seller={seller} product={product} warehouses={d.warehouses} />;
+        return <ProductForm key={product?.id ?? 'new'} seller={seller} product={product} />;
       }}
     </Loaded>
   );
