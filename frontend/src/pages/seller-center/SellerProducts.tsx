@@ -1,13 +1,12 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { addSku, deleteProduct, getCatalog, getInventoryHistory, patchProduct, patchSku } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
@@ -134,7 +133,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Button>
       </div>
       <div id={detailsId} hidden={!expanded} className="seller-product-editor">
-      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong><span>Manage pricing and stock for this product</span></div>
+      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong></div>
       {!deleted ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
@@ -235,19 +234,18 @@ function ProductList({ seller, catalog, lowOnly, run }: { seller: DemoSession; c
   return (
     <div className="seller-catalog">
       <div className="seller-catalog-statuses" aria-label="Product status filters">
-        {[{ value: 'ALL', label: 'All products' }, ...STATUSES.map((value) => ({ value, label: productStatus(value) })), { value: 'DELETED', label: 'Deleted' }].map((option) => <button key={option.value} type="button" aria-pressed={status === option.value} onClick={() => { setStatus(option.value); setPage(1); }}>
+        {[{ value: 'ALL', label: 'All' }, ...STATUSES.map((value) => ({ value, label: productStatus(value) })), { value: 'DELETED', label: 'Deleted' }].map((option) => <button key={option.value} type="button" aria-pressed={status === option.value} onClick={() => { setStatus(option.value); setPage(1); }}>
           {option.label}<span>{source.filter((p) => option.value === 'ALL' || p.status === option.value).length}</span>
         </button>)}
       </div>
       <div className="seller-catalog-toolbar">
         <label className="seller-catalog-search"><Search size={16} /><Input aria-label="Search products" placeholder="Search product name, ID or SKU…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />{query && <button type="button" aria-label="Clear product search" onClick={() => { setQuery(''); setPage(1); }}><X size={14} /></button>}</label>
         <label className="seller-catalog-sort"><ArrowUpDown size={14} /><NativeSelect aria-label="Sort products" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="default">Default order</option><option value="name">Name: A to Z</option><option value="stock">Stock: low to high</option></NativeSelect></label>
-        <span className="seller-catalog-result">{items.length} products</span>
       </div>
       <div className="seller-catalog-columns" aria-hidden="true"><span>Product information</span><span>Price / Variants</span><span>Inventory</span><span>Status</span><span>Actions</span></div>
       <div className="seller-product-list">
         {items.slice(offset, offset + PRODUCTS_PER_PAGE).map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={catalog.warehouses} run={run} />)}
-        {!items.length && <div className="seller-catalog-empty"><Package size={30} /><h2>{query || status !== 'ALL' ? 'No matching products' : 'No products to display'}</h2><p>{query || status !== 'ALL' ? 'Try another keyword or choose a different status.' : lowOnly ? 'All products are above the low-stock threshold.' : 'Add your first product to start building your catalog.'}</p>{(query || status !== 'ALL') && <Button variant="outline" onClick={() => { setQuery(''); setStatus('ALL'); setPage(1); }}>Clear filters</Button>}</div>}
+        {!items.length && <div className="seller-catalog-empty"><Package size={30} /><h2>{query || status !== 'ALL' ? 'No matching products' : 'No products to display'}</h2>{(query || status !== 'ALL') && <Button variant="outline" onClick={() => { setQuery(''); setStatus('ALL'); setPage(1); }}>Clear filters</Button>}</div>}
       </div>
       <nav aria-label="Product pagination" className="seller-product-pagination">
         <span>Showing {items.length ? offset + 1 : 0}–{Math.min(offset + PRODUCTS_PER_PAGE, items.length)} of {items.length} products</span>
@@ -381,24 +379,17 @@ function Products({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="seller-products-page flex flex-col gap-4">
-      <div className="seller-products-heading flex flex-wrap items-center gap-3">
-        <div><span className="seller-products-eyebrow">CATALOG MANAGEMENT</span><h1 className="text-2xl font-bold">Products</h1><p>Everything you sell, organised in one place.</p></div>
-        <Button asChild className="ml-auto">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="outline" size="icon" className="ml-auto" aria-label={tab === 'history' ? 'Back to list' : 'Stock history'} title={tab === 'history' ? 'Back to list' : 'Stock history'} onClick={() => setTab(tab === 'history' ? 'products' : 'history')}>
+          {tab === 'history' ? <ArrowLeft size={14} /> : <History size={14} />}
+        </Button>
+        <Button asChild>
           <Link to="/seller-center/products/new">
             <Plus /> New product
           </Link>
         </Button>
       </div>
-      <Tabs value={tab} onValueChange={setTab} className="gap-4">
-        <TabsList variant="line" className="h-10 max-w-full justify-start gap-2 overflow-x-auto overflow-y-hidden border-b border-line-soft [scrollbar-width:none]">
-          <TabsTrigger value="products" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Products
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Stock history
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="products" className="flex flex-col gap-4">
+      {tab === 'products' ? <div className="flex flex-col gap-4">
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">
               <SlidersHorizontal size={13} /> Low stock (≤{LOW_STOCK}) only
@@ -410,11 +401,7 @@ function Products({ seller }: { seller: DemoSession }) {
           <Loaded result={catalog} what="products">
             {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} />}
           </Loaded>
-        </TabsContent>
-        <TabsContent value="history">
-          <StockHistory seller={seller} />
-        </TabsContent>
-      </Tabs>
+        </div> : <StockHistory seller={seller} />}
 
     </div>
   );
