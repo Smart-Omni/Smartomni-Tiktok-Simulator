@@ -27,6 +27,7 @@ const SellerProducts = named(() => import('./pages/seller-center/SellerProducts'
 const SellerProductForm = named(() => import('./pages/seller-center/SellerProductForm'), 'SellerProductForm');
 const SellerVouchers = named(() => import('./pages/seller-center/SellerVouchers'), 'SellerVouchers');
 const SellerMessages = named(() => import('./pages/seller-center/SellerMessages'), 'SellerMessages');
+const SellerCustomers = named(() => import('./pages/seller-center/SellerCustomers'), 'SellerCustomers');
 const ConsolePage = named(() => import('./pages/ConsolePage'), 'ConsolePage');
 const AuthorizePage = named(() => import('./pages/AuthorizePage'), 'AuthorizePage');
 
@@ -78,6 +79,7 @@ export function App() {
             <Route path="products/:id/edit" element={page(SellerProductForm)} />
             <Route path="vouchers" element={page(SellerVouchers)} />
             <Route path="messages" element={page(SellerMessages)} />
+            <Route path="customers" element={page(SellerCustomers)} />
             <Route path="shop" element={page(SellerShop)} />
           </Route>
 

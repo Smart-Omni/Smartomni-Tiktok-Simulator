@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FlaskConical, Info, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowUpRight, Boxes, ChevronRight, Clock3, Database, FileUp, FlaskConical, Info, KeyRound, LayoutDashboard, ListOrdered, MessageSquare, Package, ReceiptText, RotateCcw, Scale, ScrollText, ShieldCheck, ShoppingBag, Store, Tag, Truck, Webhook, Zap, type LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StatusPanel } from './console/StatusPanel';
 import { ShopsPanel } from './console/ShopsPanel';
@@ -12,6 +12,7 @@ import { TokensPanel } from './console/TokensPanel';
 import { SandboxPanel } from './console/SandboxPanel';
 import { ArbitrationPanel } from './console/ArbitrationPanel';
 import { DisputesPanel } from './console/DisputesPanel';
+import { MediaPanel } from './console/MediaPanel';
 import { consoleTabs } from '../features/registry';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -34,6 +35,7 @@ const GROUPS: { label: string; screens: Screen[] }[] = [
     { label: 'Chat', title: 'Chat testing', description: 'Simulate buyer messages, agent activity and delivery faults.', icon: MessageSquare },
   ] },
   { label: 'Integration', screens: [
+    { label: 'Media', title: 'Media uploads', description: 'Upload a file and inspect the media ID and URL returned by the simulator.', icon: FileUp },
     { label: 'Disputes', title: 'Dispute events', description: 'Inspect simulator disputes and trigger status changes and compensation webhooks.', icon: Scale },
     { label: 'Authorization', title: 'Authorization', description: 'Inspect granted scopes and test token expiry or revocation.', icon: KeyRound },
     { label: 'Webhooks', title: 'Webhooks', description: 'Inspect deliveries, queue test events and replay jobs.', icon: Webhook },
@@ -55,6 +57,7 @@ const SCOPE_NOTES: Record<string, string> = {
   'HTTP log': 'Requests from all shops are shown unless “selected shop only” is enabled.',
   Reset: 'The reset scope is chosen in the form. Review its impact before confirming.',
   Disputes: 'Only disputes for the selected shop are shown. These simulator records are separate from aftersale arbitration and are cleared when the API restarts.',
+  Media: 'This upload API is shared across shops and does not take a shop ID. Product images are uploaded separately in Seller Center.',
 };
 
 export function ConsolePage() {
@@ -129,7 +132,8 @@ export function ConsolePage() {
               ].map(([target, title]) => <button key={target} onClick={() => select(target)}><ArrowUpRight size={18} /><strong>{title}</strong></button>)}</div>
             </>
           )}
-          <div className={`admin-panel${['Orders', 'Fulfillment', 'Aftersale', 'Inventory', 'Chat', 'Authorization', 'Webhooks', 'HTTP log', 'Faults', 'Disputes'].includes(tab) ? ' admin-register-panel' : ''}`} role="region" aria-label={`${screen.title} controls`} key={`${tab}:${selected}`}>
+          <div className={`admin-panel${['Orders', 'Fulfillment', 'Aftersale', 'Inventory', 'Chat', 'Authorization', 'Webhooks', 'HTTP log', 'Faults', 'Disputes', 'Media'].includes(tab) ? ' admin-register-panel' : ''}`} role="region" aria-label={`${screen.title} controls`} key={`${tab}:${selected}`}>
+            {tab === 'Media' && <MediaPanel />}
             {tab === 'Disputes' && <DisputesPanel shopId={selected} />}
             {tab === 'Shop & scenario' && <ShopsPanel shops={shops} />}
             {tab === 'Reset' && <ResetPanel shops={list} defaultShopId={selected} onDone={shops.reload} />}

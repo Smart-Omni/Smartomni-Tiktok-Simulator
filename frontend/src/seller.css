@@ -268,3 +268,10 @@ body:has(.seller-desktop-frame) { overflow:hidden; background:#dedfdf; }
   .seller-page-content h1 { font-size:20px; }
 }
 @media(max-width:480px) { .seller-shell .seller-content { padding:16px; } .seller-business-metrics { gap:12px; } .seller-business-metrics strong { font-size:19px; } }
+.seller-customers-toolbar { display:flex; align-items:center; gap:12px; padding:16px 18px; border-bottom:1px solid #eee; }
+.seller-customers-search { display:flex; align-items:center; gap:8px; flex:1; max-width:420px; min-width:0; }
+.seller-customers-search > svg { flex-shrink:0; color:#888; }
+.seller-customers-search input { width:100%; min-width:0; }
+.seller-customers th,.seller-customers td { padding:14px 18px; }
+.seller-customer-name { display:flex; align-items:center; gap:10px; font-weight:500; }
+.seller-customer-avatar { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; flex-shrink:0; background:#f2f2f2; border-radius:50%; color:#666; font-size:12px; }

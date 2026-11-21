@@ -37,6 +37,13 @@ export interface Shop {
   warehouses: { id: string; code: string; name: string; city: string }[];
 }
 
+/** Customers returned by GET /demo/shops/{shopId}/buyers. */
+export interface ShopBuyer {
+  id: string;
+  name: string;
+  city: string;
+}
+
 export interface Sku {
   id: string;
   name: string;

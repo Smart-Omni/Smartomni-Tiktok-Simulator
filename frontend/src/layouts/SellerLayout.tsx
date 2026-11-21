@@ -39,7 +39,7 @@ const menu: MenuGroup[] = [
   },
   { label: 'Products', icon: Package, to: `${base}/products` },
   { label: 'Marketing', icon: Megaphone, items: [{ to: `${base}/vouchers`, label: 'Vouchers' }] },
-  { label: 'Customer service', icon: Headset, items: [{ to: `${base}/messages`, label: 'Messages' }] },
+  { label: 'Customer service', icon: Headset, items: [{ to: `${base}/messages`, label: 'Messages' }, { to: `${base}/customers`, label: 'Customers' }] },
   { label: 'Shop', icon: Store, to: `${base}/shop` },
 ];
 

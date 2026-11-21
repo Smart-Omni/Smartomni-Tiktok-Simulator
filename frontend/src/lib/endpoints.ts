@@ -29,6 +29,7 @@ import type {
   ShopRef,
   ShippingDocumentType,
   Shop,
+  ShopBuyer,
   SignInIdentity,
   StorefrontProduct,
   UploadedImage,
@@ -54,6 +55,7 @@ export const endSession = (s: DemoSession) => api<void>('/demo/sessions/current'
 
 // Shop (seller)
 export const getShop = (s: DemoSession) => api<Shop>(shop(s), auth(s));
+export const getShopBuyers = (s: DemoSession) => api<{ items: ShopBuyer[] }>(shop(s, '/buyers'), auth(s));
 export const getCatalog = (s: DemoSession) => api<Catalog>(shop(s, '/catalog'), auth(s));
 export const getCoupons = (s: DemoSession) => api<{ items: Coupon[] }>(shop(s, '/coupons'), auth(s));
 export const getBuyerCoupons = (s: DemoSession) => api<{ items: BuyerCoupon[] }>(shop(s, '/coupons'), auth(s));

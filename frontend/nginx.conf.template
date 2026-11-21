@@ -28,6 +28,13 @@ server {
         proxy_set_header X-Request-Id $request_id;
         proxy_set_header X-Test-Admin-Token "";
     }
+    location = /api/v2/media/upload {
+        client_max_body_size 6m;
+        proxy_pass http://api:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Request-Id $request_id;
+        proxy_set_header X-Test-Admin-Token "";
+    }
     location = /healthz {
         access_log off;
         default_type text/plain;

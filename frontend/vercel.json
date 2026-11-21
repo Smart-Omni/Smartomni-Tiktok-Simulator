@@ -4,6 +4,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/v2/media/upload", "destination": "https://smartomni-tiktok-simulator-api.onrender.com/api/v2/media/upload" },
     { "source": "/api/v2/simulator/dispute/:path*", "destination": "https://smartomni-tiktok-simulator-api.onrender.com/api/v2/simulator/dispute/:path*" },
     { "source": "/demo/:path*", "destination": "https://smartomni-tiktok-simulator-api.onrender.com/demo/:path*" },
     { "source": "/health/:path*", "destination": "https://smartomni-tiktok-simulator-api.onrender.com/health/:path*" },
