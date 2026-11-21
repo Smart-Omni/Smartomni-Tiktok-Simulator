@@ -1,0 +1,51 @@
+.signin-page { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:28px; background:#dedfdf; color:#292929; }
+.signin-page .signin-main { display:grid; grid-template-columns:.9fr 1.1fr; width:100%; max-width:940px; min-height:min(600px,calc(100dvh - 80px)); margin:0; padding:0; overflow:hidden; border-radius:26px; background:#fff; box-shadow:0 14px 70px #00000008; }
+.signin-brand-panel { position:relative; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; padding:30px; background:#202121; color:#fff; }
+.signin-brand { display:flex; align-items:center; gap:10px; width:fit-content; color:#fff; text-decoration:none; }
+.signin-brand > span { font-size:23px; font-weight:600; letter-spacing:-.8px; }
+.signin-brand small { display:block; margin-top:5px; font-size:8px; font-weight:400; letter-spacing:2px; color:#aaa; }
+.signin-brand-content { padding:38px 0; }
+.signin-brand-art { display:flex; align-items:center; gap:14px; margin-bottom:32px; }
+.signin-brand-art > span { display:grid; place-items:center; width:64px; height:72px; border:1px solid #555; border-radius:19px; background:linear-gradient(145deg,#ffffff12,#ffffff02); color:#d5d5d5; }
+.signin-brand-art > span:nth-child(2) { margin-top:-24px; background:#ededed; border-color:#ededed; color:#262626; transform:rotate(-8deg); }
+.signin-brand-art > span:last-child { transform:rotate(7deg); }
+.signin-brand-content h2 { margin:0; font-size:36px; font-weight:500; line-height:1.2; letter-spacing:-1.7px; }
+.signin-brand-content h2 > span { color:#aaa; }
+.signin-workspaces { display:flex; flex-direction:column; gap:13px; margin-top:24px; color:#aaa; font-size:11px; }
+.signin-workspaces > span { display:flex; align-items:center; gap:10px; }
+.signin-brand-footer { display:flex; flex-direction:column; gap:7px; font-size:9px; color:#888; }
+.signin-brand-footer > span:first-child { color:#bbb; }
+.signin-form-panel { display:flex; min-width:0; flex-direction:column; padding:26px 32px 22px; }
+.signin-form-content { width:100%; max-width:410px; margin:auto; padding:16px 0; }
+.signin-heading > span { color:#999; font-size:9px; letter-spacing:1.8px; }
+.signin-heading h1 { margin:10px 0 8px; font-size:30px; line-height:1.2; font-weight:500; letter-spacing:-1px; }
+.signin-heading p { margin:0; color:#999; font-size:11px; }
+.signin-destination { margin-top:18px; padding:10px 12px; border:1px solid #e9e9e9; border-radius:8px; background:#fafafa; color:#888; font-size:10px; line-height:1.7; }
+.signin-destination strong { color:#555; font-weight:500; }
+.signin-tabs { margin-top:20px; gap:14px; }
+.signin-page .signin-roles { display:grid; grid-template-columns:1fr 1fr; width:100%; height:46px; padding:4px; border-radius:10px; background:#f1f1f1; }
+.signin-roles [data-slot=tabs-trigger] { gap:8px; height:38px; border:0; border-radius:7px; color:#999; font-size:11px; font-weight:400; box-shadow:none; }
+.signin-roles [data-slot=tabs-trigger][data-state=active] { background:#fff; color:#222; box-shadow:0 1px 5px #0000000d; font-weight:500; }
+.signin-account-label { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; color:#666; font-size:10px; }
+.signin-account-label > span:last-child { color:#aaa; font-size:9px; }
+.signin-accounts { max-height:clamp(160px,calc(100dvh - 560px),230px); overflow-y:auto; padding:2px; gap:8px; scrollbar-width:thin; scrollbar-color:#ddd transparent; }
+.signin-accounts > [data-slot=radio-group] { gap:8px; }
+.signin-account { display:flex; align-items:center; gap:11px; min-height:64px; padding:11px 13px; border:1px solid #e8e8e8; border-radius:10px; cursor:pointer; transition:background .15s,border-color .15s; }
+.signin-account:hover { background:#fafafa; border-color:#ccc; }
+.signin-account:has([data-state=checked]) { border-color:#777; background:#f8f8f8; }
+.signin-account-avatar { background:#eee; color:#666; font-size:12px; font-weight:500; }
+.signin-account:has([data-state=checked]) .signin-account-avatar { background:#292929; color:white; }
+.signin-account-info { display:flex; min-width:0; flex:1; flex-direction:column; gap:5px; }
+.signin-account-info > span:first-child { font-size:11px; font-weight:500; color:#444; }
+.signin-account-info > span:last-child:not(:first-child) { color:#999; font-size:9px; }
+.signin-account [data-slot=radio-group-item] { width:15px; height:15px; color:#222; border-color:#d2d2d2; box-shadow:none; }
+.signin-account [data-slot=radio-group-item][data-state=checked] { border-color:#333; }
+.signin-page .signin-submit { display:flex; justify-content:space-between; width:100%; min-height:44px; margin-top:22px; padding:12px 16px; border-radius:9px; background:#242424; color:#fff; font-size:11px; font-weight:500; box-shadow:none; }
+.signin-submit span { overflow:hidden; text-overflow:ellipsis; }
+.signin-page .signin-submit:hover:not(:disabled) { background:#3a3a3a; }
+.signin-guest { display:flex; justify-content:center; align-items:center; gap:8px; margin-top:17px; color:#888; text-decoration:none; font-size:10px; }
+.signin-guest:hover { color:#222; }
+.signin-form-footer { display:flex; align-items:center; justify-content:center; gap:7px; color:#aaa; font-size:9px; }
+.signin-page :is(a,button,label):focus-visible { outline:2px solid #777; outline-offset:3px; }
+@media(max-width:800px) { .signin-page { padding:16px; } .signin-page .signin-main { grid-template-columns:.8fr 1.2fr; min-height:600px; } .signin-brand-panel { padding:28px; } .signin-brand-content h2 { font-size:32px; } .signin-brand-art { gap:8px; } .signin-brand-art > span { width:56px; height:64px; } .signin-brand-art svg { width:27px; } .signin-form-panel { padding:28px; } }
+@media(max-width:620px) { .signin-page { align-items:flex-start; padding:12px; } .signin-page .signin-main { grid-template-columns:minmax(0,1fr); min-height:calc(100dvh - 24px); border-radius:19px; } .signin-brand-panel { padding:22px 24px; } .signin-brand-content,.signin-brand-footer { display:none; } .signin-brand > span { font-size:20px; } .signin-brand small { font-size:7px; } .signin-form-panel { padding:22px 24px; } .signin-form-content { padding:28px 0; } .signin-accounts { max-height:290px; } .signin-heading h1 { font-size:28px; } }

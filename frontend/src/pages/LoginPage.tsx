@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import '@/signin.css';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Star, Truck } from 'lucide-react';
+import { ArrowRight, Loader2, MessageCircle, ShieldCheck, ShoppingBag, Store } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -77,20 +78,17 @@ function toAccounts(ids: Identities): Record<Role, Account[]> {
   };
 }
 
-function Illustration() {
+function SignInBrand() {
   return (
-    <div className="relative hidden min-h-[440px] flex-col items-center justify-center gap-6 bg-buyer-soft p-10 md:flex" aria-hidden>
-      <div className="flex size-36 items-center justify-center rounded-full bg-white shadow-sm">
-        <ShoppingBag className="size-16 text-buyer" strokeWidth={1.5} />
+    <aside className="signin-brand-panel">
+      <Link to="/" className="signin-brand"><ShieldCheck size={27} /><span>TikTok<small>SHOP SIMULATOR</small></span></Link>
+      <div className="signin-brand-content">
+        <div className="signin-brand-art" aria-hidden="true"><span><ShoppingBag size={35} strokeWidth={1.25} /></span><span><Store size={35} strokeWidth={1.25} /></span><span><MessageCircle size={35} strokeWidth={1.25} /></span></div>
+        <h2>Shop. Sell.<br /><span>Stay connected.</span></h2>
+        <div className="signin-workspaces"><span><ShoppingBag size={15} /> Buyer workspace</span><span><Store size={15} /> Seller workspace</span></div>
       </div>
-      <div className="absolute left-10 top-16 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-free-ship shadow-sm">
-        <Truck className="size-3.5" /> Free shipping
-      </div>
-      <div className="absolute bottom-24 right-10 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm">
-        <Star className="size-3.5 fill-star text-star" /> 4.8
-      </div>
-      <p className="max-w-[260px] text-center text-sm text-buyer-ink">Shop from every demo shop. Everything here is fake data.</p>
-    </div>
+      <div className="signin-brand-footer"><span>TikTok Shop Simulator</span><span>One connected experience</span></div>
+    </aside>
   );
 }
 
@@ -105,6 +103,10 @@ function AccountList({
   value: string | undefined;
   onChange: (key: string) => void;
 }) {
+  const accountList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    accountList.current?.querySelector('[data-selected=true]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [value]);
   if (accounts.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-line p-5 text-center text-sm">
@@ -116,27 +118,28 @@ function AccountList({
     );
   }
   return (
-    <RadioGroup value={value} onValueChange={onChange} aria-label={role === 'BUYER' ? 'Buyer accounts' : 'Seller accounts'} className="gap-2">
+    <div ref={accountList} className="signin-accounts"><RadioGroup value={value} onValueChange={onChange} aria-label={role === 'BUYER' ? 'Buyer accounts' : 'Seller accounts'}>
       {accounts.map((a) => {
         const id = `account-${a.key}`;
         return (
           <label
             key={a.key}
+            data-selected={a.key === value}
             htmlFor={id}
-            className="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5 transition-colors hover:bg-surface-2 has-[[data-state=checked]]:border-buyer has-[[data-state=checked]]:bg-buyer-soft"
+            className="signin-account"
           >
-            <RadioGroupItem id={id} value={a.key} />
             <Avatar className="size-9">
-              <AvatarFallback className={role === 'BUYER' ? 'bg-buyer text-white' : 'bg-teal text-white'}>{a.name.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="signin-account-avatar">{a.name.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <span className="flex min-w-0 flex-col">
+            <span className="signin-account-info">
               <span className="truncate text-sm font-semibold text-ink">{a.name}</span>
               {a.detail ? <span className="truncate text-xs text-muted-foreground">{a.detail}</span> : null}
             </span>
+            <RadioGroupItem id={id} value={a.key} />
           </label>
         );
       })}
-    </RadioGroup>
+    </RadioGroup></div>
   );
 }
 
@@ -171,51 +174,35 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-2 font-sans text-[15px] text-ink">
-      <header className="flex h-14 items-center bg-ink px-5 text-white">
-        <Link to="/" className="flex items-center gap-2.5 font-bold">
-          <span className="flex size-8 items-center justify-center rounded-[9px] bg-white text-ink">t</span>
-          Tiptop Shop
-        </Link>
-        <span className="mx-3 h-5 w-px bg-white/30" aria-hidden />
-        <span className="font-semibold">Sign in</span>
-        <Link to="/" className="ml-auto flex items-center gap-1.5 text-sm text-white/80 hover:text-white">
-          <ArrowLeft className="size-4" /> Back to shopping
-        </Link>
-      </header>
-
-      <main className="mx-auto max-w-[960px] px-4 py-8">
-        {next ? (
-          <div className="mb-5 rounded-card border border-buyer/20 bg-buyer-soft px-4 py-3 text-sm text-buyer-ink">
-            {next.startsWith('/product/') ? 'Sign in to buy.' : 'Sign in to continue.'} You will return to{' '}
-            <strong className="font-semibold">{nextLabel(next)}</strong> after signing in.
-          </div>
-        ) : null}
-
-        <div className="grid overflow-hidden rounded-card border border-line-soft bg-white shadow-sm md:grid-cols-2">
-          <Illustration />
-          <section className="flex flex-col p-6 md:p-8">
-            <h1 className="text-2xl font-bold tracking-tight">Sign in to Tiptop Shop</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Choose a demo account to continue.</p>
-
-            <Tabs value={tab} onValueChange={(v) => setTab(v as Role)} className="mt-5 gap-4">
-              <TabsList className="w-full">
-                <TabsTrigger value="BUYER">Buyer</TabsTrigger>
-                <TabsTrigger value="SELLER">Seller</TabsTrigger>
+    <div className="signin-page theme-seller font-sans">
+      <main className="signin-main">
+        <SignInBrand />
+        <section className="signin-form-panel">
+          <div className="signin-form-content">
+            <header className="signin-heading"><span>WELCOME BACK</span><h1>Sign in</h1><p>Choose your workspace and account.</p></header>
+            {next ? (
+              <div className="signin-destination">
+                {next.startsWith('/product/') ? 'Sign in to buy.' : 'Sign in to continue.'} You will return to{' '}
+                <strong>{nextLabel(next)}</strong> after signing in.
+              </div>
+            ) : null}
+            <Tabs value={tab} onValueChange={(v) => { setTab(v as Role); setError(undefined); }} className="signin-tabs">
+              <TabsList className="signin-roles">
+                <TabsTrigger value="BUYER"><ShoppingBag size={16} /> Buyer</TabsTrigger>
+                <TabsTrigger value="SELLER"><Store size={16} /> Seller</TabsTrigger>
               </TabsList>
               {(['BUYER', 'SELLER'] as const).map((role) => (
-                <TabsContent key={role} value={role} className="min-h-[148px]">
+                <TabsContent key={role} value={role} className="signin-account-panel">
+                  <div className="signin-account-label"><span>Select account</span>{ids.data && <span>{accounts[role].length} available</span>}</div>
                   {ids.loading && !ids.data ? (
                     <div className="flex flex-col gap-2" role="status" aria-label="Loading accounts">
-                      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[58px] rounded-xl" />)}
+                      {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[62px] rounded-xl" />)}
                     </div>
                   ) : ids.error && !ids.data ? (
                     <Alert variant="destructive">
                       <AlertDescription>
                         <p>Could not load demo accounts: {ids.error.message}</p>
-                        <Button variant="outline" size="sm" className="mt-1" onClick={ids.reload}>
-                          Try again
-                        </Button>
+                        <Button variant="outline" size="sm" className="mt-1" onClick={ids.reload}>Try again</Button>
                       </AlertDescription>
                     </Alert>
                   ) : (
@@ -224,23 +211,14 @@ export function LoginPage() {
                 </TabsContent>
               ))}
             </Tabs>
-
-            <p className="mt-4 text-xs text-muted-2">No password. A buyer can browse and buy from every shop.</p>
-
-            {error ? (
-              <Alert variant="destructive" className="mt-3">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
-
-            <Button size="lg" className="mt-4 h-11 w-full bg-buyer text-white hover:bg-buyer/90" disabled={!selected || busy} onClick={submit}>
-              {busy ? 'Signing in...' : selected ? `Sign in as ${selected.name}` : 'Sign in'}
+            {error ? <Alert variant="destructive" className="mt-3"><AlertDescription>{error}</AlertDescription></Alert> : null}
+            <Button className="signin-submit" disabled={!selected || busy} onClick={submit}>
+              <span>{busy ? 'Signing in...' : selected ? `Sign in as ${selected.name}` : 'Sign in'}</span>{busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
             </Button>
-            <Link to="/" className="mt-3 text-center text-sm font-semibold text-muted-foreground hover:text-ink">
-              Continue browsing as guest
-            </Link>
-          </section>
-        </div>
+            <Link to="/" className="signin-guest">Continue browsing as guest<ArrowRight size={13} /></Link>
+          </div>
+          <div className="signin-form-footer"><ShieldCheck size={13} /><span>Demo accounts · No password required</span></div>
+        </section>
       </main>
     </div>
   );
