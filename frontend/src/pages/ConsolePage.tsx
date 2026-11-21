@@ -93,15 +93,20 @@ export function ConsolePage() {
       <div className="admin-workspace" ref={workspaceRef}>
         <div className="admin-context-bar">
           <div className="admin-workspace-welcome"><strong>Admin Console</strong></div>
-          <div className="admin-header-actions"><label className="admin-shop-picker"><Store size={15} />
+          <div className="admin-header-actions"><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
+        </div>
+        <div className="admin-content">
+          <header className="admin-page-heading"><h1>{screen.title}</h1><div className="admin-heading-actions"><div id="admin-page-actions" /><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></div></header>
+          <section className="admin-shop-context" aria-label="Shop context">
+            <div className="admin-shop-context-label"><Store size={17} aria-hidden="true" /><span>Working shop<small>Choose the shop for this workspace</small></span></div>
+            <label className="admin-shop-picker"><Store size={15} />
             <select value={selected} onChange={(e) => setShopId(e.target.value)} disabled={list.length === 0} aria-label="Selected shop">
               {list.length === 0 ? <option value="">{shops.loading ? 'Loading shops…' : 'No shops — run seed'}</option> : null}
               {list.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-          </label><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
-        </div>
-        <div className="admin-content">
-          <header className="admin-page-heading"><h1>{screen.title}</h1><div className="admin-heading-actions"><div id="admin-page-actions" /><details className="admin-page-info" key={tab}><summary aria-label="Page information" title="Page information"><Info size={17} /></summary><div><p>{screen.description}</p>{SCOPE_NOTES[tab] && <p>{SCOPE_NOTES[tab]}</p>}</div></details></div></header>
+          </label>
+            {currentShop && <span className="admin-shop-context-status"><span />{currentShop.status === 'ACTIVE' ? 'Active shop' : currentShop.status}</span>}
+          </section>
           {shops.error ? <div className="state state-error" role="alert">Could not load shops: {shops.error.message}<button onClick={shops.reload}>Retry</button></div> : null}
           {tab === 'Status' && (
             <>
