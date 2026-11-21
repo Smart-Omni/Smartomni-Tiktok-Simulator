@@ -227,8 +227,7 @@ body:has(.buyer-home-shell) { background:#dedfdf; }
 @media(hover:none) { .buyer-quick-add { opacity:1; } }
 @media(max-width:650px) { .buyer-quick-content { grid-template-columns:1fr; gap:20px; } .buyer-quick-content > div:first-child { max-width:180px; width:100%; margin:auto; } }
 .buyer-home-brand { display:flex; flex-direction:column; align-items:flex-start; justify-self:start; gap:5px; color:#fff; white-space:nowrap; }
-.buyer-home-brand > span { font-size:32px; line-height:1; font-weight:750; letter-spacing:-1.2px; }
-.buyer-home-brand > small { font-size:10px; line-height:1.2; font-weight:500; letter-spacing:2px; }
+.buyer-home-brand > img { display:block; width:76px; height:82px; object-fit:contain; }
 .buyer-home-toplinks { display:flex; align-items:center; justify-content:center; gap:12px; font-size:12px; }
 .buyer-home-toplinks > span { color:#686868; }
 .buyer-home-toplinks > a { display:flex; align-items:center; gap:7px; min-height:32px; padding:6px 10px; border-radius:6px; color:#d5d5d5; }

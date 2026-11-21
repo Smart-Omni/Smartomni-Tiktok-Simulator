@@ -16,6 +16,7 @@ import { getMe, getMarketplaceCart } from '@/lib/endpoints';
 import type { DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
+import tiktokShopLogo from '@/assets/tiktok-shop-logo.svg';
 
 const nav: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'For you', icon: Compass },
@@ -192,7 +193,7 @@ export function ShopLayout() {
               </div>
             </div>
             <div className="buyer-home-primary">
-              <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><span>TikTok</span><small>SHOP SIMULATOR</small></Link>
+              <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><img src={tiktokShopLogo} alt="TikTok Shop" /></Link>
               <SearchPill wide />
               <HeaderCart buyer={buyer ?? null} />
             </div>
