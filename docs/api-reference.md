@@ -4125,13 +4125,13 @@ Danh sách coupon. _(List coupons)_
 
 | Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|---|
-| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+| `shopId` | path | có | string | SELLER: own shop only. BUYER: any ACTIVE marketplace shop. |
 
 **Phản hồi**:
 
 - `200`: Seller view (full) or buyer view (usable only); the `items` shape differs by role.
 - `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
-- `403`: The path `shopId` is not the shop of the session (assertOwnShop).
+- `403`: Seller accessing another shop, or buyer accessing an inactive or unknown shop.
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 

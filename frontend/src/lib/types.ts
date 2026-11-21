@@ -285,6 +285,16 @@ export interface ReturnRequest {
   reason?: string;
 }
 
+/** Buyer response is already filtered for eligibility by the API. */
+export interface BuyerCoupon {
+  id: string;
+  title: string;
+  promoCode: string;
+  discountText: string;
+  minSpendVnd: number | null;
+  endAt: string;
+}
+
 export interface Coupon {
   id: string;
   title: string;

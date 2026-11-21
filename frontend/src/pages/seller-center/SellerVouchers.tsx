@@ -11,38 +11,49 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
-import { createCoupon, createCouponBatch, deactivateCouponBatch, getCoupons, getCouponBatch, listCouponBatches, patchCoupon } from '@/lib/endpoints';
+import { createCoupon, createCouponBatch, deactivateCouponBatch, getBusinessClock, getCoupons, getCouponBatch, listCouponBatches, patchCoupon } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
 import type { CouponBatchCode, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
 /** Form rules and request body from the former /seller Coupons tab. */
-const isWhole = (v: string): boolean => /^\d+$/.test(v) && Number(v) >= 1;
+const DAY_MS = 86_400_000;
+const wholeInRange = (v: string, max: number) => /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
 export const emptyVoucher = { title: '', promoCode: '', kind: 'AMOUNT_OFF', value: '', cap: '', minSpend: '', days: '7', limit: '', audience: 'ALL' };
 export type VoucherForm = typeof emptyVoucher;
 
-const discountOk = (f: { kind: string; value: string; cap: string }) => isWhole(f.value) && (f.kind === 'AMOUNT_OFF' || Number(f.value) <= 100) && (f.cap === '' || isWhole(f.cap));
+function fieldError(f: Record<string, string>, key: string): string | undefined {
+  const value = f[key];
+  if (key === 'title') return value.trim().length >= 1 && value.trim().length <= 100 ? undefined : 'Enter a title of 1–100 characters.';
+  if (key === 'promoCode') return value.trim() === '' || /^[A-Za-z0-9]{6,12}$/.test(value.trim()) ? undefined : 'Use 6–12 letters or digits, or leave empty.';
+  if (['cap', 'minSpend', 'limit'].includes(key) && value === '') return undefined;
+  const max = key === 'quantity' ? 500 : key === 'limit' ? 1_000_000 : key === 'days' ? 99_999_999 : key === 'value' && f.kind === 'PERCENT_OFF' ? 100 : 2_000_000_000;
+  if (['quantity', 'limit', 'days', 'value', 'cap', 'minSpend'].includes(key)) {
+    if (key === 'cap' && f.kind !== 'PERCENT_OFF') return undefined;
+    return wholeInRange(value, max) ? undefined : `Enter a whole number from 1 to ${max.toLocaleString('en-US')}.`;
+  }
+  return undefined;
+}
+const formValid = (f: Record<string, string>) => Object.keys(f).every((key) => !fieldError(f, key));
+function expiresAt(days: string, businessNow: number): string {
+  const end = businessNow + Number(days) * DAY_MS;
+  if (!Number.isFinite(businessNow) || !Number.isFinite(new Date(end).getTime())) throw new Error('Cannot calculate expiry from the business clock and valid days.');
+  return new Date(end).toISOString();
+}
 const discountOf = (f: { kind: string; value: string; cap: string }) =>
   f.kind === 'AMOUNT_OFF' ? { type: 'AMOUNT_OFF', amountVnd: Number(f.value) } : { type: 'PERCENT_OFF', percentage: Number(f.value), ...(f.cap ? { maxDiscountVnd: Number(f.cap) } : {}) };
 
 /** An empty code is allowed: the backend then generates a 10-character code. */
 export function voucherValid(f: VoucherForm): boolean {
-  return (
-    f.title.trim() !== '' &&
-    (f.promoCode === '' || /^[A-Za-z0-9]{6,12}$/.test(f.promoCode)) &&
-    discountOk(f) &&
-    isWhole(f.days) &&
-    (f.minSpend === '' || isWhole(f.minSpend)) &&
-    (f.limit === '' || isWhole(f.limit))
-  );
+  return formValid(f);
 }
 
-export function voucherBody(f: VoucherForm, now = Date.now()) {
-  const endAt = new Date(now + Number(f.days) * 86_400_000).toISOString();
+export function voucherBody(f: VoucherForm, businessNow: number) {
+  const endAt = expiresAt(f.days, businessNow);
   return {
-    title: f.title,
-    ...(f.promoCode ? { promoCode: f.promoCode } : {}),
+    title: f.title.trim(),
+    ...(f.promoCode.trim() ? { promoCode: f.promoCode.trim() } : {}),
     discount: discountOf(f),
     endAt,
     audience: f.audience,
@@ -56,15 +67,15 @@ export const emptyBatch = { title: '', kind: 'PERCENT_OFF', value: '', cap: '', 
 export type BatchForm = typeof emptyBatch;
 
 export function batchValid(f: BatchForm): boolean {
-  return f.title.trim() !== '' && discountOk(f) && isWhole(f.days) && (f.minSpend === '' || isWhole(f.minSpend)) && isWhole(f.quantity) && Number(f.quantity) <= MAX_BATCH_QUANTITY;
+  return formValid(f);
 }
 
 /** No promoCode and no redemptionLimit: every code is generated and single-use. */
-export function batchBody(f: BatchForm, now = Date.now()) {
+export function batchBody(f: BatchForm, businessNow: number) {
   return {
-    title: f.title,
+    title: f.title.trim(),
     discount: discountOf(f),
-    endAt: new Date(now + Number(f.days) * 86_400_000).toISOString(),
+    endAt: expiresAt(f.days, businessNow),
     audience: f.audience,
     quantity: Number(f.quantity),
     ...(f.minSpend ? { minSpendVnd: Number(f.minSpend) } : {}),
@@ -95,6 +106,7 @@ function FormDialog({ title, description, submit, canSubmit, onClose, onSubmit, 
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!canSubmit || busy) return;
             setBusy(true);
             setError(undefined);
             try {
@@ -128,6 +140,7 @@ function FormDialog({ title, description, submit, canSubmit, onClose, onSubmit, 
 /** Text inputs and selects bound to one form object. */
 function useFormFields<F extends Record<string, string>>(prefix: string, initial: F) {
   const [f, setF] = useState(initial);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const text = (key: keyof F & string, label: string, extra: { placeholder?: string; numeric?: boolean; maxLength?: number; upper?: boolean; hint?: string } = {}) => (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={`${prefix}-${key}`}>{label}</Label>
@@ -137,8 +150,12 @@ function useFormFields<F extends Record<string, string>>(prefix: string, initial
         placeholder={extra.placeholder}
         maxLength={extra.maxLength}
         inputMode={extra.numeric ? 'numeric' : undefined}
+        onBlur={() => setTouched((previous) => ({ ...previous, [key]: true }))}
+        aria-invalid={touched[key] && !!fieldError(f, key)}
+        aria-describedby={touched[key] && fieldError(f, key) ? `${prefix}-${key}-error` : undefined}
         onChange={(e) => setF({ ...f, [key]: extra.upper ? e.target.value.toUpperCase() : e.target.value })}
       />
+      {touched[key] && fieldError(f, key) ? <span id={`${prefix}-${key}-error`} className="text-xs text-destructive" role="alert">{fieldError(f, key)}</span> : null}
       {extra.hint ? <span className="text-xs text-muted-foreground">{extra.hint}</span> : null}
     </div>
   );
@@ -170,7 +187,7 @@ function NewVoucherDialog({ onClose, onCreate }: { onClose: () => void; onCreate
   const { f, text, select } = useFormFields('voucher', emptyVoucher);
   return (
     <FormDialog title="New voucher" description="Validity starts now on the business clock. Code and discount cannot be changed afterwards." submit="Create voucher" canSubmit={voucherValid(f)} onClose={onClose} onSubmit={() => onCreate(f)}>
-      {text('title', 'Title')}
+      {text('title', 'Title', { maxLength: 100 })}
       {text('promoCode', 'Code', { placeholder: '6-12 letters/digits', maxLength: 12, upper: true, hint: 'Leave empty to generate a 10-character code' })}
       {select('kind', 'Discount type', KIND_OPTIONS)}
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
@@ -194,7 +211,7 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
       onClose={onClose}
       onSubmit={() => onCreate(f)}
     >
-      {text('title', 'Title', { placeholder: 'Loyalty Diamond 30%' })}
+      {text('title', 'Title', { placeholder: 'Loyalty Diamond 30%', maxLength: 100 })}
       {text('quantity', `Quantity (1-${MAX_BATCH_QUANTITY})`, { numeric: true })}
       {select('kind', 'Discount type', KIND_OPTIONS)}
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
@@ -354,7 +371,8 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
         <NewVoucherDialog
           onClose={() => setCreating(false)}
           onCreate={async (f) => {
-            await createCoupon(seller, voucherBody(f));
+            const clock = await getBusinessClock();
+            await createCoupon(seller, voucherBody(f, Date.parse(clock.now)));
             toast.success('Voucher created');
             setCreating(false);
             list.reload();
@@ -444,7 +462,8 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
         <NewBatchDialog
           onClose={() => setCreating(false)}
           onCreate={async (f) => {
-            const created = await createCouponBatch(seller, batchBody(f));
+            const clock = await getBusinessClock();
+            const created = await createCouponBatch(seller, batchBody(f, Date.parse(clock.now)));
             toast.success(`${created.codes.length} codes created`);
             setCreating(false);
             setViewing(created.batch.id);

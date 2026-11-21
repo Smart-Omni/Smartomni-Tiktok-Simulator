@@ -13,6 +13,7 @@ import type {
   Conversation,
   Conversations,
   Coupon,
+  BuyerCoupon,
   CouponBatch,
   CouponBatchDetail,
   DemoSession,
@@ -55,6 +56,9 @@ export const endSession = (s: DemoSession) => api<void>('/demo/sessions/current'
 export const getShop = (s: DemoSession) => api<Shop>(shop(s), auth(s));
 export const getCatalog = (s: DemoSession) => api<Catalog>(shop(s, '/catalog'), auth(s));
 export const getCoupons = (s: DemoSession) => api<{ items: Coupon[] }>(shop(s, '/coupons'), auth(s));
+export const getBuyerCoupons = (s: DemoSession) => api<{ items: BuyerCoupon[] }>(shop(s, '/coupons'), auth(s));
+/** Read the simulator's business time through the existing admin proxy. No local-time fallback. */
+export const getBusinessClock = () => api<{ now: string }>('/test-admin/clock');
 export const listConversations = (s: DemoSession) => api<Conversations>(shop(s, '/chat/conversations'), auth(s));
 
 // Storefront (buyer)

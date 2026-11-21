@@ -88,8 +88,7 @@ describe('CheckoutPage', () => {
         if (url === '/demo/shops/shop-1/coupons') {
           return json({
             items: [
-              { id: 'v1', title: 'Ten off', promoCode: 'SALE10', status: 'ONGOING', discountText: '10% off', minSpendVnd: 100000 },
-              { id: 'v2', title: 'Old', promoCode: 'OLD2020', status: 'EXPIRED', discountText: '5% off', minSpendVnd: null },
+              { id: 'v1', title: 'Ten off', promoCode: 'SALE10', discountText: '10% off', minSpendVnd: 100000, endAt: '2026-12-31T00:00:00.000Z' },
             ],
           });
         }
@@ -187,7 +186,7 @@ describe('CheckoutPage', () => {
     expect(posts('/checkout')[0].body?.recipient).toEqual({ name: 'Trần Văn An', phone: '0911222333', addressLine: '3 Hai Bà Trưng', district: 'Hoàn Kiếm', city: 'Hà Nội', postalCode: null });
   });
 
-  it('offers the ongoing vouchers as chips and upper-cases a typed code', async () => {
+  it('shows the buyer API response without requiring status and upper-cases a typed code', async () => {
     renderCheckout();
     const chips = await screen.findByRole('group', { name: 'Available vouchers' });
     expect(within(chips).getAllByRole('button').map((b) => b.textContent)).toEqual(['SALE1010% off']);

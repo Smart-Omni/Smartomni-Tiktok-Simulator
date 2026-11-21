@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { CheckoutState } from '@/lib/checkout';
-import { checkout, getCoupons, getMarketplaceCart, getMe, inShop, listMarketplaceProducts, payOrder, setCartItem } from '@/lib/endpoints';
+import { checkout, getBuyerCoupons, getMarketplaceCart, getMe, inShop, listMarketplaceProducts, payOrder, setCartItem } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
 import type { CartItem, DemoSession, Order, OrderAmounts, Recipient, ShopRef } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
@@ -183,8 +183,8 @@ export function sumAmounts(list: OrderAmounts[]): OrderAmounts {
 
 /** Vouchers the buyer can type for one shop (the former /buyer/coupons list). */
 function VoucherPicker({ buyer, shopId, value, disabled, error, onChange }: { buyer: DemoSession; shopId: string; value: string; disabled: boolean; error?: string; onChange: (v: string) => void }) {
-  const vouchers = useAsync(() => getCoupons(inShop(buyer, shopId)).catch(() => null), [buyer.sessionToken, shopId]);
-  const usable = vouchers.data?.items.filter((v) => v.status === 'ONGOING' && v.promoCode) ?? [];
+  const vouchers = useAsync(() => getBuyerCoupons(inShop(buyer, shopId)).catch(() => null), [buyer.sessionToken, shopId]);
+  const usable = vouchers.data?.items ?? [];
   const inputId = `coupon-${shopId}`;
   return (
     <div className="mt-4 flex flex-col gap-1.5">
