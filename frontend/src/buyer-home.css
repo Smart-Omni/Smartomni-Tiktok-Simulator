@@ -489,9 +489,9 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
 .buyer-shop-profile h1 { margin:0; font-size:17px; font-weight:500; }
 .buyer-shop-profile p { color:#888; font-size:10px; margin:5px 0 0; }
 .buyer-shop-chat { margin-left:auto; display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; font-size:12px; }
-.buyer-shop-layout { display:grid; grid-template-columns:210px minmax(0,1fr); gap:30px; align-items:start; padding-top:8px; }
-.buyer-shop-filters { background:#fff; border:1px solid #e8e8e8; border-radius:10px; padding:18px 16px; position:sticky; top:18px; }
-.buyer-shop-filter-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:20px; }
+.buyer-shop-layout { grid-template-columns:190px minmax(0,1fr); }
+.buyer-shop-filters { padding:0; position:sticky; top:18px; }
+.buyer-shop-filter-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:36px; margin-bottom:20px; }
 .buyer-shop-filter-heading h2 { display:flex; align-items:center; gap:8px; margin:0; font-size:13px; font-weight:500; }
 .buyer-shop-filter-heading button { border:0; background:none; padding:0; font-size:10px; color:#777; }
 .buyer-shop-filter-heading button:disabled { opacity:.35; }
@@ -517,5 +517,5 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
 .buyer-shop-price-range { font-size:10px; color:#888; }
 .buyer-shop-empty { display:flex; align-items:center; flex-direction:column; gap:14px; padding:50px 15px; color:#888; font-size:13px; }
 .buyer-shop-empty button { color:#171717; text-decoration:underline; }
-@media(max-width:1000px) { .buyer-shop-layout { grid-template-columns:180px minmax(0,1fr); gap:20px; } }
+@media(max-width:1000px) { .buyer-shop-layout { grid-template-columns:170px minmax(0,1fr); gap:20px; } }
 @media(max-width:750px) { .buyer-shop-layout { grid-template-columns:minmax(0,1fr); gap:20px; } .buyer-shop-filters { position:static; } .buyer-shop-profile { flex-wrap:wrap; } .buyer-shop-chat { margin-left:0; } .buyer-shop-toolbar { gap:10px; } }

@@ -40,7 +40,7 @@ function ShopCatalog({ shopId }: { shopId: string }) {
   return <div className="buyer-shop-page">
     <nav aria-label="Breadcrumb" className="detail-breadcrumb"><Link to="/">Home</Link><ChevronRight size={14} aria-hidden="true" /><span aria-current="page">{name}</span></nav>
     <section className="buyer-shop-profile" aria-label="Shop"><span className="buyer-shop-mark"><Store size={22} /></span><div><h1>{name}</h1>{products.data && <p>{shopItems.length} {shopItems.length === 1 ? 'product' : 'products'}</p>}</div><Link className="buyer-shop-chat" to={buyer ? `/account/messages?shop=${encodeURIComponent(shopId)}` : loginUrl(`/account/messages?shop=${encodeURIComponent(shopId)}`)}><MessageCircle size={15} />Chat with shop</Link></section>
-    <div className="buyer-shop-layout">
+    <div className="buyer-catalog-layout buyer-shop-layout">
     <aside className="buyer-shop-filters" aria-label="Shop filters">
       <div className="buyer-shop-filter-heading"><h2><SlidersHorizontal size={15} />Filters</h2><button onClick={clearFilters} disabled={!filtered && !minDraft && !maxDraft}>Reset</button></div>
       <div className="buyer-shop-filter-section"><label className="buyer-shop-filter-label" htmlFor="shop-search">Search</label><div className="buyer-shop-filter-search"><Search size={14} /><input id="shop-search" aria-label="Search in this shop" placeholder="Find a product" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div></div>
