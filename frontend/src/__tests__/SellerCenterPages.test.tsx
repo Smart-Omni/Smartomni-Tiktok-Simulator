@@ -181,6 +181,11 @@ describe('Seller Center products', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), { target: { value: 'mug-b' } });
     expect(card('P2')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Product P1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Stock history' }));
+    expect(await screen.findByRole('region', { name: 'Stock changes' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to products' }));
+    expect((screen.getByRole('textbox', { name: 'Search products' }) as HTMLInputElement).value).toBe('mug-b');
+    expect(card('P2')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Draft 0' }));
     expect(screen.getByRole('heading', { name: 'No matching products' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Product pagination' }).textContent).toContain('Showing 0–0');

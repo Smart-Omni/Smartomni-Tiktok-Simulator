@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -371,11 +371,6 @@ function ProductForm({ seller, product }: { seller: DemoSession; product?: Catal
   return (
     <form onSubmit={submit} noValidate className="seller-listing-form" aria-label={editing ? 'Edit product' : 'New product'}>
       <div className="seller-listing-actions">
-        <Button asChild variant="outline" size="icon">
-          <Link to="/seller-center/products">
-            <ArrowLeft aria-hidden="true" /><span className="sr-only">Back to products</span>
-          </Link>
-        </Button>
         {product ? <span className="font-mono text-xs text-muted-foreground">#{product.externalId}</span> : null}
         <div className="seller-listing-save">
           <Button asChild type="button" variant="outline"><Link to="/seller-center/products">Cancel</Link></Button>

@@ -271,15 +271,17 @@ function ProductList({ seller, catalog, lowOnly, run, onHistory }: { seller: Dem
   );
 }
 
-function StockHistory({ seller }: { seller: DemoSession }) {
+function StockHistory({ seller, onBack }: { seller: DemoSession; onBack: () => void }) {
   const history = useAsync(() => getInventoryHistory(seller), [seller.sessionToken, seller.shopId], 5000);
   const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
   return (
+    <>
+    {!history.data && <div className="flex justify-end"><Button variant="outline" size="icon" aria-label="Back to products" title="Back to products" onClick={onBack}><ArrowLeft size={14} /></Button></div>}
     <Loaded result={history} what="stock history">
       {(d) => (
         <div className="flex flex-col gap-4">
           <SellerCard label="Stock changes" className="p-5">
-            <h2 className="mb-3 text-base font-bold">Stock changes (before / after)</h2>
+            <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-bold">Stock changes (before / after)</h2><Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Back to products" title="Back to products" onClick={onBack}><ArrowLeft size={14} /></Button></div>
             {d.changes.length === 0 ? (
               <p className="text-sm text-muted-foreground">No stock changes yet.</p>
             ) : (
@@ -368,6 +370,7 @@ function StockHistory({ seller }: { seller: DemoSession }) {
         </div>
       )}
     </Loaded>
+    </>
   );
 }
 
@@ -392,14 +395,13 @@ function Products({ seller }: { seller: DemoSession }) {
   return (
     <div className="seller-products-page flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        {tab === 'history' && <Button variant="outline" size="icon" aria-label="Back to list" title="Back to list" onClick={() => setTab('products')}><ArrowLeft size={14} /></Button>}
         <Button asChild className="ml-auto">
           <Link to="/seller-center/products/new">
             <Plus /> New product
           </Link>
         </Button>
       </div>
-      {tab === 'products' ? <div className="flex flex-col gap-4">
+      <div className={cn('flex-col gap-4', tab === 'products' ? 'flex' : 'hidden')}>
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">
               <SlidersHorizontal size={13} /> Low stock (≤{LOW_STOCK}) only
@@ -411,7 +413,8 @@ function Products({ seller }: { seller: DemoSession }) {
           <Loaded result={catalog} what="products">
             {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} onHistory={() => setTab('history')} />}
           </Loaded>
-        </div> : <StockHistory seller={seller} />}
+        </div>
+      {tab === 'history' && <StockHistory seller={seller} onBack={() => setTab('products')} />}
 
     </div>
   );

@@ -40,8 +40,7 @@ function Returns({ seller }: { seller: DemoSession }) {
   const open = all.filter((r) => OPEN_AFTERSALE.includes(r.status));
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Returns & refunds</h1>
-      <p className="text-sm text-muted-foreground">Review customer requests, manage return decisions and keep track of refunds.</p>
+
       <SellerCard>
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'open' ? { status: 'open' } : { status: 'all' }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">

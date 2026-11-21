@@ -103,9 +103,10 @@ describe('SellerHome', () => {
       </MemoryRouter>,
     );
 
-  it('greets the seller and links each to-do count to its filtered page', async () => {
+  it('shows the working shop in the sidebar and links each to-do count to its filtered page', async () => {
     renderHome();
-    expect(await screen.findByRole('heading', { name: 'Good afternoon, Nguyễn Thị Lan' })).toBeTruthy();
+    expect(await within(screen.getByRole('complementary')).findByText('Nguyễn Thị Lan')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
     const todo = screen.getByRole('region', { name: 'To-do list' });
     const expected: [string, string, string][] = [
       ['2To pay', '/seller-center/orders?tab=unpaid', 'To pay'],

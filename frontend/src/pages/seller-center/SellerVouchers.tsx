@@ -313,7 +313,7 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-muted-foreground">Vouchers are seller-created demo data. Buyers type the code at checkout; the backend prices the discount.</p>
+
         <Button className="ml-auto" onClick={() => setCreating(true)}>
           <Plus /> New voucher
         </Button>
@@ -405,7 +405,7 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-muted-foreground">Batches of single-use codes for SmartOmni loyalty vouchers. Codes are hidden from buyers; SmartOmni pulls them with Search Coupon List.</p>
+
         <Button className="ml-auto" onClick={() => setCreating(true)}>
           <Plus /> New code batch
         </Button>
@@ -490,7 +490,7 @@ function Vouchers({ seller }: { seller: DemoSession }) {
   const tab = params.get('tab') === 'batches' ? 'batches' : 'vouchers';
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Vouchers</h1>
+
       <Tabs value={tab} onValueChange={(v) => setParams(v === 'batches' ? { tab: 'batches' } : {}, { replace: true })}>
         <TabsList variant="line" className="h-11 justify-start gap-2 border-b border-line-soft">
           <TabsTrigger value="vouchers" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">

@@ -4,7 +4,6 @@ import { ChevronRight, Store } from 'lucide-react';
 import { OrderStatusBadge } from '@/components/seller/OrderStatusBadge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSellerContext } from '@/layouts/SellerLayout';
 import { useAuth } from '@/lib/auth';
 import { getCatalog, getCoupons, getShop, listAftersale, listConversations, listCouponBatches, listOrders } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
@@ -184,7 +183,6 @@ function LatestOrders({ orders }: { orders: AsyncResult<{ items: Order[] }> }) {
 }
 
 function Home({ seller }: { seller: DemoSession }) {
-  const { sellerName } = useSellerContext();
   const deps = [seller.sessionToken, seller.shopId];
   const orders = useAsync(() => listOrders(seller), deps, POLL_MS);
   const aftersale = useAsync(() => listAftersale(seller), deps, POLL_MS);
@@ -201,10 +199,6 @@ function Home({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-bold">
-        {greeting(new Date())}
-        {sellerName ? `, ${sellerName}` : ''}
-      </h1>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Panel title="To-do list" label="To-do list">

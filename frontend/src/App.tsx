@@ -78,7 +78,7 @@ export function App() {
             <Route path="products/:id/edit" element={page(SellerProductForm)} />
             <Route path="vouchers" element={page(SellerVouchers)} />
             <Route path="messages" element={page(SellerMessages)} />
-            <Route path="shop" element={<ComingSoon title="Shop" />} />
+            <Route path="shop" element={<ComingSoon title="Shop" hideTitle />} />
           </Route>
 
           {/* links to the removed /buyer and /seller pages */}

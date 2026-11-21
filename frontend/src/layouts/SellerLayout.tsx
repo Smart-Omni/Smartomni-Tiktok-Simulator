@@ -152,7 +152,7 @@ export function SellerLayout() {
         <aside className="seller-sidebar">
           <Link to={base} className="seller-sidebar-brand"><ShieldCheck size={25} /><span>TikTok<small>SHOP SIMULATOR</small></span></Link>
           <SideMenu />
-          <div className="seller-sidebar-note"><Store size={15} /><span>Seller workspace</span></div>
+          <section className="seller-shop-context" aria-label="Working shop"><div><Store size={17} /><span>Working shop<small>{owner?.name ?? (ids.loading ? 'Loading seller…' : 'Seller account')}</small></span></div><ShopPicker owner={owner} /></section>
         </aside>
         <div className="seller-workspace" ref={workspace}>
           <header className="seller-context-bar"><strong>Seller Center</strong><div className="seller-header-actions">
@@ -161,7 +161,6 @@ export function SellerLayout() {
             <SellerMenu owner={owner} />
           </div></header>
           <main className="seller-content">
-            <section className="seller-shop-context" aria-label="Working shop"><div><Store size={17} /><span>Working shop<small>{owner?.name ?? (ids.loading ? 'Loading seller…' : 'Seller account')}</small></span></div><ShopPicker owner={owner} /></section>
             {ids.error && <div className="seller-load-notice" role="alert">Could not load seller information. <button onClick={ids.reload}>Retry</button></div>}
             <div className="seller-page-content"><Outlet context={{ sellerName: owner?.name } satisfies SellerContext} /></div>
           </main>
