@@ -175,6 +175,23 @@ describe('Seller Center returns', () => {
 describe('Seller Center products', () => {
   const card = (externalId: string) => screen.getByRole('region', { name: `Product ${externalId}` });
 
+  it('combines search and status filters and restores results from the empty state', async () => {
+    renderAt('/seller-center/products');
+    await screen.findByRole('region', { name: 'Product P1' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), { target: { value: 'mug-b' } });
+    expect(card('P2')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Product P1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Draft 0' }));
+    expect(screen.getByRole('heading', { name: 'No matching products' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Product pagination' }).textContent).toContain('Showing 0–0');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(card('P1')).toBeTruthy();
+    expect(card('P2')).toBeTruthy();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort products' }), { target: { value: 'stock' } });
+    expect(screen.getAllByRole('region', { name: /^Product P/ }).map((el) => el.getAttribute('aria-label'))).toEqual(['Product P1', 'Product P2']);
+    expect(writes()).toHaveLength(0);
+  });
+
   it('paginates the catalog and keeps product editors collapsed until requested', async () => {
     const fetchCatalog = globalThis.fetch;
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/catalog`

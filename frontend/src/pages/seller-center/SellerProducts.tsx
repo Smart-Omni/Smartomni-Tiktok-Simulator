@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Pencil, Plus, X } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ export const isLowStock = (p: CatalogProduct) => p.skus.some((s) => s.status ===
 type Run = (fn: () => Promise<unknown>, done: string) => Promise<boolean>;
 
 const statusTone = (s: string) => (s === 'ACTIVATE' ? 'bg-teal-soft text-teal' : s === 'DELETED' ? 'bg-buyer-soft text-buyer-ink' : 'bg-[#FFF4E0] text-[#9A5B00]');
+const productStatus = (status: string) => ({ ACTIVATE: 'Active', SELLER_DEACTIVATED: 'Inactive', DRAFT: 'Draft', DELETED: 'Deleted' })[status] ?? humanize(status);
 
 function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; warehouses: Catalog['warehouses']; disabled: boolean; onPatch: (body: Record<string, unknown>, done: string) => void }) {
   const [price, setPrice] = useState(String(sku.priceVnd));
@@ -106,8 +107,9 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   };
 
   return (
-    <SellerCard label={`Product ${p.externalId}`} className="seller-product-card p-4">
+    <SellerCard label={`Product ${p.externalId}`} className={cn('seller-product-card', expanded && 'is-expanded')}>
       <div className="seller-product-summary">
+        <div className="seller-product-info">
         {p.images?.[0] ? (
           <img src={p.images[0].url} alt={`Main image of ${p.title}`} className="size-12 rounded-md object-cover ring-1 ring-line-soft" />
         ) : (
@@ -117,19 +119,22 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         )}
         <div className="seller-product-identity">
           <h2 className="text-base font-bold">{p.title}</h2>
-          {p.categoryPath?.length ? <span className="text-xs text-muted-foreground">{p.categoryPath.map((c) => c.name).join(' > ')}</span> : null}
+          {p.categoryPath?.length ? <span title={p.categoryPath.map((c) => c.name).join(' / ')}>{p.categoryPath.at(-1)?.name}</span> : null}
           <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
+        </div>
         </div>
         <div className="seller-product-numbers">
           <strong>{minPrice === null ? 'No variants' : minPrice === maxPrice ? shopPrice(minPrice) : `${shopPrice(minPrice)} – ${shopPrice(maxPrice!)}`}</strong>
-          <span>{p.skus.length} variants · {p.skus.reduce((sum, s) => sum + s.totalStock, 0)} in stock</span>
+          <span>{p.skus.length} variants</span>
         </div>
-        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusTone(p.status))}>{humanize(p.status)}</span>
+        <div className="seller-product-stock"><strong>{p.skus.reduce((sum, s) => sum + s.totalStock, 0).toLocaleString()}</strong><span className={cn(isLowStock(p) && 'is-low')}>{isLowStock(p) ? 'Low stock' : 'Units available'}</span></div>
+        <div><span className={cn('seller-product-status', statusTone(p.status))}><i />{productStatus(p.status)}</span></div>
         <Button variant="outline" size="sm" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(!expanded)}>
           {expanded ? 'Collapse' : 'Manage'} <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
         </Button>
       </div>
-      <div id={detailsId} hidden={!expanded}>
+      <div id={detailsId} hidden={!expanded} className="seller-product-editor">
+      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong><span>Manage pricing and stock for this product</span></div>
       {!deleted ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
@@ -216,27 +221,43 @@ const PRODUCTS_PER_PAGE = 10;
 
 function ProductList({ seller, catalog, lowOnly, run }: { seller: DemoSession; catalog: Catalog; lowOnly: boolean; run: Run }) {
   const [page, setPage] = useState(1);
-  const items = lowOnly ? catalog.items.filter(isLowStock) : catalog.items;
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('ALL');
+  const [sort, setSort] = useState('default');
+  const source = lowOnly ? catalog.items.filter(isLowStock) : catalog.items;
+  const term = query.trim().toLocaleLowerCase();
+  const items = source.filter((p) => (status === 'ALL' || p.status === status) && (!term || [p.title, p.externalId, ...p.skus.map((s) => s.sellerSku)].some((v) => v.toLocaleLowerCase().includes(term))));
+  if (sort === 'name') items.sort((a, b) => a.title.localeCompare(b.title));
+  if (sort === 'stock') items.sort((a, b) => a.skus.reduce((sum, s) => sum + s.totalStock, 0) - b.skus.reduce((sum, s) => sum + s.totalStock, 0));
   const pages = Math.max(1, Math.ceil(items.length / PRODUCTS_PER_PAGE));
   const currentPage = Math.min(page, pages);
   const offset = (currentPage - 1) * PRODUCTS_PER_PAGE;
-  if (!items.length) {
-    return <SellerCard className="py-12 text-center text-sm text-muted-foreground">{lowOnly ? 'No product is low on stock.' : 'No products yet. Create one with New product.'}</SellerCard>;
-  }
   return (
-    <>
+    <div className="seller-catalog">
+      <div className="seller-catalog-statuses" aria-label="Product status filters">
+        {[{ value: 'ALL', label: 'All products' }, ...STATUSES.map((value) => ({ value, label: productStatus(value) })), { value: 'DELETED', label: 'Deleted' }].map((option) => <button key={option.value} type="button" aria-pressed={status === option.value} onClick={() => { setStatus(option.value); setPage(1); }}>
+          {option.label}<span>{source.filter((p) => option.value === 'ALL' || p.status === option.value).length}</span>
+        </button>)}
+      </div>
+      <div className="seller-catalog-toolbar">
+        <label className="seller-catalog-search"><Search size={16} /><Input aria-label="Search products" placeholder="Search product name, ID or SKU…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />{query && <button type="button" aria-label="Clear product search" onClick={() => { setQuery(''); setPage(1); }}><X size={14} /></button>}</label>
+        <label className="seller-catalog-sort"><ArrowUpDown size={14} /><NativeSelect aria-label="Sort products" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="default">Default order</option><option value="name">Name: A to Z</option><option value="stock">Stock: low to high</option></NativeSelect></label>
+        <span className="seller-catalog-result">{items.length} products</span>
+      </div>
+      <div className="seller-catalog-columns" aria-hidden="true"><span>Product information</span><span>Price / Variants</span><span>Inventory</span><span>Status</span><span>Actions</span></div>
       <div className="seller-product-list">
         {items.slice(offset, offset + PRODUCTS_PER_PAGE).map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={catalog.warehouses} run={run} />)}
+        {!items.length && <div className="seller-catalog-empty"><Package size={30} /><h2>{query || status !== 'ALL' ? 'No matching products' : 'No products to display'}</h2><p>{query || status !== 'ALL' ? 'Try another keyword or choose a different status.' : lowOnly ? 'All products are above the low-stock threshold.' : 'Add your first product to start building your catalog.'}</p>{(query || status !== 'ALL') && <Button variant="outline" onClick={() => { setQuery(''); setStatus('ALL'); setPage(1); }}>Clear filters</Button>}</div>}
       </div>
       <nav aria-label="Product pagination" className="seller-product-pagination">
-        <span>{offset + 1}–{Math.min(offset + PRODUCTS_PER_PAGE, items.length)} of {items.length} products</span>
+        <span>Showing {items.length ? offset + 1 : 0}–{Math.min(offset + PRODUCTS_PER_PAGE, items.length)} of {items.length} products</span>
         <div>
           <Button variant="outline" size="sm" aria-label="Previous product page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="size-3.5" /></Button>
           <span>Page {currentPage} of {pages}</span>
           <Button variant="outline" size="sm" aria-label="Next product page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight className="size-3.5" /></Button>
         </div>
       </nav>
-    </>
+    </div>
   );
 }
 
@@ -359,9 +380,9 @@ function Products({ seller }: { seller: DemoSession }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Products</h1>
+    <div className="seller-products-page flex flex-col gap-4">
+      <div className="seller-products-heading flex flex-wrap items-center gap-3">
+        <div><span className="seller-products-eyebrow">CATALOG MANAGEMENT</span><h1 className="text-2xl font-bold">Products</h1><p>Everything you sell, organised in one place.</p></div>
         <Button asChild className="ml-auto">
           <Link to="/seller-center/products/new">
             <Plus /> New product
@@ -380,7 +401,7 @@ function Products({ seller }: { seller: DemoSession }) {
         <TabsContent value="products" className="flex flex-col gap-4">
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">
-              Low stock (≤{LOW_STOCK}) only
+              <SlidersHorizontal size={13} /> Low stock (≤{LOW_STOCK}) only
               <button type="button" aria-label="Show all products" className="cursor-pointer" onClick={() => setParams({}, { replace: true })}>
                 <X className="size-4" />
               </button>
