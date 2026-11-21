@@ -2,7 +2,7 @@ import { ShopFooter } from '@/components/shop/ShopFooter';
 import { BuyerAftersaleRequests } from '@/components/shop/BuyerAftersaleRequests';
 import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { PackageSearch, Store, Truck } from 'lucide-react';
+import { PackageSearch, Store, Truck, RotateCcw, CreditCard, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -212,42 +212,47 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const items = Object.entries(picked).map(([skuId, quantity]) => ({ skuId, quantity }));
+  const units = items.reduce((sum, item) => sum + item.quantity, 0);
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="font-sans sm:max-w-lg">
-        <DialogHeader>
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent className="buyer-return-dialog font-sans !flex !flex-col !gap-0 !p-0 !w-[calc(100vw-32px)] !max-w-[640px] !max-h-[calc(100dvh-40px)] !overflow-hidden !rounded-[18px]">
+        <DialogHeader className="buyer-return-dialog-heading !text-left">
+          <span className="buyer-return-dialog-icon"><RotateCcw size={21} /></span>
           <DialogTitle>Request return</DialogTitle>
           <DialogDescription>
             Order <span className="font-mono">{order.id}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2">
+        <div className="buyer-return-dialog-body" aria-busy={busy}>
+        <fieldset disabled={busy} className="buyer-return-dialog-fields">
+        <div className="buyer-return-field">
           <span id="return-type" className="text-sm font-semibold">
-            Type
+            <small>01</small> Return type
           </span>
-          <RadioGroup value={type} onValueChange={(v) => setType(v as ReturnRequest['returnType'])} aria-labelledby="return-type" className="flex gap-5">
-            <Label className="flex cursor-pointer items-center gap-2 font-normal">
-              <RadioGroupItem value="REFUND" /> Refund only
+          <RadioGroup disabled={busy} value={type} onValueChange={(v) => setType(v as ReturnRequest['returnType'])} aria-labelledby="return-type" className="buyer-return-type-options">
+            <Label className="buyer-return-type-option" data-selected={type === 'REFUND'}>
+              <CreditCard size={20} aria-hidden /><span>Refund only<small>Request a refund without returning items.</small></span><RadioGroupItem value="REFUND" aria-label="Refund only" />
             </Label>
-            <Label className="flex cursor-pointer items-center gap-2 font-normal">
-              <RadioGroupItem value="RETURN_AND_REFUND" /> Return and refund
+            <Label className="buyer-return-type-option" data-selected={type === 'RETURN_AND_REFUND'}>
+              <Package size={20} aria-hidden /><span>Return and refund<small>Send the items back to the shop.</small></span><RadioGroupItem value="RETURN_AND_REFUND" aria-label="Return and refund" />
             </Label>
           </RadioGroup>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="buyer-return-field buyer-return-reasons">
           <span id="return-reason" className="text-sm font-semibold">
-            Reason
+            <small>02</small> Reason for your request
           </span>
           <ReasonList id="return-reason" reasons={reasons} value={reason} onChange={setReason} />
         </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-semibold">Items</span>
-          <ul className="flex flex-col gap-2">
+        <div className="buyer-return-field">
+          <span className="text-sm font-semibold"><small>03</small> Select items to return</span>
+          <p className="buyer-return-field-hint">Choose the items and quantities included in this request.</p>
+          <ul className="buyer-return-item-list">
             {order.items.map((i) => {
               const name = `${i.productName} (${i.skuName})`;
               const on = i.skuId in picked;
               return (
-                <li key={i.skuId} className="flex items-center gap-3 rounded-lg border border-line-soft px-3 py-2">
+                <li key={i.skuId} className="buyer-return-item" data-selected={on}>
                   <Checkbox
                     checked={on}
                     aria-label={`Return ${name}`}
@@ -260,7 +265,8 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
                       })
                     }
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                  <div className="buyer-return-product"><strong>{i.productName}</strong><span>{i.skuName}</span><small>{shopPrice(i.unitPriceVnd)} each · {i.quantity} purchased</small></div>
+                  <div className="buyer-return-quantity"><span>Quantity</span>
                   <QuantityStepper
                     size="sm"
                     value={picked[i.skuId] ?? 1}
@@ -269,24 +275,29 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
                     label={`Units of ${name} to return`}
                     onChange={(n) => setPicked((p) => ({ ...p, [i.skuId]: n }))}
                   />
+                  </div>
                 </li>
               );
             })}
           </ul>
         </div>
+        </fieldset>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        </div>
+        <DialogFooter className="buyer-return-dialog-footer !flex-row !flex-wrap !items-center">
+          <span className="buyer-return-selected" role="status">{units} {units === 1 ? 'unit' : 'units'} selected</span>
+          <Button variant="outline" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
           <Button
             className="!bg-[#171717] text-white hover:!bg-[#333333] !rounded-lg"
             disabled={busy || items.length === 0}
             onClick={async () => {
+              if (busy || items.length === 0) return;
               setBusy(true);
               setError(undefined);
               try {
@@ -297,7 +308,7 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
               }
             }}
           >
-            Submit request
+            {busy ? 'Submitting…' : 'Submit request'}
           </Button>
         </DialogFooter>
       </DialogContent>
