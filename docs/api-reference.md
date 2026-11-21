@@ -13,7 +13,7 @@ Tài liệu này mô tả toàn bộ HTTP API của simulator (backend NestJS, c
 3. [Ký request (router TikTok)](#3-ký-request-router-tiktok)
 4. [OAuth, token và scope](#4-oauth-token-và-scope)
 5. [Phản hồi, lỗi và phân trang](#5-phản-hồi-lỗi-và-phân-trang)
-6. [Mô hình nghiệp vụ: đơn hàng, đồng hồ, webhook, lỗi giả lập](#6-mô-hình-nghiệp-vụ)
+6. [Mô hình nghiệp vụ: đơn hàng, đồng hồ, webhook, lỗi giả lập, coupon](#6-mô-hình-nghiệp-vụ)
 7. [Tham chiếu endpoint: router TikTok](#7-tham-chiếu-endpoint-router-tiktok)
 8. [Tham chiếu endpoint: `/demo/*`](#8-tham-chiếu-endpoint-demo)
 9. [Tham chiếu endpoint: `/test-admin/*`](#9-tham-chiếu-endpoint-test-admin)
@@ -86,6 +86,7 @@ Các bước:
 4. **Gọi API.** Ký mọi request (mục 3) và gửi `x-tts-access-token`. Gọi `GET /authorization/202309/shops` trước để lấy `shop_cipher`.
 5. **Đăng ký webhook.** `PUT /event/202309/webhooks` với `{"event_type":"ORDER_STATUS_CHANGE","address":"<url nhận>"}`, lặp lại cho từng topic cần nghe.
 6. **Làm mới token.** Trước khi access token hết hạn, gọi `GET /api/v2/token/refresh?app_key=...&app_secret=...&refresh_token=...`. Cả hai token đều được xoay vòng; refresh token cũ mất hiệu lực ngay.
+7. **Voucher loyalty (tùy chọn).** Seller tạo lô mã trên Seller Center (hoặc test gọi `POST /test-admin/scenarios/loyalty-vouchers`). SmartOmni kéo mã bằng `POST /promotion/202406/coupons/search` (lọc `title_keyword`), tự giao mã cho khách, rồi theo dõi bằng `GET /promotion/202406/coupons/{coupon_id}`. Router TikTok không có API tạo coupon. Chi tiết ở mục 6.8 và 7.8.
 
 ## 3. Ký request (router TikTok)
 
@@ -423,6 +424,31 @@ Với `target: API`, shop của request được xác định từ header `x-tts
 | `WEBHOOK_BASE_BACKOFF_MS` / `WEBHOOK_MAX_BACKOFF_MS` | `2000` / `300000` | Backoff khi gửi lại |
 | `WEBHOOK_REQUEST_TIMEOUT_MS` | `10000` | Timeout mỗi lần gửi |
 | `WEBHOOK_REWRITE_LOCALHOST`, `HOST_CALLBACK_BASE_URL` | | Đổi địa chỉ localhost khi chạy trong Docker |
+
+### 6.8. Coupon và voucher
+
+Quy tắc nằm trong `backend/src/coupons/` (`coupon-rules.ts`, `coupon-batch.service.ts`, `promo-code.ts`).
+
+**Hai loại coupon:**
+
+| | Voucher lẻ | Mã thuộc lô (Phase 09c) |
+|---|---|---|
+| Tạo ở đâu | `POST /demo/shops/{shopId}/coupons` (nút New voucher) | `POST /demo/shops/{shopId}/coupon-batches`, `POST /test-admin/scenarios/loyalty-vouchers` |
+| Mã | Seller gõ (6-12 chữ/số), hoặc bỏ trống để tự sinh | Luôn tự sinh |
+| Số lượt | `redemptionLimit` tùy chọn (dùng chung cho mọi buyer) | Luôn 1 |
+| Buyer thấy trong danh sách voucher | Có | Không (khách phải gõ mã) |
+| Hủy đơn UNPAID đã dùng mã | Hoàn lượt, mã dùng tiếp | Hoàn lượt **và tắt mã** (`DEACTIVATED`) |
+| Seller sửa (`PATCH .../coupons/{couponId}`) | `title`, thời gian, `redemptionLimit`, `minSpendVnd`, `deactivated` | Chỉ `{ "deactivated": true }` |
+
+**Mã tự sinh:** 10 ký tự lấy từ `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (không có `0`, `O`, `1`, `I`), sinh bằng `crypto.randomInt`, không trùng với mã nào trong cùng shop. Một lô có 1-500 mã, tạo trong một transaction: đủ cả lô hoặc không mã nào.
+
+**Áp mã ở checkout:** `couponCode` gửi kèm `POST /demo/shops/{shopId}/checkout`, so khớp không phân biệt hoa thường. Thứ tự kiểm tra: mã tồn tại trong shop → không bị tắt → đã tới ngày bắt đầu → chưa hết hạn → đạt mức chi tối thiểu → đúng đối tượng (`NEW`: buyer chưa có đơn không bị hủy trong shop) → giảm được hơn 0 → còn lượt. Sai ở bước nào thì trả `400 {code, message}` với `code` lần lượt là `coupon_not_found`, `coupon_deactivated`, `coupon_not_started`, `coupon_expired`, `coupon_min_spend`, `coupon_not_eligible`, `coupon_no_discount`, `coupon_exhausted`, và không tạo đơn.
+
+**Cách tính giảm giá:** chỉ tính trên tiền hàng, không bao giờ giảm phí ship hay thuế. `PERCENT_OFF` làm tròn xuống đồng rồi áp mức giảm tối đa (nếu có); `AMOUNT_OFF` không vượt quá tiền hàng. Khoản giảm ghi vào `seller_discount` của đơn và chia cho từng dòng hàng theo tỷ lệ giá (phần dư làm tròn theo largest remainder). Ví dụ: hàng 100.000₫, mã 30%, ship 25.000₫ → giảm 30.000₫, `sub_total` 70.000₫, khách trả 95.000₫.
+
+**Lượt dùng:** được giữ ngay lúc checkout, trong cùng transaction tạo đơn, bằng `UPDATE` có điều kiện nên nhiều checkout đồng thời không vượt giới hạn. Gửi lại cùng `checkoutKey` trả lại đơn cũ, không trừ thêm lượt. Thanh toán không đổi gì ở coupon. Hủy sau khi đã thanh toán thì lượt vẫn tính.
+
+**Trạng thái** không lưu trong DB mà suy ra lúc đọc theo đồng hồ nghiệp vụ: `DEACTIVATED` nếu bị tắt, `NOT_START` nếu chưa tới `startAt`, `EXPIRED` nếu đã qua `endAt`, còn lại `ONGOING`. Đổi đồng hồ bằng `PUT /test-admin/clock` làm coupon đổi trạng thái theo. Search Coupon List lọc `title_keyword` không phân biệt hoa thường.
 
 ## 7. Tham chiếu endpoint: router TikTok
 
