@@ -118,6 +118,15 @@ describe('ProductPage', () => {
     expect(await screen.findByText('Sign in to view this product.')).toBeTruthy();
   });
 
+  it('links the shop breadcrumb to the product owner rather than the buyer session shop', async () => {
+    sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
+    renderProduct('7500T', 'shop-2');
+    const link = await screen.findByRole('link', { name: 'Mộc Lan Shop' });
+    expect(link.getAttribute('href')).toBe('/shop/shop-2');
+    fireEvent.click(link);
+    expect(screen.getByTestId('location').textContent).toBe('/shop/shop-2');
+  });
+
   it('adds to a buyer cart on top of what is already there, with the stepper capped by stock', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderProduct('7500T', 'shop-2');

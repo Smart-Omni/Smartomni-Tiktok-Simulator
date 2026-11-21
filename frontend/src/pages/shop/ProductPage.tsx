@@ -13,7 +13,7 @@ import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getMarketplaceProduct, listMarketplaceProducts } from '@/lib/endpoints';
 import { compactCount, shopPrice } from '@/lib/format';
-import { productPath } from '@/lib/links';
+import { productPath, shopPath } from '@/lib/links';
 import type { ShopRef } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
@@ -21,16 +21,16 @@ import { defaultMockShop, enrichProduct, imageBackgrounds, mockCatalog, mockRevi
 
 
 
-function Breadcrumb({ shopName, title }: { shopName?: string; title: string }) {
+function Breadcrumb({ shop, title }: { shop?: ShopRef; title: string }) {
   return (
     <nav aria-label="Breadcrumb" className="detail-breadcrumb">
       <Link to="/" className="hover:text-ink">
         Home
       </Link>
-      {shopName ? (
+      {shop?.name ? (
         <>
           <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">{shopName}</span>
+          {shop.id ? <Link to={shopPath(shop.id)} state={{ shopName: shop.name }} className="truncate hover:text-ink">{shop.name}</Link> : <span className="truncate">{shop.name}</span>}
         </>
       ) : null}
       <ChevronRight className="size-3.5 shrink-0" aria-hidden />
@@ -251,7 +251,7 @@ export function ProductPage() {
   const { product, shop } = detail.data;
   return (
     <div className="product-detail">
-      <Breadcrumb shopName={shop?.name} title={product.title} />
+      <Breadcrumb shop={shop} title={product.title} />
       <div className="detail-main">
         <Gallery key={product.id} product={product} />
         <aside><ProductPurchase key={product.id} product={product} shop={shop} /></aside>

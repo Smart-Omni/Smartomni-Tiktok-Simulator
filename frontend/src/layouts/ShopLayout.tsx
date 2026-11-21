@@ -173,7 +173,7 @@ function AccountPill() {
 export function ShopLayout() {
   const location = useLocation();
   const pathname = location.pathname;
-  const home = pathname === '/' || pathname.startsWith('/product/') || pathname === '/cart' || pathname === '/checkout' || pathname === '/account/orders' || pathname === '/account/messages';
+  const home = pathname === '/' || pathname.startsWith('/product/') || pathname.startsWith('/shop/') || pathname === '/cart' || pathname === '/checkout' || pathname === '/account/orders' || pathname === '/account/messages';
   const { buyer } = useAuth();
   if (pathname === '/account/messages') return <div className="buyer-messaging-shell font-sans text-ink"><Outlet /></div>;
   return (

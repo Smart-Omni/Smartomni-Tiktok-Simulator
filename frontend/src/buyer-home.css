@@ -483,3 +483,24 @@ body:has(.buyer-messaging-shell) { overflow:hidden; background:#fff; }
  .buyer-chat-compose-hint { justify-content:flex-end; }
  .chat-empty h2 { font-size:22px; }
 }
+.buyer-shop-page { padding-top:22px; }
+.buyer-shop-profile { display:flex; align-items:center; gap:12px; margin:16px 0; padding:16px 0; border-bottom:1px solid #e7e7e7; }
+.buyer-shop-mark { display:flex; align-items:center; justify-content:center; width:44px; height:44px; flex-shrink:0; border-radius:10px; background:#ededed; }
+.buyer-shop-profile h1 { margin:0; font-size:17px; font-weight:500; }
+.buyer-shop-profile p { color:#888; font-size:10px; margin:5px 0 0; }
+.buyer-shop-chat { margin-left:auto; display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid #ddd; border-radius:8px; font-size:12px; }
+.buyer-shop-catalog { padding:8px 0 0; }
+.buyer-shop-toolbar { display:flex; justify-content:space-between; gap:16px; margin-bottom:24px; }
+.buyer-shop-toolbar label { display:flex; align-items:center; gap:9px; width:100%; max-width:380px; padding:0 12px; border:1px solid #e5e5e5; border-radius:8px; }
+.buyer-shop-toolbar input { background:transparent; min-width:0; width:100%; border:0; padding:10px 0; font-size:12px; }
+.buyer-shop-toolbar select { border:1px solid #e5e5e5; border-radius:8px; padding:8px 12px; font-size:12px; background:#fff; }
+.buyer-shop-photo { display:flex; align-items:center; justify-content:center; aspect-ratio:4/5; background:#ededed; overflow:hidden; color:#aaa; }
+.buyer-shop-photo img { width:100%; height:100%; object-fit:contain; transition:transform .2s; }
+.buyer-shop-price-range { font-size:10px; color:#888; }
+.buyer-shop-pagination,.buyer-shop-pagination > div { display:flex; align-items:center; gap:12px; }
+.buyer-shop-pagination { justify-content:space-between; padding-top:24px; margin-top:24px; border-top:1px solid #eee; color:#777; font-size:12px; }
+.buyer-shop-pagination button { padding:8px; border:1px solid #ddd; border-radius:7px; }
+.buyer-shop-pagination button:disabled { opacity:.35; }
+.buyer-shop-empty { display:flex; align-items:center; flex-direction:column; gap:14px; padding:50px 15px; color:#888; font-size:13px; }
+.buyer-shop-empty button { color:#171717; text-decoration:underline; }
+@media(max-width:650px) { .buyer-shop-profile { flex-wrap:wrap; } .buyer-shop-chat { margin-left:0; } .buyer-shop-toolbar { flex-direction:column; gap:10px; } .buyer-shop-toolbar label { max-width:none; } }

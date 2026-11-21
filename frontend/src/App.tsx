@@ -14,6 +14,7 @@ import { MessagesPage } from './pages/shop/MessagesPage';
 import { HomePage } from './pages/shop/HomePage';
 import { OrdersPage } from './pages/shop/OrdersPage';
 import { ProductPage } from './pages/shop/ProductPage';
+import { ShopPage } from './pages/shop/ShopPage';
 
 /** Code-split: Seller Center, the Test Console and the consent page load on first visit, outside the main bundle. */
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => lazy(() => load().then((m) => ({ default: m[name] })));
@@ -53,6 +54,7 @@ export function App() {
           <Route element={<ShopLayout />}>
             <Route index element={<HomePage />} />
             <Route path="product/:shopId/:id" element={<ProductPage />} />
+            <Route path="shop/:shopId" element={<ShopPage />} />
             <Route path="product/:id" element={<ProductPage />} />
             <Route element={<RequireRole role="BUYER" />}>
               <Route path="cart" element={<CartPage />} />

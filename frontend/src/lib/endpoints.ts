@@ -73,11 +73,11 @@ export const getStorefrontProduct = (s: DemoSession, productId: string) =>
 const PAGE = 100;
 const MAX_PAGES = 20;
 /** Every on-sale product of every active shop (GET /demo/catalog, public), following the cursor. */
-export async function listMarketplaceProducts(): Promise<StorefrontProduct[]> {
+export async function listMarketplaceProducts(shopId?: string): Promise<StorefrontProduct[]> {
   const items: StorefrontProduct[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${cursor ? `&cursor=${id(cursor)}` : ''}`);
+    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${shopId ? `&shopId=${id(shopId)}` : ''}${cursor ? `&cursor=${id(cursor)}` : ''}`);
     items.push(...r.items);
     if (!r.nextCursor) break;
     cursor = r.nextCursor;
