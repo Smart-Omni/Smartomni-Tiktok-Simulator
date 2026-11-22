@@ -98,12 +98,12 @@ export class LoyaltyAdminController {
     const before = this.clock.snapshot();
     const base = this.clock.now().getTime();
     const N = body.thresholdDays;
-    const cases: { label: string; completedAt: number | null; stopAt: 'COMPLETED' | 'DELIVERED' | 'ON_HOLD' }[] = [
+    const cases: { label: string; completedAt: number | null; stopAt: 'COMPLETED' | 'DELIVERED' | 'AWAITING_SHIPMENT' }[] = [
       { label: `completed ${N + 1} days ago (eligible)`, completedAt: base - (N + 1) * DAY_MS, stopAt: 'COMPLETED' },
       { label: `completed exactly ${N} days ago (boundary)`, completedAt: base - N * DAY_MS, stopAt: 'COMPLETED' },
       { label: `completed ${N} days minus 1 hour ago (not yet eligible)`, completedAt: base - N * DAY_MS + 3600_000, stopAt: 'COMPLETED' },
       { label: 'delivered but not completed (never eligible)', completedAt: base - (N + 1) * DAY_MS, stopAt: 'DELIVERED' },
-      { label: 'paid and still on hold', completedAt: base - (N + 1) * DAY_MS, stopAt: 'ON_HOLD' },
+      { label: 'paid, awaiting shipment (never eligible)', completedAt: base - (N + 1) * DAY_MS, stopAt: 'AWAITING_SHIPMENT' },
     ];
     const created: { label: string; order: OrderRow }[] = [];
     try {
@@ -114,10 +114,10 @@ export class LoyaltyAdminController {
           { id: buyer.id, shopId: shop.id },
           { checkoutKey: key, items: [{ skuExternalId: sku.externalId, quantity: 1 }], recipient: { name: buyer.name, phone: buyer.phone, addressLine: buyer.addressLine, district: buyer.district, city: buyer.city }, buyerMessage: `loyalty scenario: ${c.label}` },
         );
-        await this.orders.pay({ id: buyer.id, shopId: shop.id }, order.externalId);
+        await this.orders.pay({ id: buyer.id, shopId: shop.id }, order.externalId); // -> AWAITING_SHIPMENT
         let last = await this.orders.findForAdmin(order.id);
-        if (c.stopAt !== 'ON_HOLD') {
-          const path: OrderStatus[] = ['AWAITING_SHIPMENT', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', ...(c.stopAt === 'COMPLETED' ? (['COMPLETED'] as OrderStatus[]) : [])];
+        if (c.stopAt !== 'AWAITING_SHIPMENT') {
+          const path: OrderStatus[] = ['AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', ...(c.stopAt === 'COMPLETED' ? (['COMPLETED'] as OrderStatus[]) : [])];
           for (const to of path) last = await this.orders.transition(order.id, to, 'TEST_CONSOLE', { note: `loyalty scenario: ${c.label}` });
         }
         created.push({ label: c.label, order: last });

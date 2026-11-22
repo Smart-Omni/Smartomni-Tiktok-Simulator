@@ -35,12 +35,9 @@ describe('OAS alignment P2: handover/shipping info/deliver, logistics, price det
     token = (await t.connect(0)).accessToken;
   });
 
-  const advanceClock = (ms: number) => http.put('/test-admin/clock').set(admin).send({ advanceMs: ms }).expect(200);
   async function awaitingShipment(buyer: { token: string; shopId: string }, key: string) {
     const id = (await t.checkout(buyer, [{ skuId: BAG, quantity: 1 }], key).expect(201)).body.order.id as string;
     await t.pay(buyer, id).expect(201);
-    await advanceClock((cfg.orders.holdMinutes + 1) * 60_000);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
     const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
     return { orderId: id, packageId: pkg.externalId };
   }
@@ -218,7 +215,7 @@ describe('OAS alignment P2: handover/shipping info/deliver, logistics, price det
       const r = await http.post('/test-admin/sandbox/orders').set(admin).send({ shopId: shopAId, items: [{ sku_id: BAG, quantity: 1 }], order_count: 3, payment_method: 'SANDBOX' }).expect(201);
       expect(r.body.created).toHaveLength(1);
       expect(r.body.failed).toHaveLength(2);
-      expect(r.body.created[0].status).toBe('ON_HOLD');
+      expect(r.body.created[0].status).toBe('AWAITING_SHIPMENT');
       const row = await prisma.order.findFirstOrThrow({ where: { externalId: r.body.created[0].order_id } });
       expect(row.paymentMethodName).toBe('SANDBOX');
       const bad = await http.post('/test-admin/sandbox/orders').set(admin).send({ shopId: shopAId, items: [{ sku_id: 'nope', quantity: 1 }] }).expect(201);
@@ -236,12 +233,12 @@ describe('OAS alignment P2: handover/shipping info/deliver, logistics, price det
       const step = async () => (await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({}).expect(201)).body;
       const seen: string[] = [];
       let r = await step();
-      expect(r).toEqual(expect.objectContaining({ before_status: 'UNPAID', after_status: 'ON_HOLD', transitioned: true }));
+      expect(r).toEqual(expect.objectContaining({ before_status: 'UNPAID', after_status: 'AWAITING_SHIPMENT', transitioned: true }));
       for (let i = 0; i < 8 && r.transitioned; i++) {
         seen.push(r.after_status);
         r = await step();
       }
-      expect(seen).toEqual(['ON_HOLD', 'AWAITING_SHIPMENT', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED']);
+      expect(seen).toEqual(['AWAITING_SHIPMENT', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED']);
       expect(r).toEqual(expect.objectContaining({ before_status: 'COMPLETED', after_status: 'COMPLETED', transitioned: false }));
       expect(await orderStatus(id)).toBe('COMPLETED');
       expect(await prisma.package.count({ where: { order: { externalId: id } } })).toBe(1);

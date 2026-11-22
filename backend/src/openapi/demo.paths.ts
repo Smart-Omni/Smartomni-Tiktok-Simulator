@@ -17,7 +17,7 @@ const base: Record<number, string> = { 401: UNAUTH, 403: CROSS_SHOP };
 
 const idStr = (d: string, example?: string): Json => ({ ...str(d), ...(example ? { example } : {}) });
 
-const OrderStatus: Json = str('Order status (OAS values).', { enum: ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'CANCELLED'] });
+const OrderStatus: Json = str('Order status (OAS values; the simulator never uses ON_HOLD).', { enum: ['UNPAID', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'CANCELLED'] });
 
 const Recipient: Json = obj(
   {
@@ -38,7 +38,6 @@ const OrderView: Json = obj(
     createdAt: str(undefined, { format: 'date-time' }),
     updatedAt: str(undefined, { format: 'date-time' }),
     paidAt: str(undefined, { format: 'date-time', nullable: true }),
-    releaseAt: str('End of the ON_HOLD period (business clock).', { format: 'date-time', nullable: true }),
     cancelReason: str(undefined, { nullable: true }),
     buyerRequestedCancel: bool('True while a buyer cancel request is awaiting the seller.'),
     recipient: obj({ name: str(), phone: str(), addressLine: str(), district: str(), city: str() }),
@@ -64,7 +63,6 @@ const orderExample = {
   createdAt: '2026-10-15T08:00:00.000Z',
   updatedAt: '2026-10-15T08:00:00.000Z',
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'Nguyen Van A', phone: '0901234567', addressLine: '12 Le Loi', district: 'District 1', city: 'Ho Chi Minh City' },
@@ -328,7 +326,7 @@ const FulfillmentView: Json = obj({
     ...obj({ id: str('Package marketplace id'), status: str('TO_FULFILL, PROCESSING, FULFILLING, COMPLETED or CANCELLED'), trackingNumber: str(undefined, { nullable: true }), provider: str(), canArrange: bool('Only present in the seller view') }),
   },
   canArrange: bool('true only for a seller session when the order is AWAITING_SHIPMENT'),
-  blockedReason: str('order_on_hold, order_unpaid or null', { nullable: true }),
+  blockedReason: str('order_unpaid or null', { nullable: true }),
   tracking: arr(obj({ status: str(), description: str(), at: str(undefined, { format: 'date-time' }) })),
 });
 const fulfillmentExample = {
@@ -986,11 +984,11 @@ export const paths: PathsFragment = {
     post: op({
       tag: 'Demo Orders',
       summary: 'Fake payment',
-      description: 'BUYER only, own order. UNPAID -> ON_HOLD with `paidAt` and `releaseAt` (business clock + configured hold minutes); the lifecycle worker later moves it to AWAITING_SHIPMENT. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.',
+      description: 'BUYER only, own order. UNPAID -> AWAITING_SHIPMENT with `paidAt` (business clock); there is no hold period and the TO_FULFILL package is created in the same transaction. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.',
       handler: 'OrdersDemoController.pay',
       security: SESSION,
       pathParams: [shopId, orderIdParam],
-      ok: { description: 'Order after payment.', schema: obj({ replayed: bool(), order: OrderView }, ['replayed', 'order']), example: { replayed: false, order: { ...orderExample, status: 'ON_HOLD', paidAt: '2026-10-15T08:05:00.000Z', releaseAt: '2026-10-15T08:20:00.000Z' } } },
+      ok: { description: 'Order after payment.', schema: obj({ replayed: bool(), order: OrderView }, ['replayed', 'order']), example: { replayed: false, order: { ...orderExample, status: 'AWAITING_SHIPMENT', paidAt: '2026-10-15T08:05:00.000Z' } } },
       status: 201,
       errors: { 400: 'Order is CANCELLED (`order_cancelled`).', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_BUYER}`, 404: 'Unknown order (or not this buyer\'s).' },
       errorShape: 'nest',
@@ -1001,7 +999,7 @@ export const paths: PathsFragment = {
       tag: 'Demo Orders',
       summary: 'Cancel an order (buyer cancel / request, or seller cancel)',
       description:
-        'Both roles. BUYER (own order): UNPAID or ON_HOLD cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to "no reason given".',
+        'Both roles. BUYER (own order): UNPAID cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to "no reason given".',
       handler: 'OrdersDemoController.cancel',
       security: SESSION,
       pathParams: [shopId, orderIdParam],
@@ -1048,13 +1046,13 @@ export const paths: PathsFragment = {
     post: op({
       tag: 'Demo Fulfillment',
       summary: 'Arrange shipment (seller)',
-      description: 'SELLER only. FulfillmentService.arrangeShipment: UNPAID/ON_HOLD => 400 `order_on_hold`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.',
+      description: 'SELLER only. FulfillmentService.arrangeShipment: UNPAID => 400 `order_unpaid`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.',
       handler: 'FulfillmentDemoController.arrange',
       security: SESSION,
       pathParams: [shopId, orderIdParam],
       ok: { description: 'Fulfillment view.', schema: FulfillmentView, example: fulfillmentExample },
       status: 201,
-      errors: { 400: 'order_on_hold / order_cancelled / order_not_shippable.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown order.' },
+      errors: { 400: 'order_unpaid / order_cancelled / order_not_shippable.', 401: UNAUTH, 403: `${CROSS_SHOP} Or ${NOT_SELLER}`, 404: 'Unknown order.' },
       errorShape: 'nest',
     }),
   },
@@ -1076,7 +1074,7 @@ export const paths: PathsFragment = {
     get: op({
       tag: 'Demo Fulfillment',
       summary: 'Package and tracking of an order',
-      description: 'Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_on_hold, order_unpaid or null.',
+      description: 'Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_unpaid or null.',
       handler: 'FulfillmentDemoController.fulfillmentOf',
       security: SESSION,
       pathParams: [shopId, orderIdParam],
@@ -1170,7 +1168,7 @@ export const paths: PathsFragment = {
     post: op({
       tag: 'Demo Aftersale',
       summary: 'Buyer: request cancellation of a paid order',
-      description: 'BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID/ON_HOLD orders are cancelled directly with POST .../orders/{orderId}/cancel instead.',
+      description: 'BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID orders are cancelled directly with POST .../orders/{orderId}/cancel instead.',
       handler: 'AftersaleDemoController.createCancellation',
       security: SESSION,
       pathParams: [shopId],

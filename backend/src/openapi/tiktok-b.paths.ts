@@ -738,7 +738,7 @@ export const paths: PathsFragment = {
       },
       ok: { description: 'Shipment arranged.', schema: emptyData(), example: emptyOk },
       errors: errs({
-        400: 'invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_on_hold, order_cancelled).',
+        400: 'invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_unpaid, order_cancelled).',
         404: 'package_not_found: not in this shop.',
       }),
       errorShape: 'tiktok',

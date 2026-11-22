@@ -1848,9 +1848,6 @@
                               "paid_time": {
                                 "type": "integer"
                               },
-                              "release_date": {
-                                "type": "integer"
-                              },
                               "rts_time": {
                                 "type": "integer"
                               },
@@ -1956,7 +1953,7 @@
                                     "type": "string"
                                   }
                                 },
-                                "description": "Omitted when status is UNPAID or ON_HOLD."
+                                "description": "Omitted when status is UNPAID (the simulator never produces ON_HOLD)."
                               },
                               "line_items": {
                                 "type": "array",
@@ -2358,9 +2355,6 @@
                               "paid_time": {
                                 "type": "integer"
                               },
-                              "release_date": {
-                                "type": "integer"
-                              },
                               "rts_time": {
                                 "type": "integer"
                               },
@@ -2466,7 +2460,7 @@
                                     "type": "string"
                                   }
                                 },
-                                "description": "Omitted when status is UNPAID or ON_HOLD."
+                                "description": "Omitted when status is UNPAID (the simulator never produces ON_HOLD)."
                               },
                               "line_items": {
                                 "type": "array",
@@ -8298,7 +8292,7 @@
             }
           },
           "400": {
-            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, non-seconds timestamp, or a validation failure of the endpoint. Also: invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_on_hold, order_cancelled).",
+            "description": "invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, non-seconds timestamp, or a validation failure of the endpoint. Also: invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_unpaid, order_cancelled).",
             "content": {
               "application/json": {
                 "schema": {
@@ -8425,7 +8419,7 @@
           "TikTok Aftersale"
         ],
         "summary": "Seller Cancel Order (202309)",
-        "description": "Cancels a whole order on behalf of the seller. Allowed in UNPAID, ON_HOLD and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.\n\nHandler: `AftersaleController.sellerCancel`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
+        "description": "Cancels a whole order on behalf of the seller. Allowed in UNPAID and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.\n\nHandler: `AftersaleController.sellerCancel`.\n\nRequired scope (simulator placeholder): `sim.aftersale.write`.",
         "operationId": "AftersaleController_sellerCancel",
         "security": [
           {
@@ -16587,10 +16581,9 @@
                           },
                           "status": {
                             "type": "string",
-                            "description": "Order status (OAS values).",
+                            "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                             "enum": [
                               "UNPAID",
-                              "ON_HOLD",
                               "AWAITING_SHIPMENT",
                               "PARTIALLY_SHIPPING",
                               "AWAITING_COLLECTION",
@@ -16610,12 +16603,6 @@
                           },
                           "paidAt": {
                             "type": "string",
-                            "format": "date-time",
-                            "nullable": true
-                          },
-                          "releaseAt": {
-                            "type": "string",
-                            "description": "End of the ON_HOLD period (business clock).",
                             "format": "date-time",
                             "nullable": true
                           },
@@ -17084,10 +17071,9 @@
                         },
                         "status": {
                           "type": "string",
-                          "description": "Order status (OAS values).",
+                          "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                           "enum": [
                             "UNPAID",
-                            "ON_HOLD",
                             "AWAITING_SHIPMENT",
                             "PARTIALLY_SHIPPING",
                             "AWAITING_COLLECTION",
@@ -17107,12 +17093,6 @@
                         },
                         "paidAt": {
                           "type": "string",
-                          "format": "date-time",
-                          "nullable": true
-                        },
-                        "releaseAt": {
-                          "type": "string",
-                          "description": "End of the ON_HOLD period (business clock).",
                           "format": "date-time",
                           "nullable": true
                         },
@@ -17239,7 +17219,6 @@
                     "createdAt": "2026-10-15T08:00:00.000Z",
                     "updatedAt": "2026-10-15T08:00:00.000Z",
                     "paidAt": null,
-                    "releaseAt": null,
                     "cancelReason": null,
                     "buyerRequestedCancel": false,
                     "recipient": {
@@ -17432,7 +17411,7 @@
           "Demo Orders"
         ],
         "summary": "Fake payment",
-        "description": "BUYER only, own order. UNPAID -> ON_HOLD with `paidAt` and `releaseAt` (business clock + configured hold minutes); the lifecycle worker later moves it to AWAITING_SHIPMENT. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.\n\nHandler: `OrdersDemoController.pay`.",
+        "description": "BUYER only, own order. UNPAID -> AWAITING_SHIPMENT with `paidAt` (business clock); there is no hold period and the TO_FULFILL package is created in the same transaction. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.\n\nHandler: `OrdersDemoController.pay`.",
         "operationId": "OrdersDemoController_pay",
         "security": [
           {
@@ -17460,10 +17439,9 @@
                         },
                         "status": {
                           "type": "string",
-                          "description": "Order status (OAS values).",
+                          "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                           "enum": [
                             "UNPAID",
-                            "ON_HOLD",
                             "AWAITING_SHIPMENT",
                             "PARTIALLY_SHIPPING",
                             "AWAITING_COLLECTION",
@@ -17483,12 +17461,6 @@
                         },
                         "paidAt": {
                           "type": "string",
-                          "format": "date-time",
-                          "nullable": true
-                        },
-                        "releaseAt": {
-                          "type": "string",
-                          "description": "End of the ON_HOLD period (business clock).",
                           "format": "date-time",
                           "nullable": true
                         },
@@ -17611,11 +17583,10 @@
                   "replayed": false,
                   "order": {
                     "id": "576011223344556677",
-                    "status": "ON_HOLD",
+                    "status": "AWAITING_SHIPMENT",
                     "createdAt": "2026-10-15T08:00:00.000Z",
                     "updatedAt": "2026-10-15T08:00:00.000Z",
                     "paidAt": "2026-10-15T08:05:00.000Z",
-                    "releaseAt": "2026-10-15T08:20:00.000Z",
                     "cancelReason": null,
                     "buyerRequestedCancel": false,
                     "recipient": {
@@ -17726,7 +17697,7 @@
           "Demo Orders"
         ],
         "summary": "Cancel an order (buyer cancel / request, or seller cancel)",
-        "description": "Both roles. BUYER (own order): UNPAID or ON_HOLD cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to \"no reason given\".\n\nHandler: `OrdersDemoController.cancel`.",
+        "description": "Both roles. BUYER (own order): UNPAID cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to \"no reason given\".\n\nHandler: `OrdersDemoController.cancel`.",
         "operationId": "OrdersDemoController_cancel",
         "security": [
           {
@@ -17751,10 +17722,9 @@
                         },
                         "status": {
                           "type": "string",
-                          "description": "Order status (OAS values).",
+                          "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                           "enum": [
                             "UNPAID",
-                            "ON_HOLD",
                             "AWAITING_SHIPMENT",
                             "PARTIALLY_SHIPPING",
                             "AWAITING_COLLECTION",
@@ -17774,12 +17744,6 @@
                         },
                         "paidAt": {
                           "type": "string",
-                          "format": "date-time",
-                          "nullable": true
-                        },
-                        "releaseAt": {
-                          "type": "string",
-                          "description": "End of the ON_HOLD period (business clock).",
                           "format": "date-time",
                           "nullable": true
                         },
@@ -17904,7 +17868,6 @@
                     "createdAt": "2026-10-15T08:00:00.000Z",
                     "updatedAt": "2026-10-15T08:00:00.000Z",
                     "paidAt": null,
-                    "releaseAt": null,
                     "cancelReason": "Changed my mind",
                     "buyerRequestedCancel": false,
                     "recipient": {
@@ -18063,10 +18026,9 @@
                           },
                           "status": {
                             "type": "string",
-                            "description": "Order status (OAS values).",
+                            "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                             "enum": [
                               "UNPAID",
-                              "ON_HOLD",
                               "AWAITING_SHIPMENT",
                               "PARTIALLY_SHIPPING",
                               "AWAITING_COLLECTION",
@@ -18086,12 +18048,6 @@
                           },
                           "paidAt": {
                             "type": "string",
-                            "format": "date-time",
-                            "nullable": true
-                          },
-                          "releaseAt": {
-                            "type": "string",
-                            "description": "End of the ON_HOLD period (business clock).",
                             "format": "date-time",
                             "nullable": true
                           },
@@ -18218,7 +18174,6 @@
                       "createdAt": "2026-10-15T08:00:00.000Z",
                       "updatedAt": "2026-10-15T08:00:00.000Z",
                       "paidAt": null,
-                      "releaseAt": null,
                       "cancelReason": null,
                       "buyerRequestedCancel": false,
                       "recipient": {
@@ -18325,10 +18280,9 @@
                         },
                         "status": {
                           "type": "string",
-                          "description": "Order status (OAS values).",
+                          "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                           "enum": [
                             "UNPAID",
-                            "ON_HOLD",
                             "AWAITING_SHIPMENT",
                             "PARTIALLY_SHIPPING",
                             "AWAITING_COLLECTION",
@@ -18348,12 +18302,6 @@
                         },
                         "paidAt": {
                           "type": "string",
-                          "format": "date-time",
-                          "nullable": true
-                        },
-                        "releaseAt": {
-                          "type": "string",
-                          "description": "End of the ON_HOLD period (business clock).",
                           "format": "date-time",
                           "nullable": true
                         },
@@ -18504,7 +18452,6 @@
                     "createdAt": "2026-10-15T08:00:00.000Z",
                     "updatedAt": "2026-10-15T08:00:00.000Z",
                     "paidAt": null,
-                    "releaseAt": null,
                     "cancelReason": null,
                     "buyerRequestedCancel": false,
                     "recipient": {
@@ -18614,7 +18561,7 @@
           "Demo Fulfillment"
         ],
         "summary": "Arrange shipment (seller)",
-        "description": "SELLER only. FulfillmentService.arrangeShipment: UNPAID/ON_HOLD => 400 `order_on_hold`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.\n\nHandler: `FulfillmentDemoController.arrange`.",
+        "description": "SELLER only. FulfillmentService.arrangeShipment: UNPAID => 400 `order_unpaid`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.\n\nHandler: `FulfillmentDemoController.arrange`.",
         "operationId": "FulfillmentDemoController_arrange",
         "security": [
           {
@@ -18634,10 +18581,9 @@
                     },
                     "orderStatus": {
                       "type": "string",
-                      "description": "Order status (OAS values).",
+                      "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                       "enum": [
                         "UNPAID",
-                        "ON_HOLD",
                         "AWAITING_SHIPMENT",
                         "PARTIALLY_SHIPPING",
                         "AWAITING_COLLECTION",
@@ -18678,7 +18624,7 @@
                     },
                     "blockedReason": {
                       "type": "string",
-                      "description": "order_on_hold, order_unpaid or null",
+                      "description": "order_unpaid or null",
                       "nullable": true
                     },
                     "tracking": {
@@ -18725,7 +18671,7 @@
             }
           },
           "400": {
-            "description": "order_on_hold / order_cancelled / order_not_shippable.",
+            "description": "order_unpaid / order_cancelled / order_not_shippable.",
             "content": {
               "application/json": {
                 "schema": {
@@ -18815,10 +18761,9 @@
                     },
                     "orderStatus": {
                       "type": "string",
-                      "description": "Order status (OAS values).",
+                      "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                       "enum": [
                         "UNPAID",
-                        "ON_HOLD",
                         "AWAITING_SHIPMENT",
                         "PARTIALLY_SHIPPING",
                         "AWAITING_COLLECTION",
@@ -18859,7 +18804,7 @@
                     },
                     "blockedReason": {
                       "type": "string",
-                      "description": "order_on_hold, order_unpaid or null",
+                      "description": "order_unpaid or null",
                       "nullable": true
                     },
                     "tracking": {
@@ -18976,7 +18921,7 @@
           "Demo Fulfillment"
         ],
         "summary": "Package and tracking of an order",
-        "description": "Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_on_hold, order_unpaid or null.\n\nHandler: `FulfillmentDemoController.fulfillmentOf`.",
+        "description": "Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_unpaid or null.\n\nHandler: `FulfillmentDemoController.fulfillmentOf`.",
         "operationId": "FulfillmentDemoController_fulfillmentOf",
         "security": [
           {
@@ -18996,10 +18941,9 @@
                     },
                     "orderStatus": {
                       "type": "string",
-                      "description": "Order status (OAS values).",
+                      "description": "Order status (OAS values; the simulator never uses ON_HOLD).",
                       "enum": [
                         "UNPAID",
-                        "ON_HOLD",
                         "AWAITING_SHIPMENT",
                         "PARTIALLY_SHIPPING",
                         "AWAITING_COLLECTION",
@@ -19040,7 +18984,7 @@
                     },
                     "blockedReason": {
                       "type": "string",
-                      "description": "order_on_hold, order_unpaid or null",
+                      "description": "order_unpaid or null",
                       "nullable": true
                     },
                     "tracking": {
@@ -19872,7 +19816,7 @@
           "Demo Aftersale"
         ],
         "summary": "Buyer: request cancellation of a paid order",
-        "description": "BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID/ON_HOLD orders are cancelled directly with POST .../orders/{orderId}/cancel instead.\n\nHandler: `AftersaleDemoController.createCancellation`.",
+        "description": "BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID orders are cancelled directly with POST .../orders/{orderId}/cancel instead.\n\nHandler: `AftersaleDemoController.createCancellation`.",
         "operationId": "AftersaleDemoController_createCancellation",
         "security": [
           {
@@ -25541,12 +25485,6 @@
                           "updatedAt": {
                             "type": "string",
                             "format": "date-time"
-                          },
-                          "releaseAt": {
-                            "type": "string",
-                            "description": "When an ON_HOLD order is released",
-                            "format": "date-time",
-                            "nullable": true
                           }
                         }
                       }
@@ -25564,12 +25502,11 @@
                       "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
                       "shopName": "Shop A",
                       "buyerName": "Nguyen Van A",
-                      "status": "ON_HOLD",
-                      "canonical_status": "ON_HOLD",
+                      "status": "AWAITING_SHIPMENT",
+                      "canonical_status": "AWAITING_SHIPMENT",
                       "units": 2,
                       "createdAt": "2026-10-15T08:00:00.000Z",
-                      "updatedAt": "2026-10-15T08:00:05.000Z",
-                      "releaseAt": "2026-10-15T08:05:05.000Z"
+                      "updatedAt": "2026-10-15T08:00:05.000Z"
                     }
                   ]
                 }
@@ -25607,7 +25544,6 @@
               "type": "string",
               "enum": [
                 "UNPAID",
-                "ON_HOLD",
                 "AWAITING_SHIPMENT",
                 "PARTIALLY_SHIPPING",
                 "AWAITING_COLLECTION",
@@ -25617,7 +25553,7 @@
                 "CANCELLED"
               ]
             },
-            "example": "ON_HOLD"
+            "example": "AWAITING_SHIPMENT"
           },
           {
             "name": "limit",
@@ -25645,59 +25581,6 @@
             "example": 10
           }
         ]
-      }
-    },
-    "/test-admin/orders/release-due": {
-      "post": {
-        "tags": [
-          "Test Admin: Data"
-        ],
-        "summary": "Release due ON_HOLD orders",
-        "description": "Moves every ON_HOLD order whose `releaseAt` is <= business clock now to AWAITING_SHIPMENT (actor SYSTEM, note `hold period elapsed`). Advance the clock first (PUT /test-admin/clock) to test the boundary. No body. Orders another process moved first are skipped silently.\n\nHandler: `TestAdminController.releaseDue`.",
-        "operationId": "TestAdminController_releaseDue",
-        "security": [
-          {
-            "TestAdminToken": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "External ids of the released orders (201 Created).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "released": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "required": [
-                    "released"
-                  ]
-                },
-                "example": {
-                  "released": [
-                    "5800000000000001"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NestError"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/test-admin/orders/{ref}/audit": {
@@ -25763,13 +25646,13 @@
                 },
                 "example": {
                   "orderId": "5800000000000001",
-                  "status": "ON_HOLD",
+                  "status": "AWAITING_SHIPMENT",
                   "history": [
                     {
                       "from": "UNPAID",
-                      "to": "ON_HOLD",
+                      "to": "AWAITING_SHIPMENT",
                       "actor": "BUYER",
-                      "note": "paid",
+                      "note": "fake payment",
                       "at": "2026-10-15T08:00:05.000Z"
                     }
                   ]
@@ -25838,7 +25721,7 @@
           "Test Admin: Data"
         ],
         "summary": "Force an order status transition",
-        "description": "Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to ON_HOLD or CANCELLED; ON_HOLD to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.\n\nHandler: `TestAdminController.transitionOrder`.",
+        "description": "Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.\n\nHandler: `TestAdminController.transitionOrder`.",
         "operationId": "TestAdminController_transitionOrder",
         "security": [
           {
@@ -25902,7 +25785,7 @@
             }
           },
           "400": {
-            "description": "Validation failed (zod): body `{ statusCode: 400, message: \"Validation failed\", issues: [{path, message}] }`. Also order id ambiguous across shops, or Business rule violated. Body is `{ code, message }` (Nest `BadRequestException` with an object; no `statusCode`). Code `invalid_transition`, e.g. `ON_HOLD -> AWAITING_COLLECTION is not allowed (an ON_HOLD order cannot be shipped)`.",
+            "description": "Validation failed (zod): body `{ statusCode: 400, message: \"Validation failed\", issues: [{path, message}] }`. Also order id ambiguous across shops, or Business rule violated. Body is `{ code, message }` (Nest `BadRequestException` with an object; no `statusCode`). Code `invalid_transition`, e.g. `UNPAID -> AWAITING_COLLECTION is not allowed (an UNPAID order cannot be shipped)`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -25965,7 +25848,6 @@
                     "type": "string",
                     "enum": [
                       "UNPAID",
-                      "ON_HOLD",
                       "AWAITING_SHIPMENT",
                       "PARTIALLY_SHIPPING",
                       "AWAITING_COLLECTION",
@@ -25974,7 +25856,7 @@
                       "COMPLETED",
                       "CANCELLED"
                     ],
-                    "description": "Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, ON_HOLD releases, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false."
+                    "description": "Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false."
                   },
                   "shopId": {
                     "type": "string",
@@ -25994,8 +25876,8 @@
                 }
               },
               "example": {
-                "to": "AWAITING_SHIPMENT",
-                "note": "skip the hold"
+                "to": "CANCELLED",
+                "cancelReason": "out of stock"
               }
             }
           }
@@ -26209,7 +26091,7 @@
                   "created": [
                     {
                       "order_id": "5800000000000001",
-                      "status": "ON_HOLD"
+                      "status": "AWAITING_SHIPMENT"
                     }
                   ],
                   "failed": [],
@@ -26298,7 +26180,7 @@
                   },
                   "pay": {
                     "type": "boolean",
-                    "description": "Default true: pay after checkout (the order becomes ON_HOLD)"
+                    "description": "Default true: pay after checkout (the order becomes AWAITING_SHIPMENT)"
                   }
                 },
                 "required": [
@@ -29110,7 +28992,7 @@
           "Test Admin: Scenarios"
         ],
         "summary": "Create loyalty-rule test orders",
-        "description": "Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule \"points only after N days since completion\" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and still ON_HOLD. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.\n\nHandler: `LoyaltyAdminController.create`.",
+        "description": "Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule \"points only after N days since completion\" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and paid but still AWAITING_SHIPMENT. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.\n\nHandler: `LoyaltyAdminController.create`.",
         "operationId": "LoyaltyAdminController_create",
         "security": [
           {

@@ -332,7 +332,9 @@ describe('Phase 09a: coupons (read API, Seller data, checkout discount)', () => 
       await cancel(unpaid);
       await cancel(unpaid); // repeated cancel
       expect((await prisma.coupon.findFirstOrThrow()).redeemedCount).toBe(1);
-      await cancel(paid); // ON_HOLD cancel after payment
+      // after payment the order is AWAITING_SHIPMENT: the seller cancels it (a buyer cancel would only be a request, DECISIONS H7)
+      await http.post(`/demo/shops/${seller.shopId}/orders/${paid}/cancel`).set('x-demo-session', seller.token).send({ reason: 'x' }).expect(201);
+      expect((await prisma.order.findFirstOrThrow({ where: { externalId: paid } })).status).toBe('CANCELLED');
       expect((await prisma.coupon.findFirstOrThrow()).redeemedCount).toBe(1);
       expect(await prisma.couponUsage.count()).toBe(1);
     });

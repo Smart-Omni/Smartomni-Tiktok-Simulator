@@ -26,8 +26,6 @@ export async function advanceOneStep(orders: OrdersService, fulfillment: Fulfill
   switch (order.status) {
     case 'UNPAID':
       return (await orders.pay(buyer, order.externalId, requestId)).order;
-    case 'ON_HOLD':
-      return orders.transition(order.id, 'AWAITING_SHIPMENT', 'TEST_CONSOLE', { note: 'sandbox: hold released', requestId });
     case 'AWAITING_SHIPMENT':
       await fulfillment.arrangeShipment(order.shopId, order.externalId, 'TEST_CONSOLE', requestId);
       break;

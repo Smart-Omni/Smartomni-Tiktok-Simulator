@@ -101,12 +101,10 @@ export class FulfillmentService implements OnModuleInit {
 
   // ---- actions ---------------------------------------------------------------------------------------------------
 
-  /** Arrange shipment. An ON_HOLD (or UNPAID) order is refused; repeating the call on an already arranged order returns the same package. */
+  /** Arrange shipment. An UNPAID order is refused (`order_unpaid`, DECISIONS H8); repeating the call on an already arranged order returns the same package. */
   async arrangeShipment(shopId: string, orderExternalId: string, actor: 'SELLER' | 'TEST_CONSOLE', requestId?: string, handoverMethod?: string): Promise<Package> {
     const order = await this.orderOf(shopId, orderExternalId);
-    if (order.status === 'ON_HOLD' || order.status === 'UNPAID') {
-      throw new OrderRuleError('order_on_hold', `an order in ${order.status} cannot be shipped${order.status === 'ON_HOLD' ? ' until its hold period ends' : ' before payment'}`);
-    }
+    if (order.status === 'UNPAID') throw new OrderRuleError('order_unpaid', 'an UNPAID order cannot be shipped before payment');
     if (order.status === 'CANCELLED') throw new OrderRuleError('order_cancelled', 'a cancelled order cannot be shipped');
     if (order.status === 'AWAITING_SHIPMENT') {
       await this.orders.transition(order.id, 'AWAITING_COLLECTION', actor, { note: 'shipment arranged', requestId });

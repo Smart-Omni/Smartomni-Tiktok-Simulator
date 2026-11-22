@@ -37,20 +37,13 @@ describe('OAS alignment P1: Seller Cancel Order, Create Return, Calculate Refund
 
   const stockOf = async (sku: string) => (await prisma.inventoryLevel.findMany({ where: { sku: { externalId: sku, shopId: shopAId } } })).reduce((n, l) => n + l.quantity, 0);
   const transition = (id: string, to: string) => http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to }).expect(201);
-  const advanceClock = (ms: number) => http.put('/test-admin/clock').set(admin).send({ advanceMs: ms }).expect(200);
 
   async function unpaidOrder(buyer: { token: string; shopId: string }, key: string, quantity = 1) {
     return (await t.checkout(buyer, [{ skuId: BAG, quantity }], key).expect(201)).body.order.id as string;
   }
-  async function onHoldOrder(buyer: { token: string; shopId: string }, key: string, quantity = 1) {
-    const id = await unpaidOrder(buyer, key, quantity);
-    await t.pay(buyer, id).expect(201);
-    return id;
-  }
   async function paidOrder(buyer: { token: string; shopId: string }, key: string, quantity = 1) {
-    const id = await onHoldOrder(buyer, key, quantity);
-    await advanceClock((cfg.orders.holdMinutes + 1) * 60_000);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
+    const id = await unpaidOrder(buyer, key, quantity);
+    await t.pay(buyer, id).expect(201); // -> AWAITING_SHIPMENT
     return id;
   }
   async function deliveredOrder(buyer: { token: string; shopId: string }, key: string, quantity = 3) {
@@ -79,15 +72,15 @@ describe('OAS alignment P1: Seller Cancel Order, Create Return, Calculate Refund
       expect(await prisma.aftersaleRequest.count({ where: { kind: 'CANCELLATION' } })).toBe(1);
     });
 
-    it('cancels UNPAID and ON_HOLD orders; an unpaid order refunds nothing', async () => {
+    it('cancels UNPAID and freshly paid (AWAITING_SHIPMENT) orders; an unpaid order refunds nothing', async () => {
       const buyer = await t.buyerSession(0);
       const unpaid = await unpaidOrder(buyer, 'key-sc-unpd1');
       const a = await cancel({ order_id: unpaid, cancel_reason: 'OTHER' }).expect(200);
       expect((await prisma.aftersaleRequest.findFirstOrThrow({ where: { externalId: a.body.data.cancel_id } })).refundTotal).toBe(0);
-      const hold = await onHoldOrder(buyer, 'key-sc-hold1');
-      const b = await cancel({ order_id: hold, cancel_reason: 'OTHER' }).expect(200);
+      const paid = await paidOrder(buyer, 'key-sc-paid1');
+      const b = await cancel({ order_id: paid, cancel_reason: 'OTHER' }).expect(200);
       expect((await prisma.aftersaleRequest.findFirstOrThrow({ where: { externalId: b.body.data.cancel_id } })).refundTotal).toBeGreaterThan(0);
-      expect(await status(hold)).toBe('CANCELLED');
+      expect(await status(paid)).toBe('CANCELLED');
     });
 
     it('refuses states after shipping', async () => {

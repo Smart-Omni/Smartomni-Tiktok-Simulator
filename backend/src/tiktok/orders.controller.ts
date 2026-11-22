@@ -2,7 +2,7 @@ import { Controller, Get, HttpCode, Inject, Param, Post, Req, UseFilters, UseGua
 import { Prisma } from '@prisma/client';
 import { TiktokFault } from '../common/tiktok-fault';
 import { SCOPE_ORDER_READ } from '../oauth/scopes';
-import { ORDER_STATUSES } from '../orders/order-state';
+import { OAS_ORDER_STATUSES } from '../orders/order-state';
 import { orderItem, OrderWithLines } from '../orders/order.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseRawQuery } from './signature';
@@ -77,7 +77,8 @@ export class OrdersController {
     }
     const where: Prisma.OrderWhereInput = { shopId: shop.id };
     if (body.order_status !== undefined && body.order_status !== null) {
-      if (typeof body.order_status !== 'string' || !(ORDER_STATUSES as readonly string[]).includes(body.order_status)) throw new TiktokFault(400, 'invalid_input', 'order_status is not a documented order status');
+      // ON_HOLD is a documented value, so it is accepted; the simulator never stores it, so it matches nothing (DECISIONS H5)
+      if (typeof body.order_status !== 'string' || !(OAS_ORDER_STATUSES as readonly string[]).includes(body.order_status)) throw new TiktokFault(400, 'invalid_input', 'order_status is not a documented order status');
       where.status = body.order_status;
     }
     if (body.buyer_user_id !== undefined && body.buyer_user_id !== null) {

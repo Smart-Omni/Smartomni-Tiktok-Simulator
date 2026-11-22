@@ -15,7 +15,7 @@ const ruleError400 = 'Business rule violated. Body is `{ code, message }` (Nest 
 
 const dt = (description?: string) => str(description, { format: 'date-time' });
 const nullable = (schema: Record<string, unknown>) => ({ ...schema, nullable: true });
-const orderStatuses = ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
+const orderStatuses = ['UNPAID', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
 
 const SHOP_ID = '3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11';
 const shopIdQuery = { name: 'shopId', description: 'Internal shop id (UUID, the `id` returned by GET /test-admin/shops).', example: SHOP_ID };
@@ -263,20 +263,12 @@ export const paths: PathsFragment = {
     get: op({
       tag: T_DATA, summary: 'List orders', handler: 'TestAdminController.listOrders', security: SEC, errorShape: E,
       description: 'Newest first (by seq). `status` is used in the query unvalidated; an unknown value simply returns no rows.',
-      query: [shopIdQuery, { name: 'status', description: 'Order status filter', schema: { type: 'string', enum: orderStatuses }, example: 'ON_HOLD' }, limitQuery(50, 200), { name: 'pageSize', description: 'Toolkit-style page size, clamped to [1, 10]; when sent it wins over `limit`.', schema: int(undefined, { minimum: 1, maximum: 10 }), example: 10 }],
+      query: [shopIdQuery, { name: 'status', description: 'Order status filter', schema: { type: 'string', enum: orderStatuses }, example: 'AWAITING_SHIPMENT' }, limitQuery(50, 200), { name: 'pageSize', description: 'Toolkit-style page size, clamped to [1, 10]; when sent it wins over `limit`.', schema: int(undefined, { minimum: 1, maximum: 10 }), example: 10 }],
       ok: {
         description: 'Orders.',
-        schema: obj({ items: arr(obj({ id: str('Order external id'), rowId: str('Internal row id'), shopId: str(), shopName: str(), buyerName: str(), status: str(), canonical_status: str('Toolkit canonical state: the status, or CANCEL_PENDING for AWAITING_SHIPMENT with a buyer cancel request'), units: int('Number of order lines (one per unit)'), createdAt: dt(), updatedAt: dt(), releaseAt: nullable(dt('When an ON_HOLD order is released')) })) }, ['items']),
-        example: { items: [{ id: '5800000000000001', rowId: 'a0b1c2d3-0000-4000-8000-000000000001', shopId: SHOP_ID, shopName: 'Shop A', buyerName: 'Nguyen Van A', status: 'ON_HOLD', canonical_status: 'ON_HOLD', units: 2, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:05.000Z', releaseAt: '2026-10-15T08:05:05.000Z' }] },
+        schema: obj({ items: arr(obj({ id: str('Order external id'), rowId: str('Internal row id'), shopId: str(), shopName: str(), buyerName: str(), status: str(), canonical_status: str('Toolkit canonical state: the status, or CANCEL_PENDING for AWAITING_SHIPMENT with a buyer cancel request'), units: int('Number of order lines (one per unit)'), createdAt: dt(), updatedAt: dt() })) }, ['items']),
+        example: { items: [{ id: '5800000000000001', rowId: 'a0b1c2d3-0000-4000-8000-000000000001', shopId: SHOP_ID, shopName: 'Shop A', buyerName: 'Nguyen Van A', status: 'AWAITING_SHIPMENT', canonical_status: 'AWAITING_SHIPMENT', units: 2, createdAt: '2026-10-15T08:00:00.000Z', updatedAt: '2026-10-15T08:00:05.000Z' }] },
       },
-      errors: { 401: E401 },
-    }),
-  },
-  '/test-admin/orders/release-due': {
-    post: op({
-      tag: T_DATA, summary: 'Release due ON_HOLD orders', handler: 'TestAdminController.releaseDue', security: SEC, errorShape: E, status: 201,
-      description: 'Moves every ON_HOLD order whose `releaseAt` is <= business clock now to AWAITING_SHIPMENT (actor SYSTEM, note `hold period elapsed`). Advance the clock first (PUT /test-admin/clock) to test the boundary. No body. Orders another process moved first are skipped silently.',
-      ok: { description: 'External ids of the released orders (201 Created).', schema: obj({ released: arr(str()) }, ['released']), example: { released: ['5800000000000001'] } },
       errors: { 401: E401 },
     }),
   },
@@ -288,7 +280,7 @@ export const paths: PathsFragment = {
       ok: {
         description: 'Audit history.',
         schema: obj({ orderId: str(), status: str(), history: arr(obj({ from: nullable(str()), to: str(), actor: str('e.g. TEST_CONSOLE, SYSTEM, SELLER, BUYER'), note: nullable(str()), at: dt() })) }, ['orderId', 'status', 'history']),
-        example: { orderId: '5800000000000001', status: 'ON_HOLD', history: [{ from: 'UNPAID', to: 'ON_HOLD', actor: 'BUYER', note: 'paid', at: '2026-10-15T08:00:05.000Z' }] },
+        example: { orderId: '5800000000000001', status: 'AWAITING_SHIPMENT', history: [{ from: 'UNPAID', to: 'AWAITING_SHIPMENT', actor: 'BUYER', note: 'fake payment', at: '2026-10-15T08:00:05.000Z' }] },
       },
       errors: { 400: 'Order id is ambiguous across shops; pass `shopId`.', 401: E401, 404: 'Unknown order.' },
     }),
@@ -296,11 +288,11 @@ export const paths: PathsFragment = {
   '/test-admin/orders/{ref}/transition': {
     post: op({
       tag: T_DATA, summary: 'Force an order status transition', handler: 'TestAdminController.transitionOrder', security: SEC, errorShape: E, status: 201,
-      description: 'Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to ON_HOLD or CANCELLED; ON_HOLD to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.',
+      description: 'Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.',
       pathParams: [{ name: 'ref', description: 'Order row id or external id', example: '5800000000000001' }],
-      body: { schema: obj({ to: { type: 'string', enum: orderStatuses, description: 'Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, ON_HOLD releases, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false.' }, shopId: str('Disambiguates the order ref across shops', { minLength: 1 }), note: str('Audit note (max 300); default `test console`', { maxLength: 300 }), cancelReason: str('Used when to=CANCELLED (max 300); falls back to note', { maxLength: 300 }) }), example: { to: 'AWAITING_SHIPMENT', note: 'skip the hold' } },
+      body: { schema: obj({ to: { type: 'string', enum: orderStatuses, description: 'Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false.' }, shopId: str('Disambiguates the order ref across shops', { minLength: 1 }), note: str('Audit note (max 300); default `test console`', { maxLength: 300 }), cancelReason: str('Used when to=CANCELLED (max 300); falls back to note', { maxLength: 300 }) }), example: { to: 'CANCELLED', cancelReason: 'out of stock' } },
       ok: { description: 'Transition applied (201 Created).', schema: obj({ id: str(), from: str(), status: str(), before_status: str('Canonical state before'), after_status: str('Canonical state after'), transitioned: bool('false when nothing changed (terminal order)'), updatedAt: dt() }, ['id', 'from', 'status', 'before_status', 'after_status', 'transitioned', 'updatedAt']), example: { id: '5800000000000001', from: 'ON_HOLD', status: 'AWAITING_SHIPMENT', before_status: 'ON_HOLD', after_status: 'AWAITING_SHIPMENT', transitioned: true, updatedAt: '2026-10-15T08:06:00.000Z' } },
-      errors: { 400: `${E400V} Also order id ambiguous across shops, or ${ruleError400} Code \`invalid_transition\`, e.g. \`ON_HOLD -> AWAITING_COLLECTION is not allowed (an ON_HOLD order cannot be shipped)\`.`, 401: E401, 404: 'Unknown order.', 409: 'The order changed concurrently; retry.' },
+      errors: { 400: `${E400V} Also order id ambiguous across shops, or ${ruleError400} Code \`invalid_transition\`, e.g. \`UNPAID -> AWAITING_COLLECTION is not allowed (an UNPAID order cannot be shipped)\`.`, 401: E401, 404: 'Unknown order.', 409: 'The order changed concurrently; retry.' },
     }),
   },
   '/test-admin/sandbox/products': {
@@ -316,8 +308,8 @@ export const paths: PathsFragment = {
     post: op({
       tag: T_DATA, summary: 'Create sandbox orders (batch)', handler: 'SandboxAdminController.createOrders', security: SEC, errorShape: E, status: 201,
       description: 'Counterpart of `sandbox order create`: places `order_count` orders through the real checkout (own checkoutKey each) and pays them unless `pay` is false. A batch can be partly created and partly failed; created orders are never rolled back. Uses the first buyer of the shop (or the first marketplace buyer).',
-      body: { schema: obj({ shopId: str('Internal shop id', { minLength: 1 }), items: arr(obj({ product_id: str('Optional, informational'), sku_id: str('SKU external id'), quantity: int(undefined, { minimum: 1, maximum: 20 }) })), order_count: int(undefined, { minimum: 1, maximum: 10, default: 1 }), logistics_service_id: str('Optional; one of the simulator delivery option ids'), payment_method: str('Optional label stored as the order payment method name'), pay: bool('Default true: pay after checkout (the order becomes ON_HOLD)') }, ['shopId', 'items']), example: { shopId: SHOP_ID, items: [{ sku_id: '7510000000000001', quantity: 1 }], order_count: 2 } },
-      ok: { description: 'Batch result (201 Created).', schema: obj({ created: arr(obj({ order_id: str(), status: str() })), failed: arr(obj({ index: int(), error: str() })), request_id: nullable(str()) }, ['created', 'failed']), example: { created: [{ order_id: '5800000000000001', status: 'ON_HOLD' }], failed: [], request_id: null } },
+      body: { schema: obj({ shopId: str('Internal shop id', { minLength: 1 }), items: arr(obj({ product_id: str('Optional, informational'), sku_id: str('SKU external id'), quantity: int(undefined, { minimum: 1, maximum: 20 }) })), order_count: int(undefined, { minimum: 1, maximum: 10, default: 1 }), logistics_service_id: str('Optional; one of the simulator delivery option ids'), payment_method: str('Optional label stored as the order payment method name'), pay: bool('Default true: pay after checkout (the order becomes AWAITING_SHIPMENT)') }, ['shopId', 'items']), example: { shopId: SHOP_ID, items: [{ sku_id: '7510000000000001', quantity: 1 }], order_count: 2 } },
+      ok: { description: 'Batch result (201 Created).', schema: obj({ created: arr(obj({ order_id: str(), status: str() })), failed: arr(obj({ index: int(), error: str() })), request_id: nullable(str()) }, ['created', 'failed']), example: { created: [{ order_id: '5800000000000001', status: 'AWAITING_SHIPMENT' }], failed: [], request_id: null } },
       errors: { 400: E400V, 401: E401, 404: 'Unknown shop, or the shop has no buyer.' },
     }),
   },
@@ -511,7 +503,7 @@ export const paths: PathsFragment = {
   '/test-admin/scenarios/loyalty-orders': {
     post: op({
       tag: T_SCEN, summary: 'Create loyalty-rule test orders', handler: 'LoyaltyAdminController.create', security: SEC, errorShape: E, status: 201,
-      description: 'Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule "points only after N days since completion" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and still ON_HOLD. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.',
+      description: 'Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule "points only after N days since completion" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and paid but still AWAITING_SHIPMENT. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.',
       body: { schema: obj({ shopId: str('Internal shop id', { minLength: 1 }), buyerId: str('Internal buyer id of that shop; default = first buyer', { minLength: 1 }), thresholdDays: int('N', { minimum: 1, maximum: 365, default: 15 }) }, ['shopId']), example: { shopId: SHOP_ID, thresholdDays: 15 } },
       ok: {
         description: 'Created orders (201 Created).',

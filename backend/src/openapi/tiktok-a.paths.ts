@@ -65,6 +65,7 @@ const productBase = {
 };
 const skuExample = { id: '1729000000000000101', seller_sku: 'TEE-BLK-M', price: { currency: 'VND', sale_price: '199000' }, inventory: [{ warehouse_id: '7000000000000000001', quantity: 25 }], status_info: { status: 'NORMAL' } };
 
+// The OAS values. ON_HOLD stays documented (a valid `order_status` filter that matches nothing); the simulator never returns it (DECISIONS H5).
 const ORDER_STATUS_ENUM = ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
 const orderItemSchema = obj(
   {
@@ -73,7 +74,6 @@ const orderItemSchema = obj(
     create_time: int('Unix seconds'),
     update_time: int('Unix seconds'),
     paid_time: int(),
-    release_date: int(),
     rts_time: int(),
     collection_time: int(),
     delivery_time: int(),
@@ -101,7 +101,7 @@ const orderItemSchema = obj(
       tax: str(),
       total_amount: str(),
     }),
-    recipient_address: obj({ name: str(), phone_number: str(), address_detail: str(), address_line1: str(), full_address: str(), postal_code: str(), region_code: str() }, [], { description: 'Omitted when status is UNPAID or ON_HOLD.' }),
+    recipient_address: obj({ name: str(), phone_number: str(), address_detail: str(), address_line1: str(), full_address: str(), postal_code: str(), region_code: str() }, [], { description: 'Omitted when status is UNPAID (the simulator never produces ON_HOLD).' }),
     line_items: arr(
       obj({ id: str(), product_id: str(), product_name: str(), sku_id: str(), sku_name: str(), seller_sku: str(), currency: str(), original_price: str(), sale_price: str(), seller_discount: str(), platform_discount: str(), package_id: str(), display_status: str() }),
     ),

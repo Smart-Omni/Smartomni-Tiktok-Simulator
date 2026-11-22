@@ -571,7 +571,7 @@ export class ProductsController {
     });
     const allSkus = products.flatMap((p) => p.skus.filter((s) => !skuIds || skuIds.includes(s.externalId)));
     const open = await this.prisma.orderLine.findMany({
-      where: { skuId: { in: allSkus.map((s) => s.id) }, order: { status: { in: ['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'] } } },
+      where: { skuId: { in: allSkus.map((s) => s.id) }, order: { status: { in: ['UNPAID', 'AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'] } } },
       select: { skuId: true, order: { select: { warehouseId: true } } },
     });
     const committed = (skuId: string, warehouseId?: string) => open.filter((l) => l.skuId === skuId && (warehouseId === undefined || l.order.warehouseId === warehouseId)).length;

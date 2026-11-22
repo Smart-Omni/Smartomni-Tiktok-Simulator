@@ -88,7 +88,7 @@ export class FulfillmentDemoController {
           }
         : null,
       canArrange: includeSeller && order.status === 'AWAITING_SHIPMENT',
-      blockedReason: order.status === 'ON_HOLD' ? 'order_on_hold' : order.status === 'UNPAID' ? 'order_unpaid' : null,
+      blockedReason: order.status === 'UNPAID' ? 'order_unpaid' : null,
       tracking: events.map((e) => ({ status: e.status, description: e.description, at: e.at.toISOString() })),
     };
   }
