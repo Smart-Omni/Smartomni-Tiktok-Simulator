@@ -150,9 +150,9 @@ export interface MarketplaceCart {
   itemCount: number;
 }
 
+/** The simulator has no ON_HOLD: payment moves an order straight to AWAITING_SHIPMENT (DECISIONS H1). */
 export type OrderStatus =
   | 'UNPAID'
-  | 'ON_HOLD'
   | 'AWAITING_SHIPMENT'
   | 'PARTIALLY_SHIPPING'
   | 'AWAITING_COLLECTION'
@@ -200,7 +200,6 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   paidAt: string | null;
-  releaseAt: string | null;
   cancelReason: string | null;
   buyerRequestedCancel: boolean;
   recipient: Recipient;
@@ -209,9 +208,10 @@ export interface Order {
   items: OrderItem[];
 }
 
+/** One audit row. Statuses are raw strings: history written before ON_HOLD was removed may still contain it (DECISIONS H12). */
 export interface OrderHistoryEntry {
-  from: OrderStatus | null;
-  to: OrderStatus;
+  from: string | null;
+  to: string;
   actor: string;
   note: string | null;
   at: string;

@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { cancelOrder, getFulfillment, inShop, listAftersale, listBuyerOrders, payOrder, requestCancellation, requestReturn } from '@/lib/endpoints';
-import { holdTime, shopPrice } from '@/lib/format';
+import { shopPrice } from '@/lib/format';
 import type { Aftersale, AftersaleList, DemoSession, Order, OrderStatus, ReturnRequest } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,6 @@ export function tabOf(status: OrderStatus): Exclude<OrderTab, 'all'> {
   switch (status) {
     case 'UNPAID':
       return 'to-pay';
-    case 'ON_HOLD':
     case 'AWAITING_SHIPMENT':
     case 'AWAITING_COLLECTION':
       return 'to-ship';
@@ -71,15 +70,13 @@ export type OrderAction = 'pay' | 'cancel' | 'request-cancel' | 'track' | 'retur
 
 /**
  * Buyer actions per status (same rules as the former /buyer Orders and Returns tabs):
- * UNPAID/ON_HOLD cancel at once; AWAITING_SHIPMENT asks the seller (aftersale cancellation) unless already asked;
+ * UNPAID cancels at once (paid orders are AWAITING_SHIPMENT right away, DECISIONS H7); AWAITING_SHIPMENT asks the seller (aftersale cancellation) unless already asked;
  * shipped orders can be tracked; DELIVERED/COMPLETED can request a return.
  */
 export function actionsFor(order: Pick<Order, 'status' | 'buyerRequestedCancel'>): OrderAction[] {
   switch (order.status) {
     case 'UNPAID':
       return ['cancel', 'pay'];
-    case 'ON_HOLD':
-      return ['cancel'];
     case 'AWAITING_SHIPMENT':
       return order.buyerRequestedCancel ? [] : ['request-cancel'];
     case 'AWAITING_COLLECTION':
@@ -96,7 +93,6 @@ export function actionsFor(order: Pick<Order, 'status' | 'buyerRequestedCancel'>
 
 const statusLabel: Record<OrderStatus, string> = {
   UNPAID: 'To pay',
-  ON_HOLD: 'Confirming',
   AWAITING_SHIPMENT: 'To ship',
   AWAITING_COLLECTION: 'Packed',
   PARTIALLY_SHIPPING: 'Partly shipped',
@@ -111,8 +107,6 @@ export function hint(o: Order): string {
   switch (o.status) {
     case 'UNPAID':
       return 'Pay to send your order to the seller.';
-    case 'ON_HOLD':
-      return o.releaseAt ? `Confirming payment · ready to ship after ${holdTime(o.releaseAt)}` : 'Payment received. The order is being confirmed.';
     case 'AWAITING_SHIPMENT':
       return o.buyerRequestedCancel ? 'Cancellation requested, waiting for the seller.' : 'The seller is preparing your order.';
     case 'AWAITING_COLLECTION':
@@ -136,7 +130,7 @@ const CANCEL_REASONS = ['CHANGED_MIND', 'ORDERED_BY_MISTAKE', 'WRONG_ADDRESS', '
 const FALLBACK_RETURN_REASONS = ['CHANGED_MIND', 'DAMAGED_ITEM', 'NOT_AS_DESCRIBED', 'WRONG_ITEM', 'OTHER'];
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  return <span className="buyer-order-status" data-status={status}><span />{statusLabel[status]}</span>;
+  return <span className="buyer-order-status" data-status={status}><span />{statusLabel[status] ?? status}</span>;
 }
 
 function ReasonList({ id, reasons, value, onChange }: { id: string; reasons: string[]; value: string; onChange: (v: string) => void }) {
@@ -342,7 +336,7 @@ function TrackingPanel({ buyer, order }: { buyer: DemoSession; order: Order | un
           </dl>
           {f.data.tracking.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {f.data.blockedReason === 'order_on_hold' ? 'Your order is being confirmed. The seller can ship it shortly.' : 'The seller has not shipped this order yet.'}
+              {f.data.blockedReason === 'order_unpaid' ? 'Pay to send your order to the seller.' : 'The seller has not shipped this order yet.'}
             </p>
           ) : (
             <ol className="flex flex-col" aria-label="Tracking timeline">

@@ -54,7 +54,7 @@ function SandboxForm({ shopId, catalog, onCreated }: { shopId: string; catalog: 
           <label>Number of orders<input type="number" min={1} max={catalog.limits.max_order_count} value={count} disabled={busy} onChange={(e) => setCount(Number(e.target.value))} /></label>
           <p className="muted">Maximum {catalog.limits.max_order_count} orders; {catalog.limits.max_quantity_per_sku} units per SKU per order.</p>
           <label className="admin-check"><input type="checkbox" checked={pay} disabled={busy} onChange={(e) => setPay(e.target.checked)} /> Simulate payment after checkout</label>
-          <dl className="admin-summary-list"><div><dt>Selected SKUs</dt><dd>{selected.length}</dd></div><div><dt>Items per order</dt><dd>{selected.reduce((n, r) => n + items[r.id], 0)}</dd></div><div><dt>Item subtotal / order</dt><dd>{vnd(total)}</dd></div><div><dt>Initial order status</dt><dd>{pay ? 'ON_HOLD' : 'UNPAID'}</dd></div></dl>
+          <dl className="admin-summary-list"><div><dt>Selected SKUs</dt><dd>{selected.length}</dd></div><div><dt>Items per order</dt><dd>{selected.reduce((n, r) => n + items[r.id], 0)}</dd></div><div><dt>Item subtotal / order</dt><dd>{vnd(total)}</dd></div><div><dt>Initial order status</dt><dd>{pay ? 'AWAITING_SHIPMENT' : 'UNPAID'}</dd></div></dl>
           <p className="muted">Item subtotal excludes shipping and other checkout adjustments.</p>
           <p className="muted">Successful orders are kept if a batch partially fails.</p>
           <button className="admin-primary" type="submit" disabled={!valid || busy}>{busy ? 'Creating orders…' : result ? 'Create another batch' : 'Create test orders'}</button>

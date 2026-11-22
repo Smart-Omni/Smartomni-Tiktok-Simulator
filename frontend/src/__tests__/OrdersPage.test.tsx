@@ -18,7 +18,6 @@ const order = (id: string, status: OrderStatus, createdAt: string, extra: Partia
   createdAt,
   updatedAt: createdAt,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'An', phone: '0900000001', addressLine: '12 Lê Lợi', district: 'Quận 1', city: 'Hồ Chí Minh' },
@@ -63,7 +62,6 @@ describe('tab and action rules', () => {
   it('maps every backend status to one tab', () => {
     const expected: Record<OrderStatus, string> = {
       UNPAID: 'to-pay',
-      ON_HOLD: 'to-ship',
       AWAITING_SHIPMENT: 'to-ship',
       AWAITING_COLLECTION: 'to-ship',
       PARTIALLY_SHIPPING: 'shipping',
@@ -75,16 +73,15 @@ describe('tab and action rules', () => {
     for (const [status, tab] of Object.entries(expected)) expect(tabOf(status as OrderStatus)).toBe(tab);
   });
 
-  it('tells the buyer when an ON_HOLD order can ship', () => {
-    const held = order('h', 'ON_HOLD', '2026-10-21T05:00:00.000Z', { releaseAt: '2026-10-21T05:30:00.000Z' });
-    expect(hint(held)).toMatch(/^Confirming payment · ready to ship after \d{2}\/\d{2}, \d{2}:\d{2}$/);
-    expect(hint({ ...held, releaseAt: null })).toBe('Payment received. The order is being confirmed.');
+  it('tells the buyer a paid order is with the seller at once (no hold)', () => {
+    const paid = order('p', 'AWAITING_SHIPMENT', '2026-10-21T05:00:00.000Z');
+    expect(hint(paid)).toBe('The seller is preparing your order.');
+    expect(hint({ ...paid, buyerRequestedCancel: true })).toBe('Cancellation requested, waiting for the seller.');
   });
 
   it('offers the buyer actions per status', () => {
     const a = (status: OrderStatus, buyerRequestedCancel = false) => actionsFor({ status, buyerRequestedCancel });
     expect(a('UNPAID')).toEqual(['cancel', 'pay']);
-    expect(a('ON_HOLD')).toEqual(['cancel']);
     expect(a('AWAITING_SHIPMENT')).toEqual(['request-cancel']);
     expect(a('AWAITING_SHIPMENT', true)).toEqual([]);
     expect(a('AWAITING_COLLECTION')).toEqual(['track']);

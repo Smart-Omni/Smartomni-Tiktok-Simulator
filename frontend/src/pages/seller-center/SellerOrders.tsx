@@ -68,7 +68,6 @@ function OrderRow({ seller, order, onChanged }: { seller: DemoSession; order: Or
           seller={seller}
           orderId={order.id}
           status={order.status}
-          releaseAt={order.releaseAt}
           hasTracking={Boolean(pkg?.trackingNumber)}
           onChanged={() => {
             onChanged();

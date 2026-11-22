@@ -35,7 +35,6 @@ const order = (status: Order['status'], shop = 'shop-1'): Order => ({
   createdAt: future,
   updatedAt: future,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'Trần Văn An', phone: '0900000001', addressLine: '12 Lê Lợi', district: 'Quận 1', city: 'Hồ Chí Minh' },
@@ -100,8 +99,8 @@ describe('CheckoutPage', () => {
         if (url === '/demo/shops/shop-2/checkout') return json({ replayed: false, order: order('UNPAID', 'shop-2') }, 201);
         if (url === '/demo/shops/shop-1/cart/items') return json(cart);
         if (url === '/demo/shops/shop-2/cart/items') return json(cart2);
-        if (url === '/demo/shops/shop-1/orders/576000111/pay') return json({ replayed: false, order: order('ON_HOLD') }, 201);
-        if (url === '/demo/shops/shop-2/orders/576000222/pay') return json({ replayed: false, order: order('ON_HOLD', 'shop-2') }, 201);
+        if (url === '/demo/shops/shop-1/orders/576000111/pay') return json({ replayed: false, order: order('AWAITING_SHIPMENT') }, 201);
+        if (url === '/demo/shops/shop-2/orders/576000222/pay') return json({ replayed: false, order: order('AWAITING_SHIPMENT', 'shop-2') }, 201);
         return json({ message: 'nope' }, 404);
       }),
     );

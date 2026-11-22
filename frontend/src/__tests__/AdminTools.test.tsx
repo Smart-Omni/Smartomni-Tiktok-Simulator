@@ -87,6 +87,7 @@ describe('Admin arbitration and order history', () => {
     expect(JSON.parse(options.body as string)).toEqual({ shopId: 'shop-2', arbitration_status: 'ARBITRATION_WIN', note: 'Reviewed evidence' });
   });
 
+  // the history is legacy data written before ON_HOLD was removed: the panel shows raw statuses (DECISIONS H12)
   it('loads audit for an encoded order reference and the selected shop', async () => {
     const fetcher = vi.fn(async () => json({ orderId: 'order/1', status: 'ON_HOLD', history: [{ from: 'UNPAID', to: 'ON_HOLD', actor: 'BUYER', note: 'Paid', at: '2026-11-20T12:00:00Z' }] }));
     vi.stubGlobal('fetch', fetcher);

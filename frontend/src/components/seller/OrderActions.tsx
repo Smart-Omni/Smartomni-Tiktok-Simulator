@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,6 @@ import { NativeSelect } from '@/components/seller/SellerUi';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { holdTime } from '@/lib/format';
 import { advanceShipment, arrangeShipment, cancelOrder, getShippingLabel } from '@/lib/endpoints';
 import { advanceHint, sellerActionsFor, type SellerAction } from '@/lib/sellerOrders';
 import type { DemoSession, OrderStatus, ShippingDocumentType } from '@/lib/types';
@@ -75,7 +73,6 @@ export function OrderActions({
   seller,
   orderId,
   status,
-  releaseAt,
   hasTracking,
   onChanged,
   className,
@@ -83,8 +80,6 @@ export function OrderActions({
   seller: DemoSession;
   orderId: string;
   status: OrderStatus;
-  /** End of the ON_HOLD period (business clock). */
-  releaseAt?: string | null;
   hasTracking: boolean;
   onChanged: () => void;
   className?: string;
@@ -124,17 +119,9 @@ export function OrderActions({
     }
   };
 
-  if (!actions.length && status !== 'ON_HOLD') return null;
+  if (!actions.length) return null;
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      {status === 'ON_HOLD' ? (
-        <span className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-          <span>{releaseAt ? `On hold until ${holdTime(releaseAt)}` : 'On hold: cannot ship yet'}</span>
-          <Link to="/console" className="text-teal hover:underline">
-            Skip the wait: Test Console → Orders → Release due holds
-          </Link>
-        </span>
-      ) : null}
       {actions.includes('arrange') ? (
         <Button size="sm" disabled={busy !== null} onClick={() => run('arrange', () => arrangeShipment(seller, orderId), 'Shipment arranged')}>
           Arrange shipment
