@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,7 +28,8 @@ import {
 import type { Brand, CatalogProduct, CategoryAttribute, CategoryNode, CategoryRules, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
-import { isWholeVnd } from './SellerProducts';
+import { emptyVariant, MAX_SKUS, variantBody, variantError, type VariantDraft } from '@/lib/catalogValidation';
+import { VariantExtras } from '@/components/seller/VariantExtras';
 
 interface ImageSlot {
   key: string;
@@ -38,12 +39,6 @@ interface ImageSlot {
   /** Uploaded URL, or a local object URL while uploading. */
   src: string;
   error?: string;
-}
-
-interface Variant {
-  sellerSku: string;
-  name: string;
-  price: string;
 }
 
 let slotSeq = 0;
@@ -57,14 +52,13 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   ) : null;
 }
 
-function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <SellerCard label={title} className="flex flex-col gap-4 p-5">
-      <div>
-        <h2 className="text-base font-bold">{title}</h2>
-        {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
-      </div>
+    <SellerCard label={title} className="seller-listing-section">
+      <div className="seller-listing-section-heading"><h2>{title}</h2></div>
+      <div className="seller-listing-section-body">
       {children}
+      </div>
     </SellerCard>
   );
 }
@@ -100,7 +94,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-3" role="list" aria-label="Product images">
+      <div className="seller-listing-images" role="list" aria-label="Product images">
         {slots.map((s, i) => (
           <div key={s.key} role="listitem" aria-label={`Image ${i + 1}${i === 0 ? ' (main)' : ''}`} className={cn('relative flex size-28 flex-col overflow-hidden rounded-lg ring-1', s.status === 'error' ? 'ring-destructive' : 'ring-line-soft')}>
             {s.src ? <img src={s.src} alt={`Product image ${i + 1}`} className="size-full object-cover" /> : <div className="size-full bg-surface" />}
@@ -138,7 +132,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
             className={cn('flex size-28 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed text-xs text-muted-foreground', dragging ? 'border-teal bg-teal-soft' : 'border-line-soft')}
           >
             <ImagePlus className="size-5" />
-            Add or drop
+            Add images
             <span>
               {slots.length}/{MAX_IMAGES}
             </span>
@@ -164,7 +158,7 @@ function ImagesField({ seller, slots, setSlots, error }: { seller: DemoSession; 
             {s.error}
           </p>
         ))}
-      <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, up to 5 MB each. The first image is the main image.</p>
+      <span className="seller-listing-file-limits">JPEG / PNG / WebP · 5 MB</span>
       <FieldError id="images-error" message={error} />
     </div>
   );
@@ -294,12 +288,15 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
   const [brandId, setBrandId] = useState(product?.brandId ?? '');
   const [attrValues, setAttrValues] = useState<AttributeValues>(() => (product ? attributeValuesOf(product) : {}));
   const [weightKg, setWeightKg] = useState(product?.packageWeight ? String(product.packageWeight.value) : '');
+  const [weightUnit, setWeightUnit] = useState<'KILOGRAM' | 'POUND'>(product?.packageWeight?.unit === 'POUND' ? 'POUND' : 'KILOGRAM');
+  const [dimensionsUnit, setDimensionsUnit] = useState<'CENTIMETER' | 'INCH'>(product?.packageDimensions?.unit === 'INCH' ? 'INCH' : 'CENTIMETER');
+  const [notForSale, setNotForSale] = useState(product?.isNotForSale ?? false);
   const [dims, setDims] = useState({
     length: product?.packageDimensions ? String(product.packageDimensions.length) : '',
     width: product?.packageDimensions ? String(product.packageDimensions.width) : '',
     height: product?.packageDimensions ? String(product.packageDimensions.height) : '',
   });
-  const [variants, setVariants] = useState<Variant[]>([{ sellerSku: '', name: '', price: '' }]);
+  const [variants, setVariants] = useState<VariantDraft[]>([emptyVariant()]);
   const [attributes, setAttributes] = useState<CategoryAttribute[]>([]);
   const [rules, setRules] = useState<CategoryRules>();
   const [touched, setTouched] = useState(false);
@@ -340,11 +337,13 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
     brandId,
     attributes: attrValues,
     weightKg,
+    weightUnit,
+    dimensionsUnit,
     ...dims,
   };
   const errors: FormErrors = validateProductForm(state, leaf, attributes, rules);
-  const variantErrors = editing ? [] : variants.map((v) => (!v.sellerSku.trim() || !v.name.trim() ? 'Enter a seller SKU and a variant name' : !isWholeVnd(v.price) ? 'Enter a whole VND price' : undefined));
-  const valid = Object.keys(errors).length === 0 && variantErrors.every((e) => !e);
+  const variantErrors = editing ? [] : variants.map(variantError);
+  const valid = Object.keys(errors).length === 0 && variantErrors.every((e) => !e) && (editing || (variants.length >= 1 && variants.length <= MAX_SKUS));
   const shown = (e?: string) => (touched ? e : undefined);
 
   const submit = async (e: FormEvent) => {
@@ -356,10 +355,10 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
     const listing = listingBody(state, attributes);
     try {
       if (product) {
-        await patchProduct(seller, product.id, { title: title.trim(), description, ...listing });
+        await patchProduct(seller, product.id, { title: title.trim(), description, ...listing, ...(notForSale !== product.isNotForSale ? { isNotForSale: notForSale } : {}) });
         toast.success('Product saved');
       } else {
-        await createProduct(seller, { title: title.trim(), description, ...listing, skus: variants.map((v) => ({ sellerSku: v.sellerSku.trim(), name: v.name.trim(), priceVnd: Number(v.price) })) });
+        await createProduct(seller, { title: title.trim(), description, ...listing, skus: variants.map(variantBody) });
         toast.success('Product created');
       }
       navigate('/seller-center/products');
@@ -370,17 +369,16 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
   };
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4" aria-label={editing ? 'Edit product' : 'New product'}>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/seller-center/products">
-            <ArrowLeft /> Products
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold">{editing ? 'Edit product' : 'New product'}</h1>
+    <form onSubmit={submit} noValidate className="seller-listing-form" aria-label={editing ? 'Edit product' : 'New product'}>
+      <div className="seller-listing-actions">
         {product ? <span className="font-mono text-xs text-muted-foreground">#{product.externalId}</span> : null}
+        <div className="seller-listing-save">
+          <Button asChild type="button" variant="outline"><Link to="/seller-center/products">Cancel</Link></Button>
+          <Button type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Save size={14} />}{editing ? 'Save product' : 'Create product'}</Button>
+        </div>
       </div>
 
+      <div className="seller-listing-grid">
       <Section title="Basic info">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-title">Title *</Label>
@@ -390,20 +388,21 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="product-description">Description</Label>
           <Textarea id="product-description" rows={5} maxLength={10000} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <FieldError id="description-error" message={shown(errors.description)} />
         </div>
+        {editing && <label className="flex items-center gap-2"><input type="checkbox" checked={notForSale} onChange={(e) => setNotForSale(e.target.checked)} />Not for sale</label>}
       </Section>
 
-      <Section title="Images *" hint={`Up to ${MAX_IMAGES} images. Each one uploads as soon as it is picked.`}>
+      <Section title="Images *">
         <ImagesField seller={seller} slots={slots} setSlots={setSlots} error={shown(errors.images)} />
       </Section>
 
-      <Section title="Category *">
+      <Section title="Category & brand">
+        <div className="seller-listing-classification"><div>
         <Loaded result={categories} what="categories">
           {() => <CategoryField tree={tree} value={categoryId} onChange={setCategoryId} error={shown(errors.category)} />}
         </Loaded>
-      </Section>
-
-      <Section title="Brand">
+              </div><div className="seller-listing-brand"><Label>Brand</Label>
         <Loaded result={brands} what="brands">
           {(d) => (
             <NativeSelect aria-label="Brand" value={brandId} onChange={(e) => setBrandId(e.target.value)} className="h-9 w-64">
@@ -417,9 +416,11 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
             </NativeSelect>
           )}
         </Loaded>
+              </div></div>
       </Section>
 
-      <Section title="Attributes" hint={leaf ? 'Fields marked * are required by the category.' : 'Choose a category to see its attributes.'}>
+      <Section title="Attributes">
+        {!leaf ? <p className="text-sm text-muted-foreground">Select a category first.</p> : null}
         {leaf && attributes.length === 0 ? <p className="text-sm text-muted-foreground">This category has no attributes.</p> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           {attributes.map((a) => (
@@ -431,16 +432,17 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </div>
       </Section>
 
-      <Section title="Shipping" hint={rules?.packageDimensionsRequired ? 'This category requires the package dimensions.' : undefined}>
-        <div className="flex flex-wrap items-end gap-3">
+      <Section title="Shipping">
+        <div className="seller-listing-shipping"><label className="flex flex-col gap-2"><span>Weight unit</span><NativeSelect aria-label="Weight unit" value={weightUnit} onChange={(e) => setWeightUnit(e.target.value as typeof weightUnit)}><option value="KILOGRAM">Kilogram</option><option value="POUND">Pound</option></NativeSelect></label><label className="flex flex-col gap-2"><span>Dimensions unit</span><NativeSelect aria-label="Dimensions unit" value={dimensionsUnit} onChange={(e) => setDimensionsUnit(e.target.value as typeof dimensionsUnit)}><option value="CENTIMETER">Centimeter</option><option value="INCH">Inch</option></NativeSelect></label></div>
+        <div className="seller-listing-shipping">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="package-weight">Weight (kg)</Label>
+            <Label htmlFor="package-weight">Weight ({weightUnit === 'KILOGRAM' ? 'kg' : 'lb'})</Label>
             <Input id="package-weight" inputMode="decimal" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="w-32" />
           </div>
           {(['length', 'width', 'height'] as const).map((k) => (
             <div key={k} className="flex flex-col gap-1">
               <Label htmlFor={`package-${k}`}>
-                {k.charAt(0).toUpperCase() + k.slice(1)} (cm){rules?.packageDimensionsRequired ? ' *' : ''}
+                {k.charAt(0).toUpperCase() + k.slice(1)} ({dimensionsUnit === 'CENTIMETER' ? 'cm' : 'in'}){rules?.packageDimensionsRequired ? ' *' : ''}
               </Label>
               <Input id={`package-${k}`} inputMode="decimal" value={dims[k]} onChange={(e) => setDims({ ...dims, [k]: e.target.value })} className="w-28" />
             </div>
@@ -450,36 +452,42 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         <FieldError id="dimensions-error" message={shown(errors.dimensions)} />
       </Section>
 
-      <Section title="Variants" hint={editing ? 'Edit variants, prices and stock from the Products list.' : `Stock starts at 0 in every warehouse (${warehouses.map((w) => w.name).join(', ') || 'none'}); set it per variant afterwards.`}>
+      <Section title="Variants">
         {product ? (
-          <ul className="text-sm">
+          <ul className="seller-listing-existing-skus">
             {product.skus.map((s) => (
               <li key={s.id}>
-                {s.sellerSku} · {s.name} · {shopPrice(s.priceVnd)} · stock {s.totalStock}
+                <div><strong>{s.sellerSku}</strong><span>{s.name}</span></div><strong>{shopPrice(s.priceVnd)}</strong><span>{s.totalStock} in stock</span>
               </li>
             ))}
           </ul>
         ) : (
           <div className="flex flex-col gap-2">
             {variants.map((v, i) => (
-              <div key={i} className="flex flex-wrap items-center gap-2" aria-label={`Variant ${i + 1}`} role="group">
-                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
-                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
+              <div key={i} className="seller-listing-variant" aria-label={`Variant ${i + 1}`} role="group">
+                <label><span>Seller SKU *</span>
+                <Input aria-label={`Seller SKU ${i + 1}`} placeholder="Seller SKU" maxLength={100} value={v.sellerSku} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, sellerSku: e.target.value } : x)))} className="h-8 w-40" />
+                </label><label><span>Variant *</span>
+                <Input aria-label={`Variant name ${i + 1}`} placeholder="Variant" maxLength={200} value={v.name} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="h-8 w-40" />
+                </label><label><span>Price (VND) *</span>
                 <Input aria-label={`Price ${i + 1}`} placeholder="Price VND" inputMode="numeric" value={v.price} onChange={(e) => setVariants(variants.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} className="h-8 w-32" />
+                </label>
                 {variants.length > 1 ? (
                   <Button type="button" size="icon" variant="ghost" aria-label={`Remove variant ${i + 1}`} onClick={() => setVariants(variants.filter((_, j) => j !== i))}>
                     <X />
                   </Button>
                 ) : null}
-                {touched && variantErrors[i] ? <span className="text-xs text-destructive">{variantErrors[i]}</span> : null}
+                <VariantExtras value={v} onChange={(value) => setVariants(variants.map((x, j) => j === i ? value : x))} warehouses={warehouses} label={String(i + 1)} />
+                {touched && variantErrors[i] ? <span className="seller-listing-variant-error text-xs text-destructive">{variantErrors[i]}</span> : null}
               </div>
             ))}
-            <Button type="button" size="sm" variant="outline" className="w-fit" onClick={() => setVariants([...variants, { sellerSku: '', name: '', price: '' }])}>
+            <Button type="button" size="sm" variant="outline" className="w-fit" disabled={variants.length >= MAX_SKUS} onClick={() => setVariants([...variants, emptyVariant()])}>
               <Plus /> Add variant
             </Button>
           </div>
         )}
       </Section>
+      </div>
 
       {serverError ? (
         <Alert variant="destructive">
@@ -487,14 +495,6 @@ function ProductForm({ seller, product, warehouses }: { seller: DemoSession; pro
         </Alert>
       ) : null}
       {touched && !valid ? <p className="text-sm text-destructive">Fix the highlighted fields before saving.</p> : null}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={busy}>
-          {editing ? 'Save product' : 'Create product'}
-        </Button>
-        <Button asChild type="button" variant="outline">
-          <Link to="/seller-center/products">Cancel</Link>
-        </Button>
-      </div>
     </form>
   );
 }

@@ -25,6 +25,6 @@ describe('InventoryHistoryView', () => {
   it('explains empty history', () => {
     render(<InventoryHistoryView data={{ changes: [], attempts: [] }} />);
     expect(screen.getByText('No stock changes yet.')).toBeTruthy();
-    expect(screen.getByText('SmartOmni has not called Update Inventory yet.')).toBeTruthy();
+    expect(screen.getByText('No inventory update requests yet.')).toBeTruthy();
   });
 });

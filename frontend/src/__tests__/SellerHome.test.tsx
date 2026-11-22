@@ -103,9 +103,10 @@ describe('SellerHome', () => {
       </MemoryRouter>,
     );
 
-  it('greets the seller and links each to-do count to its filtered page', async () => {
+  it('shows the working shop in the sidebar and links each to-do count to its filtered page', async () => {
     renderHome();
-    expect(await screen.findByRole('heading', { name: 'Good afternoon, Nguyễn Thị Lan' })).toBeTruthy();
+    expect(await within(screen.getByRole('complementary')).findByText('Nguyễn Thị Lan')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
     const todo = screen.getByRole('region', { name: 'To-do list' });
     const expected: [string, string, string][] = [
       ['2To pay', '/seller-center/orders?tab=unpaid', 'To pay'],
@@ -136,7 +137,7 @@ describe('SellerHome', () => {
     expect(within(card).getByRole('link', { name: /Code batches/ }).getAttribute('href')).toBe('/seller-center/vouchers?tab=batches');
   });
 
-  it('lists the 5 latest orders with View all, and marks Business overview as mock', async () => {
+  it('lists the 5 latest orders and derives Business overview from API orders', async () => {
     renderHome();
     const latest = await screen.findByRole('region', { name: 'Latest orders' });
     await vi.waitFor(() => expect(within(latest).getAllByRole('listitem')).toHaveLength(5));
@@ -146,7 +147,9 @@ describe('SellerHome', () => {
     expect(within(latest).getByRole('link', { name: 'View all' }).getAttribute('href')).toBe('/seller-center/orders');
 
     const overview = screen.getByRole('region', { name: 'Business overview' });
-    expect(overview.closest('[data-mock]')).toBeTruthy();
-    expect(within(overview.closest('[data-mock]') as HTMLElement).getByText('MOCK')).toBeTruthy();
+    expect(overview.closest('[data-mock]')).toBeNull();
+    expect(within(overview).getByText('Total orders')).toBeTruthy();
+    expect(within(overview).getByText('8')).toBeTruthy();
+    expect(within(overview).getByText('All shop orders')).toBeTruthy();
   });
 });

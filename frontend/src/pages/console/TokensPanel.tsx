@@ -1,7 +1,10 @@
+import { PaginatedList } from '../../components/console/PaginatedList';
 import { useState } from 'react';
 import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
 import { useAsync } from '../../lib/useAsync';
+import { statusTone } from '../../components/console/statusTone';
+import { PageActions } from '../../components/console/PageActions';
 
 interface TokenView {
   id: string;
@@ -33,33 +36,34 @@ export function TokensPanel({ shopId }: { shopId: string }) {
 
   return (
     <div>
-      <p className="muted">Test faults for the SmartOmni connection: expire a token, revoke the authorization, or remove one granted scope. SmartOmni sees the effect on its next API call.</p>
       {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
-      <div className="row-wrap">
-        <button disabled={!shopId} onClick={() => void act('/test-admin/authorization-codes/expire', { shopId })}>Expire unused authorization codes</button>
-      </div>
-      <AsyncState {...tokens} onRetry={tokens.reload} isEmpty={(d) => d.items.length === 0} emptyText="No authorization for this shop yet. Connect it from SmartOmni (consent page: /seller/authorize).">
+      <PageActions>
+        <button data-tone="warning" disabled={!shopId} onClick={() => void act('/test-admin/authorization-codes/expire', { shopId })}>Expire unused authorization codes</button>
+      </PageActions>
+      <AsyncState {...tokens} onRetry={tokens.reload} isEmpty={(d) => d.items.length === 0} emptyText="No authorization for this shop.">
         {(d) => (
-          <div>
-            {d.items.map((t) => (
+          <PaginatedList items={d.items} label="Authorizations" initialPageSize={5}>{(visible) => <div>
+            {visible.map((t) => (
               <article key={t.id} className="card">
-                <h3>{t.appKey} <span className="muted">{t.status}</span></h3>
+                <h3>{t.appKey} <span className="pill" data-tone={statusTone(t.status)}>{t.status}</span></h3>
                 <div className="muted">
                   Access token {t.accessExpired ? 'EXPIRED' : 'expires'} {new Date(t.accessExpiresAt).toLocaleString()} / refresh token {t.refreshExpired ? 'EXPIRED' : 'expires'} {new Date(t.refreshExpiresAt).toLocaleString()}
                   {t.revokedAt ? ` / revoked ${new Date(t.revokedAt).toLocaleString()}` : ''}
                 </div>
-                <div className="muted">Granted scopes: {t.scopes.length === 0 ? '(none)' : t.scopes.join(', ')}</div>
-                <div className="row-wrap">
-                  <button disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-access`)}>Expire access token</button>
-                  <button disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-refresh`)}>Expire refresh token</button>
-                  <button disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/revoke`)}>Revoke authorization</button>
-                  {t.scopes.map((s) => (
-                    <button key={s} onClick={() => void act(`/test-admin/tokens/${t.id}/remove-scope`, { scope: s })}>Remove {s}</button>
-                  ))}
+
+                <div className="admin-token-actions">
+                  <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-access`)}>Expire access token</button>
+                  <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-refresh`)}>Expire refresh token</button>
+                  <button data-tone="danger" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/revoke`)}>Revoke authorization</button>
                 </div>
+                <details className="admin-token-scopes"><summary>Granted scopes ({t.scopes.length})</summary><div className="admin-scope-grid">
+                  {t.scopes.map((s) => (
+                    <button data-tone="danger" key={s} onClick={() => void act(`/test-admin/tokens/${t.id}/remove-scope`, { scope: s })}>Remove {s}</button>
+                  ))}
+                </div></details>
               </article>
             ))}
-          </div>
+          </div>}</PaginatedList>
         )}
       </AsyncState>
     </div>

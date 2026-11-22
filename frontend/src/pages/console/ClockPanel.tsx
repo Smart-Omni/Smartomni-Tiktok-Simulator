@@ -27,10 +27,9 @@ export function ClockPanel() {
   return (
     <AsyncState {...clock} onRetry={clock.reload}>
       {(c) => (
-        <div className="card">
-          <h3>Business clock</h3>
+        <div className="card admin-clock-card">
           <p>Now: <code>{c.now}</code> {c.frozen ? <span className="pill warn">frozen</span> : null}</p>
-          <p className="muted">System time: {c.systemNow}. This clock drives business timestamps only; request-signature validation always uses real time.</p>
+          <p className="muted">System time: {c.systemNow}</p>
           {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
           <div className="row-wrap">
             {[['+1 hour', 3_600_000], ['+1 day', 86_400_000], ['+7 days', 604_800_000]].map(([label, ms]) => (
@@ -38,10 +37,10 @@ export function ClockPanel() {
             ))}
             <button onClick={() => put({ reset: true })}>Reset to real time</button>
           </div>
-          <div className="row-wrap">
+          <div className="admin-log-filters admin-clock-form">
             <label>Set to <input type="datetime-local" value={target} onChange={(e) => setTarget(e.target.value)} /></label>
-            <label><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> freeze</label>
-            <button disabled={!target} onClick={() => put({ setTo: new Date(target).toISOString(), freeze })}>Apply</button>
+            <label className="admin-check"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> freeze</label>
+            <button className="admin-primary" disabled={!target} onClick={() => put({ setTo: new Date(target).toISOString(), freeze })}>Apply</button>
           </div>
         </div>
       )}

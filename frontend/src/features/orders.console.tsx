@@ -3,6 +3,13 @@ import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { OrderAuditPanel } from '../pages/console/OrderAuditPanel';
+import { statusTone } from '../components/console/statusTone';
+import { PageActions } from '../components/console/PageActions';
+import { PaginatedList } from '../components/console/PaginatedList';
+import { History, Plus, RefreshCw, TimerReset } from 'lucide-react';
+
+const statusLabel = (status: string) => status.toLowerCase().replaceAll('_', ' ').replace(/^\w/, (letter) => letter.toUpperCase());
 
 interface AdminOrder {
   id: string;
@@ -30,6 +37,9 @@ const NEXT: Record<string, string[]> = {
 export function OrdersPanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminOrder[] }>(`/test-admin/orders?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   const [msg, setMsg] = useState<string>();
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [auditRef, setAuditRef] = useState<string>();
   async function go(id: string, to: string) {
     try {
       await api(`/test-admin/orders/${id}/transition`, { method: 'POST', body: { to, shopId } });
@@ -59,31 +69,36 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
-      <div className="row-wrap">
-        <button onClick={() => void loyalty()}>Create loyalty test orders (before/after 15 days)</button>
-        <button onClick={() => void releaseDue()}>Release due holds</button>
-        <span className="muted">Advance the business clock on the Clock tab first to test the hold boundary. Invalid jumps (for example shipping an ON_HOLD order) are refused by the API.</span>
-      </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
+      <div className="admin-log-filters admin-order-filters">
+        <label>Search orders<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Order ID or buyer name" /></label>
+        <label>Status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">All statuses</option>{Object.keys(NEXT).map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+        <button className="admin-icon-action" type="button" onClick={list.reload}><RefreshCw size={13} aria-hidden="true" />Refresh</button>
+      <PageActions>
+        <button className="admin-icon-action" title="Release orders whose hold period has ended" onClick={() => void releaseDue()}><TimerReset size={14} aria-hidden="true" />Release due holds</button>
+        <button className="admin-primary admin-icon-action" title="Create loyalty test orders before and after the 15-day boundary" disabled={!shopId} onClick={() => void loyalty()}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
+      </PageActions>
+      </div>
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (
-          <table>
-            <thead><tr><th>Order</th><th>Buyer</th><th>Units</th><th>Status</th><th>Hold until</th><th>Move to</th></tr></thead>
+          <PaginatedList key={`${query}:${statusFilter}`} items={d.items.filter((o) => (!statusFilter || o.status === statusFilter) && `${o.id} ${o.buyerName}`.toLowerCase().includes(query.toLowerCase()))} label="Orders">{(visible) => <div className="scroll"><table className="admin-orders-table">
+            <thead><tr><th>Order</th><th>Buyer</th><th>Units</th><th>Status</th><th>Hold until</th><th>Actions</th></tr></thead>
             <tbody>
-              {d.items.map((o) => (
+              {visible.map((o) => (
                 <tr key={o.id}>
-                  <td>{o.id}</td>
+                  <td><button type="button" className="admin-text-button admin-order-reference" onClick={() => setAuditRef(o.id)} aria-label={`View history of ${o.id}`}>{o.id}</button><small className="admin-order-history-hint"><History size={11} aria-hidden="true" />View history</small></td>
                   <td>{o.buyerName}</td>
                   <td>{o.units}</td>
-                  <td><span className="pill">{o.status}</span></td>
-                  <td>{o.releaseAt && o.status === 'ON_HOLD' ? new Date(o.releaseAt).toLocaleString() : ''}</td>
-                  <td>{(NEXT[o.status] ?? []).map((to) => <button key={to} onClick={() => void go(o.id, to)}>{to}</button>)}</td>
+                  <td><span className="pill" data-tone={statusTone(o.status)} title={o.status}>{statusLabel(o.status)}</span></td>
+                  <td>{o.releaseAt && o.status === 'ON_HOLD' ? new Date(o.releaseAt).toLocaleString() : <span className="muted">—</span>}</td>
+                  <td><div className="admin-order-actions">{[...(NEXT[o.status] ?? [])].sort((a, b) => Number(a === 'CANCELLED') - Number(b === 'CANCELLED')).map((to) => <button key={to} data-tone={statusTone(to)} title={to} onClick={() => void go(o.id, to)}>{to === 'CANCELLED' ? 'Cancel order' : statusLabel(to)}</button>)}</div>{!(NEXT[o.status]?.length) && <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table>{!d.items.some((o) => (!statusFilter || o.status === statusFilter) && `${o.id} ${o.buyerName}`.toLowerCase().includes(query.toLowerCase())) && <div className="state state-empty">No orders match these filters.</div>}</div>}</PaginatedList>
         )}
       </AsyncState>
+      {auditRef && <OrderAuditPanel key={auditRef} shopId={shopId} orderRef={auditRef} onClose={() => setAuditRef(undefined)} />}
     </div>
   );
 }

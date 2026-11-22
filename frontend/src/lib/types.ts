@@ -37,6 +37,13 @@ export interface Shop {
   warehouses: { id: string; code: string; name: string; city: string }[];
 }
 
+/** Customers returned by GET /demo/shops/{shopId}/buyers. */
+export interface ShopBuyer {
+  id: string;
+  name: string;
+  city: string;
+}
+
 export interface Sku {
   id: string;
   name: string;
@@ -265,6 +272,7 @@ export interface Aftersale {
   role: string;
   rejectReason: string | null;
   returnTrackingNumber: string | null;
+  arbitrationStatus: 'NO_ARBITRATION' | 'IN_ARBITRATION' | 'ARBITRATION_WIN' | 'ARBITRATION_LOSS';
   buyer: { id: string; name: string };
   refund: { subtotalVnd: number; shippingVnd: number; totalVnd: number };
   createdAt: string;
@@ -283,6 +291,16 @@ export interface ReturnRequest {
   items: { skuId: string; quantity: number }[];
   returnType: 'REFUND' | 'RETURN_AND_REFUND';
   reason?: string;
+}
+
+/** Buyer response is already filtered for eligibility by the API. */
+export interface BuyerCoupon {
+  id: string;
+  title: string;
+  promoCode: string;
+  discountText: string;
+  minSpendVnd: number | null;
+  endAt: string;
 }
 
 export interface Coupon {
@@ -436,6 +454,6 @@ export interface ProductListingBody {
   brandId: string | null;
   images: string[];
   productAttributes: ProductAttribute[];
-  packageWeight: { value: number; unit: 'KILOGRAM' } | null;
-  packageDimensions: { length: number; width: number; height: number; unit: 'CENTIMETER' } | null;
+  packageWeight: { value: number; unit: 'KILOGRAM' | 'POUND' } | null;
+  packageDimensions: { length: number; width: number; height: number; unit: 'CENTIMETER' | 'INCH' } | null;
 }

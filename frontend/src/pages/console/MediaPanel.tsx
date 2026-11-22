@@ -1,0 +1,35 @@
+import { useState, type FormEvent } from 'react';
+import { Copy, FileUp, Upload } from 'lucide-react';
+import { mediaFileProblem, uploadSimulatorMedia, type MediaUploadResult } from './mediaEndpoints';
+
+export function MediaPanel() {
+  const [file, setFile] = useState<File>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
+  const [result, setResult] = useState<MediaUploadResult>();
+  const problem = file ? mediaFileProblem(file) : undefined;
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!file || busy || problem) return;
+    setBusy(true); setError(''); setResult(undefined); setCopied('');
+    try { setResult(await uploadSimulatorMedia(file)); }
+    catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function copy(value: string, label: string) {
+    try { await navigator.clipboard.writeText(value); setCopied(`${label} copied`); }
+    catch { setCopied('Could not copy. Select and copy the value manually.'); }
+  }
+  return <div className="admin-media-panel">
+    <form aria-label="Upload media" onSubmit={(event) => void submit(event)}>
+      <label className="admin-media-picker"><FileUp size={25} aria-hidden="true" /><span>Choose media or evidence<small>One file · Up to 5 MB</small></span><input aria-label="Media file" type="file" disabled={busy} onChange={(event) => { setFile(event.target.files?.[0]); setResult(undefined); setError(''); setCopied(''); }} /></label>
+      {file && <p className="admin-media-selection">{file.name} · {file.size < 1024 ? `${file.size} bytes` : `${(file.size / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 })} KB`}</p>}
+      {problem && <div className="state state-error" role="alert">{problem}</div>}
+      {error && <div className="state state-error" role="alert">{error}</div>}
+      <div className="admin-media-actions"><button className="admin-primary admin-icon-action" disabled={!file || !!problem || busy || !!result}><Upload size={14} />{busy ? 'Uploading…' : 'Upload media'}</button></div>
+    </form>
+    {result && <section className="admin-media-result" aria-label="Uploaded media"><div role="status">API returned media details</div>{([['Media ID', result.media_id], ['Media URL', result.media_url]] as const).map(([label, value]) => <div className="admin-media-result-row" key={label}><label>{label}<input readOnly value={value} /></label><button aria-label={`Copy ${label}`} onClick={() => void copy(value, label)}><Copy size={14} /></button></div>)}<p className="muted">The backend returns a simulator URL; a downloadable file is not provided by this API.</p></section>}
+    {copied && <p role="status" className="muted">{copied}</p>}
+  </div>;
+}

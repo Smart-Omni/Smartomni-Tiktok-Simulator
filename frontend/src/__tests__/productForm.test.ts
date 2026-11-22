@@ -55,6 +55,16 @@ describe('product form helpers', () => {
     });
   });
 
+  it('preserves supported units and rejects excessive package numbers and attribute values', () => {
+    const body = listingBody({ ...base, weightKg: '2', weightUnit: 'POUND', length: '3', width: '4', height: '5', dimensionsUnit: 'INCH' }, []);
+    expect(body.packageWeight).toEqual({ value: 2, unit: 'POUND' });
+    expect(body.packageDimensions).toEqual({ length: 3, width: 4, height: 5, unit: 'INCH' });
+    const errors = validateProductForm({ ...base, weightKg: '1000001', description: 'x'.repeat(10001), attributes: { a1: ['x'.repeat(201)] } }, true, [origin], undefined);
+    expect(errors.weight).toBeDefined();
+    expect(errors.description).toBeDefined();
+    expect(errors['attr:a1']).toBeDefined();
+  });
+
   it('pre-checks picked files and reorders images', () => {
     expect(imageFileProblem(new File(['x'], 'a.gif', { type: 'image/gif' }))).toMatch(/JPEG, PNG or WebP/);
     expect(imageFileProblem(new File(['x'], 'a.png', { type: 'image/png' }))).toBeUndefined();

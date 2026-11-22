@@ -92,7 +92,7 @@ function Orders({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Manage orders</h1>
+
       <div className="rounded-card bg-white shadow-xs ring-1 ring-line-soft">
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">

@@ -182,11 +182,13 @@ describe('Seller Center orders', () => {
     await waitFor(() => expect(posted('o1/cancel')).toEqual([{ url: '/demo/shops/shop-1/orders/o1/cancel', method: 'POST', body: { reason: 'Out of stock' } }]));
 
     await waitFor(() => expect(within(row('o4')).getByRole('button', { name: 'Print label' }).hasAttribute('disabled')).toBe(false));
-    fireEvent.click(within(row('o4')).getByRole('button', { name: 'Print label' }));
+    fireEvent.change(within(row('o4')).getByRole('combobox', { name: 'Document type for o4' }), { target: { value: 'PACKING_SLIP' } });
+    fireEvent.click(within(row('o4')).getByRole('button', { name: 'Print packing slip' }));
     expect(window.open).toHaveBeenCalledWith('', '_blank');
     await waitFor(() => expect(tab.location.href).toBe('http://localhost:8090/demo/files/shipping-documents/abc.pdf'));
     expect(tab.opener).toBeNull();
     expect(posted('o4/shipping-label')).toHaveLength(1);
+    expect(posted('o4/shipping-label')[0].body).toEqual({ documentType: 'PACKING_SLIP' });
   });
 
   it('shows the order detail: progress, history, package, amounts and actions', async () => {

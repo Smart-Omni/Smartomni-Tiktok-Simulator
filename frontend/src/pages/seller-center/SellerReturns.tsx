@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
@@ -20,13 +21,14 @@ function Returns({ seller }: { seller: DemoSession }) {
   const tab = params.get('status') === 'all' ? 'all' : 'open';
   const list = useAsync(() => listAftersale(seller), [seller.sessionToken, seller.shopId], 5000);
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   const act = async (r: Aftersale, action: 'approve' | 'reject') => {
     setBusy(r.id);
     try {
       if (action === 'approve') await approveAftersale(seller, r.id);
-      else await rejectAftersale(seller, r.id, reasons[r.id] ?? list.data?.rejectReasons[0]?.name ?? 'OTHER');
+      else await rejectAftersale(seller, r.id, reasons[r.id] ?? list.data?.rejectReasons[0]?.name ?? 'OTHER', comments[r.id]);
       toast.success(action === 'approve' ? 'Request approved' : 'Request rejected');
       list.reload();
     } catch (e) {
@@ -40,8 +42,7 @@ function Returns({ seller }: { seller: DemoSession }) {
   const open = all.filter((r) => OPEN_AFTERSALE.includes(r.status));
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Returns & refunds</h1>
-      <p className="text-sm text-muted-foreground">A return does not change the order status. Stock is not added back here: the SmartOmni side restocks through its own receipt.</p>
+
       <SellerCard>
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'open' ? { status: 'open' } : { status: 'all' }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">
@@ -58,7 +59,7 @@ function Returns({ seller }: { seller: DemoSession }) {
             const rows = tab === 'open' ? open : d.items;
             if (!rows.length) return <p className="py-12 text-center text-sm text-muted-foreground">{tab === 'open' ? 'No requests waiting for you.' : 'No cancellation or return requests.'}</p>;
             return (
-              <Table>
+              <Table className="seller-returns-table">
                 <TableHeader>
                   <TableRow className="bg-surface-2 hover:bg-surface-2">
                     <TableHead className="pl-4">Request</TableHead>
@@ -87,7 +88,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                       <TableCell className="max-w-[220px] whitespace-normal py-3 text-xs">{r.items.map((i) => `${i.quantity}× ${i.productName} (${i.skuName})`).join(', ')}</TableCell>
                       <TableCell className="py-3 text-xs">{humanize(r.reason)}</TableCell>
                       <TableCell className="py-3">
-                        <span className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-semibold">{humanize(r.status)}</span>
+                        <span className="seller-status" data-seller-status={r.status}>{humanize(r.status)}</span>
                         {r.rejectReason ? <div className="mt-1 text-xs text-muted-foreground">Rejected: {humanize(r.rejectReason)}</div> : null}
                         {r.returnTrackingNumber ? <div className="mt-1 font-mono text-xs text-muted-foreground">Return {r.returnTrackingNumber}</div> : null}
                       </TableCell>
@@ -109,6 +110,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                                 </option>
                               ))}
                             </NativeSelect>
+                            <Textarea aria-label={`Reject comment for ${r.id}`} placeholder="Rejection note (optional)" maxLength={500} value={comments[r.id] ?? ''} onChange={(e) => setComments({ ...comments, [r.id]: e.target.value })} className="min-h-16 w-full" />
                             <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => act(r, 'reject')}>
                               Reject
                             </Button>

@@ -146,6 +146,8 @@ describe('Seller Center product page', () => {
     fireEvent.change(screen.getByLabelText('Seller SKU 1'), { target: { value: 'LIN-1' } });
     fireEvent.change(screen.getByLabelText('Variant name 1'), { target: { value: 'White' } });
     fireEvent.change(screen.getByLabelText('Price 1'), { target: { value: '259000' } });
+    fireEvent.change(screen.getByLabelText('Attribute name 1'), { target: { value: 'Color' } });
+    fireEvent.change(screen.getByLabelText('Initial stock 1 in Kho HN'), { target: { value: '15' } });
     fireEvent.click(create);
 
     await waitFor(() =>
@@ -165,7 +167,7 @@ describe('Seller Center product page', () => {
             ],
             packageWeight: { value: 0.25, unit: 'KILOGRAM' },
             packageDimensions: null,
-            skus: [{ sellerSku: 'LIN-1', name: 'White', priceVnd: 259000 }],
+            skus: [{ sellerSku: 'LIN-1', name: 'White', priceVnd: 259000, attributeName: 'Color', stock: { w1: 15 } }],
           },
         },
       ]),

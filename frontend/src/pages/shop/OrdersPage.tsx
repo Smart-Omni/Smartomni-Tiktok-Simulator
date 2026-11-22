@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { ShopFooter } from '@/components/shop/ShopFooter';
+import { BuyerAftersaleRequests } from '@/components/shop/BuyerAftersaleRequests';
+import { useId, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { PackageSearch, Store, Truck } from 'lucide-react';
+import { PackageSearch, Store, Truck, RotateCcw, CreditCard, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuantityStepper } from '@/components/shop/QuantityStepper';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,14 +26,15 @@ const POLL_MS = 10_000;
 const inOrderShop = (buyer: DemoSession, order: Order | undefined): DemoSession => inShop(buyer, order?.shopId ?? order?.shop?.id ?? buyer.shopId);
 
 /** Aftersale requests of every shop the buyer ordered from, as one list. */
-async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promise<AftersaleList | null> {
+type BuyerAftersaleList = Omit<AftersaleList, 'items'> & { items: (Aftersale & { shopId: string })[]; unavailableShopIds: string[] };
+async function listAftersaleOfShops(buyer: DemoSession, orders: Order[]): Promise<BuyerAftersaleList> {
   const shopIds = [...new Set(orders.map((o) => o.shopId ?? o.shop?.id ?? buyer.shopId))];
-  const lists = (await Promise.all(shopIds.map((id) => listAftersale(inShop(buyer, id)).catch(() => null)))).filter((l): l is AftersaleList => l !== null);
-  if (!lists.length) return null;
-  return { items: lists.flatMap((l) => l.items), requestReasons: lists[0].requestReasons, rejectReasons: lists[0].rejectReasons };
+  const results = await Promise.all(shopIds.map(async (id) => ({ shopId: id, data: await listAftersale(inShop(buyer, id)).catch(() => null) })));
+  const lists = results.flatMap((r) => r.data ? [{ ...r.data, items: r.data.items.map((item) => ({ ...item, shopId: r.shopId })) }] : []);
+  return { items: lists.flatMap((l) => l.items), requestReasons: lists[0]?.requestReasons ?? [], rejectReasons: lists[0]?.rejectReasons ?? [], unavailableShopIds: results.filter((r) => !r.data).map((r) => r.shopId) };
 }
 
-export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'cancelled';
+export type OrderTab = 'all' | 'to-pay' | 'to-ship' | 'shipping' | 'delivered' | 'completed' | 'cancelled';
 
 export const orderTabs: { key: OrderTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -39,6 +42,7 @@ export const orderTabs: { key: OrderTab; label: string }[] = [
   { key: 'to-ship', label: 'To ship' },
   { key: 'shipping', label: 'Shipping' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -55,8 +59,9 @@ export function tabOf(status: OrderStatus): Exclude<OrderTab, 'all'> {
     case 'IN_TRANSIT':
       return 'shipping';
     case 'DELIVERED':
-    case 'COMPLETED':
       return 'delivered';
+    case 'COMPLETED':
+      return 'completed';
     case 'CANCELLED':
       return 'cancelled';
   }
@@ -88,14 +93,6 @@ export function actionsFor(order: Pick<Order, 'status' | 'buyerRequestedCancel'>
       return [];
   }
 }
-
-const statusStyle: Record<Exclude<OrderTab, 'all'>, string> = {
-  'to-pay': 'bg-buyer-soft text-buyer-ink',
-  'to-ship': 'bg-[#FFF4E0] text-[#9A5B00]',
-  shipping: 'bg-teal-soft text-teal',
-  delivered: 'bg-free-ship/10 text-free-ship',
-  cancelled: 'bg-surface text-muted-foreground',
-};
 
 const statusLabel: Record<OrderStatus, string> = {
   UNPAID: 'To pay',
@@ -139,7 +136,7 @@ const CANCEL_REASONS = ['CHANGED_MIND', 'ORDERED_BY_MISTAKE', 'WRONG_ADDRESS', '
 const FALLBACK_RETURN_REASONS = ['CHANGED_MIND', 'DAMAGED_ITEM', 'NOT_AS_DESCRIBED', 'WRONG_ITEM', 'OTHER'];
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusStyle[tabOf(status)])}>{statusLabel[status]}</span>;
+  return <span className="buyer-order-status" data-status={status}><span />{statusLabel[status]}</span>;
 }
 
 function ReasonList({ id, reasons, value, onChange }: { id: string; reasons: string[]; value: string; onChange: (v: string) => void }) {
@@ -181,7 +178,7 @@ function CancelDialog({ order, onClose, onConfirm }: { order: Order; onClose: ()
             Keep order
           </Button>
           <Button
-            className="bg-buyer text-white hover:bg-buyer/90"
+            className="!bg-[#171717] text-white hover:!bg-[#333333] !rounded-lg"
             disabled={busy}
             onClick={async () => {
               setBusy(true);
@@ -209,42 +206,47 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const items = Object.entries(picked).map(([skuId, quantity]) => ({ skuId, quantity }));
+  const units = items.reduce((sum, item) => sum + item.quantity, 0);
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="font-sans sm:max-w-lg">
-        <DialogHeader>
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent className="buyer-return-dialog font-sans !flex !flex-col !gap-0 !p-0 !w-[calc(100vw-32px)] !max-w-[640px] !max-h-[calc(100dvh-40px)] !overflow-hidden !rounded-[18px]">
+        <DialogHeader className="buyer-return-dialog-heading !text-left">
+          <span className="buyer-return-dialog-icon"><RotateCcw size={21} /></span>
           <DialogTitle>Request return</DialogTitle>
           <DialogDescription>
             Order <span className="font-mono">{order.id}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-2">
+        <div className="buyer-return-dialog-body" aria-busy={busy}>
+        <fieldset disabled={busy} className="buyer-return-dialog-fields">
+        <div className="buyer-return-field">
           <span id="return-type" className="text-sm font-semibold">
-            Type
+            <small>01</small> Return type
           </span>
-          <RadioGroup value={type} onValueChange={(v) => setType(v as ReturnRequest['returnType'])} aria-labelledby="return-type" className="flex gap-5">
-            <Label className="flex cursor-pointer items-center gap-2 font-normal">
-              <RadioGroupItem value="REFUND" /> Refund only
+          <RadioGroup disabled={busy} value={type} onValueChange={(v) => setType(v as ReturnRequest['returnType'])} aria-labelledby="return-type" className="buyer-return-type-options">
+            <Label className="buyer-return-type-option" data-selected={type === 'REFUND'}>
+              <CreditCard size={20} aria-hidden /><span>Refund only<small>Request a refund without returning items.</small></span><RadioGroupItem value="REFUND" aria-label="Refund only" />
             </Label>
-            <Label className="flex cursor-pointer items-center gap-2 font-normal">
-              <RadioGroupItem value="RETURN_AND_REFUND" /> Return and refund
+            <Label className="buyer-return-type-option" data-selected={type === 'RETURN_AND_REFUND'}>
+              <Package size={20} aria-hidden /><span>Return and refund<small>Send the items back to the shop.</small></span><RadioGroupItem value="RETURN_AND_REFUND" aria-label="Return and refund" />
             </Label>
           </RadioGroup>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="buyer-return-field buyer-return-reasons">
           <span id="return-reason" className="text-sm font-semibold">
-            Reason
+            <small>02</small> Reason for your request
           </span>
           <ReasonList id="return-reason" reasons={reasons} value={reason} onChange={setReason} />
         </div>
-        <div className="flex flex-col gap-2">
-          <span className="text-sm font-semibold">Items</span>
-          <ul className="flex flex-col gap-2">
+        <div className="buyer-return-field">
+          <span className="text-sm font-semibold"><small>03</small> Select items to return</span>
+          <p className="buyer-return-field-hint">Choose the items and quantities included in this request.</p>
+          <ul className="buyer-return-item-list">
             {order.items.map((i) => {
               const name = `${i.productName} (${i.skuName})`;
               const on = i.skuId in picked;
               return (
-                <li key={i.skuId} className="flex items-center gap-3 rounded-lg border border-line-soft px-3 py-2">
+                <li key={i.skuId} className="buyer-return-item" data-selected={on}>
                   <Checkbox
                     checked={on}
                     aria-label={`Return ${name}`}
@@ -257,7 +259,8 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
                       })
                     }
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                  <div className="buyer-return-product"><strong>{i.productName}</strong><span>{i.skuName}</span><small>{shopPrice(i.unitPriceVnd)} each · {i.quantity} purchased</small></div>
+                  <div className="buyer-return-quantity"><span>Quantity</span>
                   <QuantityStepper
                     size="sm"
                     value={picked[i.skuId] ?? 1}
@@ -266,24 +269,29 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
                     label={`Units of ${name} to return`}
                     onChange={(n) => setPicked((p) => ({ ...p, [i.skuId]: n }))}
                   />
+                  </div>
                 </li>
               );
             })}
           </ul>
         </div>
+        </fieldset>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        </div>
+        <DialogFooter className="buyer-return-dialog-footer !flex-row !flex-wrap !items-center">
+          <span className="buyer-return-selected" role="status">{units} {units === 1 ? 'unit' : 'units'} selected</span>
+          <Button variant="outline" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
           <Button
-            className="bg-buyer text-white hover:bg-buyer/90"
+            className="!bg-[#171717] text-white hover:!bg-[#333333] !rounded-lg"
             disabled={busy || items.length === 0}
             onClick={async () => {
+              if (busy || items.length === 0) return;
               setBusy(true);
               setError(undefined);
               try {
@@ -294,7 +302,7 @@ function ReturnDialog({ order, reasons, onClose, onSubmit }: { order: Order; rea
               }
             }}
           >
-            Submit request
+            {busy ? 'Submitting…' : 'Submit request'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -359,21 +367,29 @@ function OrderCard({
   order,
   shopName,
   request,
+  requests,
+  buyer,
+  onReturnChanged,
   tracked,
   onAction,
 }: {
   order: Order;
   shopName: string;
   request: Aftersale | undefined;
+  requests: Aftersale[];
+  buyer: DemoSession;
+  onReturnChanged: () => void;
   tracked: boolean;
   onAction: (a: OrderAction) => void;
 }) {
+  const [expanded, setExpanded] = useState(true);
+  const detailsId = useId();
   const actions = actionsFor(order);
   const button = (a: OrderAction): ReactNode => {
     switch (a) {
       case 'pay':
         return (
-          <Button key={a} size="sm" className="bg-buyer px-4 text-white hover:bg-buyer/90" onClick={() => onAction(a)}>
+          <Button key={a} size="sm" className="!bg-[#171717] px-4 text-white hover:!bg-[#333333] !rounded-lg" onClick={() => onAction(a)}>
             Pay now
           </Button>
         );
@@ -399,15 +415,18 @@ function OrderCard({
     }
   };
   return (
-    <article aria-label={`Order ${order.id}`} className={cn('rounded-card bg-white p-5 shadow-xs ring-1', tracked ? 'ring-teal' : 'ring-line-soft')}>
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-soft pb-3">
+    <article aria-label={`Order ${order.id}`} data-expanded={expanded} className={cn('buyer-order-card rounded-card bg-white p-5 shadow-xs ring-1', tracked ? 'ring-teal' : 'ring-line-soft')}>
+      <header className="buyer-order-card-heading flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-soft pb-3">
         <Store className="size-4" aria-hidden />
         <span className="text-sm font-semibold">{shopName}</span>
         <span className="font-mono text-xs text-muted-foreground">#{order.id}</span>
         <span className="ml-auto">
           <StatusBadge status={order.status} />
         </span>
+        {!expanded && <strong className="buyer-order-collapsed-total">{shopPrice(order.amounts.totalVnd)}</strong>}
+        <button type="button" className="buyer-order-toggle" aria-expanded={expanded} aria-controls={detailsId} aria-label={`${expanded ? 'Collapse' : 'Expand'} order ${order.id}`} title={expanded ? 'Collapse order' : 'Expand order'} onClick={() => setExpanded(!expanded)}>{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</button>
       </header>
+      <div id={detailsId} hidden={!expanded} className="buyer-order-details">
       <ul className="divide-y divide-line-soft">
         {order.items.map((i) => (
           <li key={i.skuId} className="flex items-center gap-3 py-3 text-sm">
@@ -423,12 +442,12 @@ function OrderCard({
       </ul>
       <div className="flex justify-end gap-2 border-t border-line-soft pt-3 text-sm">
         <span className="text-muted-foreground">Total</span>
-        <span className="font-bold text-buyer">{shopPrice(order.amounts.totalVnd)}</span>
+        <span className="orders-total">{shopPrice(order.amounts.totalVnd)}</span>
       </div>
       <footer className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col text-sm">
           <span className="text-muted-foreground">{hint(order)}</span>
-          {request ? (
+          {request && request.kind !== 'RETURN' ? (
             <span className="text-xs text-muted-2">
               {request.kind === 'RETURN' ? 'Return request' : 'Cancellation request'}: {humanize(request.status)}
             </span>
@@ -436,6 +455,8 @@ function OrderCard({
         </div>
         <div className="flex gap-2">{actions.map(button)}</div>
       </footer>
+      <BuyerAftersaleRequests session={inOrderShop(buyer, order)} requests={requests} onChanged={onReturnChanged} />
+      </div>
     </article>
   );
 }
@@ -480,8 +501,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   const all = [...(orders.data?.items ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const count = (t: OrderTab) => (t === 'all' ? all.length : all.filter((o) => tabOf(o.status) === t).length);
   const shown = tab === 'all' ? all : all.filter((o) => tabOf(o.status) === tab);
-  const requestByOrder = new Map<string, Aftersale>();
-  for (const r of [...(aftersale.data?.items ?? [])].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))) requestByOrder.set(r.orderId, r);
+  const requestsForOrder = (order: Order) => (aftersale.data?.items ?? []).filter((r) => r.orderId === order.id && r.shopId === inOrderShop(buyer, order).shopId);
   const tracked = all.find((o) => o.id === trackId) ?? all.find((o) => tabOf(o.status) === 'shipping');
 
   const refresh = both.reload;
@@ -501,13 +521,16 @@ function Orders({ buyer }: { buyer: DemoSession }) {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold">My orders</h1>
-      <Tabs value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
-        <TabsList className="mb-5 h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+      {!!aftersale.data?.unavailableShopIds.length && <Alert variant="destructive" className="mb-4"><AlertDescription>Could not load return requests for some shops. Your orders are still available.<Button variant="outline" size="sm" className="ml-3" onClick={refresh}>Retry returns</Button></AlertDescription></Alert>}
+      <div className="orders-workspace">
+      <Tabs orientation="vertical" className="orders-status-sidebar !flex !flex-col !gap-0" value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
+        <h2>Order status</h2>
+        <TabsList aria-label="Order status" className="orders-status-tabs !flex !h-auto !w-full !flex-col !items-stretch !justify-start !rounded-none !bg-transparent !p-0">
           {orderTabs.map((t) => (
             <TabsTrigger
               key={t.key}
               value={t.key}
-              className="h-9 flex-none rounded-full border border-line bg-white px-4 text-ink data-[state=active]:border-ink data-[state=active]:bg-ink data-[state=active]:text-white data-[state=active]:shadow-none"
+              className="orders-status-tab !h-auto !w-full !flex-none !justify-start !rounded-md !bg-transparent !shadow-none data-[state=active]:!bg-[#171717] data-[state=active]:!text-white"
             >
               {t.label} ({count(t.key)})
             </TabsTrigger>
@@ -515,7 +538,7 @@ function Orders({ buyer }: { buyer: DemoSession }) {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="transaction-grid">
         <div className="flex min-w-0 flex-col gap-4">
           {shown.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line py-14 text-center">
@@ -527,13 +550,14 @@ function Orders({ buyer }: { buyer: DemoSession }) {
             </div>
           ) : (
             shown.map((o) => (
-              <OrderCard key={`${o.shopId}:${o.id}`} order={o} shopName={o.shop?.name ?? 'Shop'} request={requestByOrder.get(o.id)} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
+              <OrderCard key={`${o.shopId}:${o.id}`} order={o} shopName={o.shop?.name ?? 'Shop'} requests={requestsForOrder(o)} buyer={buyer} onReturnChanged={refresh} request={[...requestsForOrder(o)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]} tracked={tracked?.id === o.id} onAction={(a) => void onAction(o, a)} />
             ))
           )}
         </div>
         <aside className="self-start lg:sticky lg:top-20">
           <TrackingPanel buyer={buyer} order={tracked} />
         </aside>
+      </div>
       </div>
 
       {dialog?.kind === 'cancel' ? (
@@ -573,5 +597,5 @@ function Orders({ buyer }: { buyer: DemoSession }) {
 export function OrdersPage() {
   const { buyer } = useAuth();
   // the route is guarded by RequireRole BUYER
-  return buyer ? <Orders key={buyer.sessionToken} buyer={buyer} /> : null;
+  return buyer ? <div className="buyer-transaction-page buyer-orders-page"><nav className="transaction-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><span aria-current="page">My orders</span></nav><div className="transaction-content"><Orders key={buyer.sessionToken} buyer={buyer} /></div><ShopFooter /></div> : null;
 }

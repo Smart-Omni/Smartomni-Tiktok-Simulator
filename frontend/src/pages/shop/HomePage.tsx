@@ -1,20 +1,20 @@
-import { useState, type ReactNode } from 'react';
+import { ShopFooter } from '@/components/shop/ShopFooter';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Gift, Package, Ticket, MessageCircle, Wallet, CreditCard, MapPin, RotateCcw, Store, CircleHelp, FileText, Truck, Radio, BadgeCheck, Crown, Sparkles, Egg, TrendingUp, Heart, Shirt, ArrowRight } from 'lucide-react';
 import { CategoryRow } from '@/components/shop/CategoryRow';
-import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard';
+import { ProductCard, ProductCardSkeleton, ProductImage } from '@/components/shop/ProductCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { MockBadge } from '@/components/ui/mock-badge';
 import { useAuth } from '@/lib/auth';
 import { productPath } from '@/lib/links';
+import { shopPrice } from '@/lib/format';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
 import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
 const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
-const BEST_SELLERS_PAGE = 10;
 
 /** Products with a 4★+ rating and a discount, biggest discount first. */
 export const deals = (items: EnrichedProduct[]) => items.filter((p) => p.rating >= 4 && p.discountPct > 0).sort((a, b) => b.discountPct - a.discountPct);
@@ -25,108 +25,74 @@ export const search = (items: EnrichedProduct[], q: string) => {
   return items.filter((p) => normalizeTitle(p.title).includes(term));
 };
 
-function Section({ id, title, mock, action, children }: { id: string; title: ReactNode; mock: boolean; action?: ReactNode; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className="mt-8 first:mt-2">
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <h2 id={id} className="text-xl font-bold tracking-tight text-ink">
-          {title}
-        </h2>
-        {mock && import.meta.env.DEV ? <MockBadge /> : null}
-        {action ? <div className="ml-auto flex items-center gap-2">{action}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function ArrowButton({ dir, disabled, onClick }: { dir: 'prev' | 'next'; disabled: boolean; onClick: () => void }) {
-  const Icon = dir === 'prev' ? ChevronLeft : ChevronRight;
-  return (
-    <Button variant="outline" size="icon" aria-label={dir === 'prev' ? 'Previous deals' : 'Next deals'} disabled={disabled} onClick={onClick} className="size-9 bg-white">
-      <Icon />
-    </Button>
-  );
-}
-
-/** One row of cards (5 / 3 / 2 visible) scrolled a page at a time with the arrow buttons. */
-function DealsRow({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) {
-  const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
-
-  return (
-    <Section
-      id="deals"
-      title="Deals on 4★+ products for you"
-      mock={mock}
-      action={
-        <>
-          <ArrowButton dir="prev" disabled={edges.start} onClick={() => page(-1)} />
-          <ArrowButton dir="next" disabled={edges.end} onClick={() => page(1)} />
-        </>
-      }
-    >
-      <div ref={ref} onScroll={update} className="-mx-1.5 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((p) => (
-          <ProductCard
-            key={productPath(p)}
-            product={p}
-            className="shrink-0 basis-[calc((100%-0.75rem)/2)] snap-start md:basis-[calc((100%-1.5rem)/3)] lg:basis-[calc((100%-3rem)/5)]"
-          />
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function BestSellers({ items, mock }: { items: EnrichedProduct[]; mock: boolean }) {
-  const [shown, setShown] = useState(BEST_SELLERS_PAGE);
-  return (
-    <Section id="best-sellers" title="Best sellers" mock={mock}>
-      <div className={GRID}>
-        {items.slice(0, shown).map((p) => <ProductCard key={productPath(p)} product={p} />)}
-      </div>
-      {shown < items.length ? (
-        <div className="mt-6 flex justify-center">
-          <Button variant="outline" className="h-10 min-w-40 bg-white" onClick={() => setShown((n) => n + BEST_SELLERS_PAGE)}>
-            See more
-          </Button>
-        </div>
-      ) : null}
-    </Section>
-  );
-}
-
-/** Search (?q=) and/or category (?category=) results, filtered client-side. */
-function Results({ items, q, category, mock }: { items: EnrichedProduct[]; q: string; category: string | null; mock: boolean }) {
+function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; category: string | null }) {
+  const [sort, setSort] = useState('recommended');
+  const [page, setPage] = useState(1);
+  const [columns, setColumns] = useState<4 | 6>(4);
+  const pageSize = columns === 6 ? 18 : 16;
   const cat = categoryBySlug(category);
-  const inCategory = cat ? items.filter((p) => p.category === cat.slug) : items;
-  const found = q ? search(inCategory, q) : inCategory;
-  const title = q ? `Results for “${q}”${cat ? ` in ${cat.name}` : ''} (${found.length})` : `${cat?.name ?? 'All products'} (${found.length})`;
-  return (
-    <Section
-      id="results"
-      title={title}
-      mock={mock}
-      action={
-        cat ? (
-          <Button asChild variant="outline" size="sm" className="bg-white">
-            <Link to={q ? `/?q=${encodeURIComponent(q)}` : '/'}>All categories</Link>
-          </Button>
-        ) : null
-      }
-    >
-      {found.length ? (
-        <div className={GRID}>{found.map((p) => <ProductCard key={productPath(p)} product={p} />)}</div>
-      ) : (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-line py-12 text-center">
-          <p className="text-muted-foreground">{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p>
-          <Button asChild variant="outline" className="bg-white">
-            <Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link>
-          </Button>
-        </div>
-      )}
-    </Section>
-  );
+  const matching = cat ? items.filter((p) => p.category === cat.slug) : items;
+  const found = q ? search(matching, q) : matching;
+  const sorted = [...found].sort((a, b) => sort === 'price-low' ? a.minPriceVnd - b.minPriceVnd : sort === 'price-high' ? b.minPriceVnd - a.minPriceVnd : sort === 'discount' ? b.discountPct - a.discountPct : b.sold - a.sold);
+  const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const currentPage = Math.min(page, pages);
+  const firstPage = Math.max(1, Math.min(currentPage - 1, pages - 2));
+  const pageNumbers = Array.from({ length: Math.min(3, pages) }, (_, i) => firstPage + i);
+  const start = (currentPage - 1) * pageSize;
+  const visible = sorted.slice(start, start + pageSize);
+  return <section id="catalog" aria-label="Products" className="buyer-catalog">
+    <div className="buyer-catalog-toolbar">
+      <div className="buyer-catalog-view"><div className="buyer-layout-toggle" role="group" aria-label="Product layout">{([4, 6] as const).map((count) => <button key={count} type="button" aria-label={`${count} products per row`} title={`${count} products per row`} aria-pressed={columns === count} onClick={() => { setColumns(count); setPage(1); }}><span className={`buyer-layout-icon buyer-layout-icon-${count}`} aria-hidden="true">{Array.from({ length: count }, (_, i) => <i key={i} />)}</span></button>)}</div><span role="status">{found.length ? `${start + 1}–${Math.min(start + pageSize, found.length)} of ${found.length} products` : '0 products'}</span></div>
+      <label>Sort by<select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} aria-label="Sort products">
+        <option value="recommended">Recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="discount">Biggest discount</option>
+      </select></label>
+    </div>
+    {visible.length ? <div className={`buyer-product-grid buyer-product-grid-${columns}`}>{visible.map((product) => <ProductCard key={productPath(product)} product={product} compact />)}</div> : <div className="buyer-catalog-empty"><p>{q ? `No products match “${q}”.` : 'No products in this category yet.'}</p><Link to="/">{q ? 'Clear search' : 'Back to all products'}</Link></div>}
+    {pages > 1 && <nav className="buyer-pagination" aria-label="Product pages">
+      <button type="button" aria-label="Previous page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft size={16} /></button>
+      {pageNumbers.map((number) => <button key={number} type="button" aria-label={`Page ${number}`} aria-current={currentPage === number ? 'page' : undefined} onClick={() => setPage(number)}>{number}</button>)}
+      <button type="button" aria-label="Next page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight size={16} /></button>
+    </nav>}
+  </section>;
+}
+
+const actions = [
+  { label: 'Bonus', icon: Gift }, { label: 'Order', icon: Package, to: '/account/orders' },
+  { label: 'Vouchers', icon: Ticket }, { label: 'Messages', icon: MessageCircle, to: '/account/messages' },
+  { label: 'Pay Later', icon: Wallet }, { label: 'TikTok Pay', icon: CreditCard },
+  { label: 'Buy Local', icon: MapPin }, { label: 'Returns', icon: RotateCcw, to: '/account/orders' },
+  { label: 'Start selling', icon: Store, to: '/seller-center' }, { label: 'Address', icon: MapPin },
+  { label: 'Help', icon: CircleHelp }, { label: 'Policies', icon: FileText },
+];
+const collections = [
+  { label: 'Shipping Vouchers', icon: Truck }, { label: 'LIVE Shopping', icon: Radio },
+  { label: 'TikTok Shop Mall', icon: BadgeCheck }, { label: 'TikTok Shop VIP', icon: Crown },
+  { label: 'Buy More Get More', icon: Sparkles }, { label: 'Crack the Egg', icon: Egg },
+  { label: 'Trending', icon: TrendingUp }, { label: 'Following (Shop)', icon: Heart },
+  { label: 'Fashion Trends', icon: Shirt },
+];
+function HomeNavigation({ signedIn }: { signedIn: boolean }) {
+  return <><section className="buyer-home-section" aria-label="Quick actions">
+    <div className="buyer-actions-row">{actions.map(({ label, icon: Icon, to }) => signedIn && to ? <Link key={label} to={to} className="buyer-action-tile"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></Link> : <div key={label} className="buyer-action-tile buyer-unavailable" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></div>)}</div>
+  </section><section className="buyer-home-section" aria-label="Explore"><div className="buyer-collections-row">{collections.map(({ label, icon: Icon }) => <div key={label} className="buyer-collection-tile" aria-disabled="true"><span className="buyer-tile-circle"><Icon size={22} /></span><strong>{label}</strong></div>)}</div></section></>;
+}
+function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
+  const featured = deals(items);
+  const { ref, edges, update, page } = useHorizontalScroll<HTMLDivElement>([items]);
+  const maxDiscount = featured[0]?.discountPct;
+  return <div className="buyer-sale-area"><section className="buyer-flash-banner" aria-label="Flash sale">
+    <div className="buyer-flash-intro">
+      <span className="buyer-flash-kicker"><Sparkles size={13} /> SELECTED DEALS</span>
+      <h2>Flash<span>Sale.</span></h2>
+      {maxDiscount ? <div className="buyer-flash-offer">UP TO <strong>{maxDiscount}%</strong> OFF</div> : null}
+      <a href="#catalog">Shop deals <ArrowRight size={16} /></a>
+    </div>
+  </section>
+    {featured.length > 0 && <section className="buyer-sale-products" aria-label="Sale products"><div ref={ref} onScroll={update} className="buyer-flash-preview buyer-sale-track" id="sale-products-track">{featured.map((p) => <Link key={productPath(p)} to={productPath(p)}>
+      <div className="buyer-flash-image"><ProductImage product={p} className="rounded-none" /><span>-{p.discountPct}%</span></div>
+      <div className="buyer-flash-product-info"><strong>{p.title}</strong><div className="buyer-flash-prices"><b>{shopPrice(p.minPriceVnd)}</b><del>{shopPrice(p.originalPriceVnd)}</del></div></div>
+    </Link>)}</div><div className="buyer-sale-navigation" aria-label="Sale navigation"><button type="button" aria-label="Previous sale products" aria-controls="sale-products-track" disabled={edges.start} onClick={() => page(-1)}><ChevronLeft size={17} /></button><button type="button" aria-label="Next sale products" aria-controls="sale-products-track" disabled={edges.end} onClick={() => page(1)}><ChevronRight size={17} /></button></div></section>}
+  </div>;
 }
 
 export function HomePage() {
@@ -138,24 +104,27 @@ export function HomePage() {
     () => (buyer ? listMarketplaceProducts().then((items) => items.map(enrichProduct)) : Promise.resolve(mockCatalog)),
     [buyer?.sessionToken],
   );
-  const mock = !buyer;
 
   return (
     <>
-      <CategoryRow />
-      <Products state={products} q={q} category={category} mock={mock} />
+      <FlashSaleBanner items={products.data ?? []} />
+      <HomeNavigation signedIn={!!buyer} />
+      <div className="buyer-products-area buyer-catalog-layout"><CategoryRow />
+        <div className="buyer-catalog-results"><Products state={products} q={q} category={category} /></div>
+      </div>
+      <ShopFooter />
     </>
   );
 }
 
-function Products({ state, q, category, mock }: { state: AsyncResult<EnrichedProduct[]>; q: string; category: string | null; mock: boolean }) {
+function Products({ state, q, category }: { state: AsyncResult<EnrichedProduct[]>; q: string; category: string | null }) {
   if (state.loading && !state.data) {
     return (
-      <Section id="loading" title="Deals on 4★+ products for you" mock={false}>
+      <section aria-label="Products">
         <div className={GRID} role="status" aria-label="Loading products">
           {Array.from({ length: 10 }, (_, i) => <ProductCardSkeleton key={i} />)}
         </div>
-      </Section>
+      </section>
     );
   }
   if (state.error && !state.data) {
@@ -171,16 +140,5 @@ function Products({ state, q, category, mock }: { state: AsyncResult<EnrichedPro
     );
   }
 
-  const items = state.data ?? [];
-  if (!items.length) {
-    return <p className="mt-10 text-center text-muted-foreground">No products are for sale yet.</p>;
-  }
-  if (q || category) return <Results items={items} q={q} category={category} mock={mock} />;
-  const dealItems = deals(items);
-  return (
-    <>
-      {dealItems.length ? <DealsRow items={dealItems} mock={mock} /> : null}
-      <BestSellers items={bestSellers(items)} mock={mock} />
-    </>
-  );
+  return <Catalog key={`${q}:${category ?? ''}`} items={state.data ?? []} q={q} category={category} />;
 }

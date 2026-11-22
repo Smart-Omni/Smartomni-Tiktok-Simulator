@@ -77,6 +77,15 @@ describe('ProductPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('switches information tabs with keyboard and retains review filters', async () => {
+    renderProduct('mock-1');
+    const info = await screen.findByRole('tab', { name: 'Product information' });
+    fireEvent.keyDown(info, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Ratings & reviews' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('group', { name: 'Filter reviews' })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Ratings & reviews' }), { key: 'Home' });
+    expect(screen.getByRole('tabpanel', { name: 'Product information' })).toBeTruthy();
+  });
   it('changes the price with the selected SKU', async () => {
     renderProduct('mock-1');
     expect((await screen.findByTestId('price')).textContent).toBe('₫129.000');
@@ -86,13 +95,15 @@ describe('ProductPage', () => {
     expect(screen.getByText('12 available')).toBeTruthy();
   });
 
-  it('does not let a sold-out SKU be selected', async () => {
+  it('disables sold-out variants in the selection grid', async () => {
     renderProduct('mock-1');
-    const soldOut = await screen.findByRole('radio', { name: 'White / L' });
-    expect((soldOut as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(soldOut);
-    expect(soldOut.getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('radio', { name: 'White / M' }).getAttribute('aria-checked')).toBe('true');
+    const unavailable = await screen.findByRole('radio', { name: 'White / L' });
+    expect(unavailable.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(unavailable);
+    expect(unavailable.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByRole('radio', { name: 'Black / M' }));
+    expect(screen.getByRole('radio', { name: 'Black / M' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByTestId('price').textContent).toBe('₫135.000');
   });
 
   it('sends a guest who adds to cart to sign in and come back', async () => {
@@ -107,11 +118,20 @@ describe('ProductPage', () => {
     expect(await screen.findByText('Sign in to view this product.')).toBeTruthy();
   });
 
+  it('links the shop breadcrumb to the product owner rather than the buyer session shop', async () => {
+    sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
+    renderProduct('7500T', 'shop-2');
+    const link = await screen.findByRole('link', { name: 'Mộc Lan Shop' });
+    expect(link.getAttribute('href')).toBe('/shop/shop-2');
+    fireEvent.click(link);
+    expect(screen.getByTestId('location').textContent).toBe('/shop/shop-2');
+  });
+
   it('adds to a buyer cart on top of what is already there, with the stepper capped by stock', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     renderProduct('7500T', 'shop-2');
     expect(await screen.findByRole('radio', { name: 'Trắng / M' })).toBeTruthy();
-    expect(await screen.findByText('Mộc Lan Shop', { selector: 'span.font-semibold' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Chat with shop' })).toBeTruthy();
     const plus = screen.getByRole('button', { name: 'Increase quantity' }) as HTMLButtonElement;
     fireEvent.click(plus);
     expect((screen.getByRole('spinbutton', { name: 'Quantity' }) as HTMLInputElement).value).toBe('2');

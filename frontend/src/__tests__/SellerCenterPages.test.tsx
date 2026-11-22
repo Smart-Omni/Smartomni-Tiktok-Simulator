@@ -6,6 +6,7 @@ import type { DemoSession } from '@/lib/types';
 import { SellerMessages } from '@/pages/seller-center/SellerMessages';
 import { SellerProducts } from '@/pages/seller-center/SellerProducts';
 import { SellerReturns } from '@/pages/seller-center/SellerReturns';
+import { SellerShop } from '@/pages/seller-center/SellerShop';
 import { batchBody, batchCsv, batchValid, emptyBatch, emptyVoucher, SellerVouchers, voucherBody, voucherValid } from '@/pages/seller-center/SellerVouchers';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -99,6 +100,7 @@ beforeEach(() => {
       calls.push({ url, method, body });
       if (method === 'POST' && url === `${base}/coupon-batches`) return json({ batch: batch('b2', 'New batch', 'ONGOING', 0, 2), codes: batchCodes.slice(0, 2) }, 201);
       if (method !== 'GET') return json({}, method === 'DELETE' ? 200 : 201);
+      if (url === '/test-admin/clock') return json({ now: '2040-01-01T00:00:00.000Z' });
       if (url === `${base}/coupon-batches`) return json({ items: [batch('b1', 'Loyalty Diamond 30%', 'ONGOING', 1, 3)] });
       const batchMatch = /\/coupon-batches\/(b\d)$/.exec(url);
       if (batchMatch) return json({ batch: batch(batchMatch[1], 'Loyalty Diamond 30%', 'ONGOING', 1, 3), codes: batchCodes });
@@ -113,6 +115,7 @@ beforeEach(() => {
         });
       }
       if (url === `${base}/catalog`) return json(catalog);
+      if (url === base) return json({ id: 'shop-1', name: 'Shop from API', region: 'VN', currency: 'VND', status: 'ACTIVE', warehouses: [{ id: 'wh-1', code: 'HN', name: 'Warehouse Hanoi', city: 'Hanoi' }] });
       if (url === `${base}/inventory/history`) return json({ changes: [], attempts: [] });
       if (url === `${base}/coupons`) {
         return json({ items: [{ id: 'c1', title: 'Ten off', promoCode: 'SALE10', status: 'ONGOING', discountType: 'PERCENT_OFF', amountOffVnd: null, percentage: 10, maxDiscountVnd: 30000, discountText: '10% off (max 30000 VND)', minSpendVnd: 100000, startAt: future, endAt: future, redemptionLimit: 100, redeemedCount: 3, audience: 'ALL' }] });
@@ -142,6 +145,7 @@ const renderAt = (path: string) =>
           <Route path="/seller-center/returns" element={<SellerReturns />} />
           <Route path="/seller-center/products" element={<SellerProducts />} />
           <Route path="/seller-center/vouchers" element={<SellerVouchers />} />
+          <Route path="/seller-center/shop" element={<SellerShop />} />
           <Route path="/seller-center/messages" element={<SellerMessages />} />
         </Routes>
       </AuthProvider>
@@ -163,8 +167,9 @@ describe('Seller Center returns', () => {
     await waitFor(() => expect(writes()).toEqual([{ url: `${base}/aftersale/r1/approve`, method: 'POST', body: {} }]));
 
     fireEvent.change(within(r2).getByRole('combobox', { name: 'Reject reason for r2' }), { target: { value: 'OTHER' } });
+    fireEvent.change(within(r2).getByRole('textbox', { name: 'Reject comment for r2' }), { target: { value: '  Packaging was opened.  ' } });
     fireEvent.click(within(r2).getByRole('button', { name: 'Reject' }));
-    await waitFor(() => expect(writes()[1]).toEqual({ url: `${base}/aftersale/r2/reject`, method: 'POST', body: { reason: 'OTHER' } }));
+    await waitFor(() => expect(writes()[1]).toEqual({ url: `${base}/aftersale/r2/reject`, method: 'POST', body: { reason: 'OTHER', comment: 'Packaging was opened.' } }));
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'All (3)' }));
     expect(requestRows()).toEqual(['Request r1', 'Request r2', 'Request r3']);
@@ -174,9 +179,74 @@ describe('Seller Center returns', () => {
 describe('Seller Center products', () => {
   const card = (externalId: string) => screen.getByRole('region', { name: `Product ${externalId}` });
 
+  it('edits SKU metadata by row ID and blocks out-of-range prices and inventory', async () => {
+    renderAt('/seller-center/products');
+    const product = await screen.findByRole('region', { name: 'Product P1' });
+    fireEvent.click(within(product).getByRole('button', { name: 'Manage' }));
+    const row = within(product).getByRole('row', { name: 'SKU TEE-M' });
+    fireEvent.change(within(row).getByLabelText('Price of TEE-M'), { target: { value: '2000000001' } });
+    fireEvent.change(within(row).getByLabelText('Stock of TEE-M in Kho HN'), { target: { value: '100000' } });
+    expect(within(row).getAllByRole('button', { name: 'Set' }).every((button) => button.hasAttribute('disabled'))).toBe(true);
+    expect(writes()).toHaveLength(0);
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit SKU' }));
+    const dialog = screen.getByRole('dialog', { name: 'Edit SKU' });
+    fireEvent.change(within(dialog).getByLabelText('Seller SKU'), { target: { value: 'TEE-M-NEW' } });
+    fireEvent.change(within(dialog).getByLabelText('Variant name'), { target: { value: 'Medium' } });
+    fireEvent.change(within(dialog).getByLabelText('Attribute name'), { target: { value: 'Fit' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save SKU' }));
+    await waitFor(() => expect(writes()).toContainEqual({ url: `${base}/catalog/skus/row-s1`, method: 'PATCH', body: { sellerSku: 'TEE-M-NEW', name: 'Medium', attributeName: 'Fit' } }));
+  });
+
+  it('combines search and status filters and restores results from the empty state', async () => {
+    renderAt('/seller-center/products');
+    await screen.findByRole('region', { name: 'Product P1' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search products' }), { target: { value: 'mug-b' } });
+    expect(card('P2')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Product P1' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Stock history' }));
+    expect(await screen.findByRole('region', { name: 'Stock changes' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to products' }));
+    expect((screen.getByRole('textbox', { name: 'Search products' }) as HTMLInputElement).value).toBe('mug-b');
+    expect(card('P2')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Draft 0' }));
+    expect(screen.getByRole('heading', { name: 'No matching products' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Product pagination' }).textContent).toContain('Showing 0–0');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(card('P1')).toBeTruthy();
+    expect(card('P2')).toBeTruthy();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort products' }), { target: { value: 'stock' } });
+    expect(screen.getAllByRole('region', { name: /^Product P/ }).map((el) => el.getAttribute('aria-label'))).toEqual(['Product P1', 'Product P2']);
+    expect(writes()).toHaveLength(0);
+  });
+
+  it('paginates the catalog and keeps product editors collapsed until requested', async () => {
+    const fetchCatalog = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/catalog`
+      ? Promise.resolve(json({ ...catalog, items: Array.from({ length: 11 }, (_, i) => ({ ...catalog.items[0], id: `p-${i}`, externalId: `P${i + 1}` })) }))
+      : fetchCatalog(url, init)));
+    renderAt('/seller-center/products');
+    await screen.findByRole('region', { name: 'Product P1' });
+    expect(screen.getAllByRole('region', { name: /^Product P/ })).toHaveLength(10);
+    expect(screen.queryByRole('region', { name: 'Product P11' })).toBeNull();
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Manage' }));
+    expect(within(card('P1')).getByRole('row', { name: 'SKU TEE-M' })).toBeTruthy();
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Collapse' }));
+    expect(within(card('P1')).queryByRole('row', { name: 'SKU TEE-M' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next product page' }));
+    expect(screen.getAllByRole('region', { name: /^Product P/ })).toHaveLength(1);
+    expect(card('P11')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Next product page' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous product page' }));
+    expect(card('P1')).toBeTruthy();
+    expect(writes()).toHaveLength(0);
+  });
+
   it('edits price, stock and status of a SKU and adds a variant', async () => {
     renderAt('/seller-center/products');
-    const row = within(await screen.findByRole('region', { name: 'Product P1' })).getByRole('row', { name: 'SKU TEE-M' });
+    const product = await screen.findByRole('region', { name: 'Product P1' });
+    expect(within(product).queryByRole('row', { name: 'SKU TEE-M' })).toBeNull();
+    fireEvent.click(within(product).getByRole('button', { name: 'Manage' }));
+    const row = within(product).getByRole('row', { name: 'SKU TEE-M' });
     const [setPrice, setStock] = within(row).getAllByRole('button', { name: 'Set' });
 
     fireEvent.change(within(row).getByLabelText('Price of TEE-M'), { target: { value: '135000' } });
@@ -202,9 +272,11 @@ describe('Seller Center products', () => {
     renderAt('/seller-center/products');
     await screen.findByRole('region', { name: 'Product P1' });
     expect(screen.getByRole('link', { name: 'New product' }).getAttribute('href')).toBe('/seller-center/products/new');
+    fireEvent.click(within(card('P1')).getByRole('button', { name: 'Manage' }));
     expect(within(card('P1')).getByRole('link', { name: 'Edit details' }).getAttribute('href')).toBe('/seller-center/products/row-p1/edit');
     expect(within(card('P1')).getByLabelText('No image')).toBeTruthy();
 
+    fireEvent.click(within(card('P2')).getByRole('button', { name: 'Manage' }));
     fireEvent.click(within(card('P2')).getByRole('button', { name: 'Delete' }));
     expect(writes()).toHaveLength(0);
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Delete product?' })).getByRole('button', { name: 'Delete product' }));
@@ -219,6 +291,43 @@ describe('Seller Center products', () => {
 });
 
 describe('Seller Center vouchers', () => {
+  it('edits only mutable voucher fields, clears optional limits and validates the redemption floor', async () => {
+    renderAt('/seller-center/vouchers');
+    fireEvent.click(within(await screen.findByRole('row', { name: 'Voucher SALE10' })).getByRole('button', { name: 'Edit' }));
+    const dialog = screen.getByRole('dialog', { name: 'Edit voucher' });
+    fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Updated offer' } });
+    fireEvent.change(within(dialog).getByLabelText('Starts at'), { target: { value: '2040-01-01T08:00:00' } });
+    fireEvent.change(within(dialog).getByLabelText('Ends at'), { target: { value: '2040-02-01T08:00:00' } });
+    fireEvent.change(within(dialog).getByLabelText('Redemption limit (optional)'), { target: { value: '2' } });
+    expect(within(dialog).getByRole('button', { name: 'Save voucher' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText('Redemption limit (optional)'), { target: { value: '' } });
+    fireEvent.change(within(dialog).getByLabelText('Minimum spend VND (optional)'), { target: { value: '' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save voucher' }));
+    await waitFor(() => expect(writes()).toEqual([{ url: `${base}/coupons/c1`, method: 'PATCH', body: { title: 'Updated offer', startAt: new Date('2040-01-01T08:00:00').toISOString(), endAt: new Date('2040-02-01T08:00:00').toISOString(), redemptionLimit: null, minSpendVnd: null } }]));
+  });
+
+  it('deactivates a single batch code only after confirmation without changing the batch', async () => {
+    renderAt('/seller-center/vouchers?tab=batches');
+    fireEvent.click(within(await screen.findByRole('row', { name: 'Batch Loyalty Diamond 30%' })).getByRole('button', { name: 'View codes' }));
+    const codes = await screen.findByRole('dialog', { name: /^Codes of/ });
+    fireEvent.click(await within(codes).findByRole('button', { name: 'Deactivate ABCDEFGH23' }));
+    expect(writes()).toHaveLength(0);
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Deactivate code?' })).getByRole('button', { name: 'Deactivate code' }));
+    await waitFor(() => expect(writes()).toEqual([{ url: `${base}/coupons/7700000000000003`, method: 'PATCH', body: { deactivated: true } }]));
+  });
+  it('rejects values beyond API limits and accepts the inclusive boundaries', () => {
+    const f = { ...emptyVoucher, title: 'x'.repeat(100), value: '2000000000', minSpend: '2000000000', limit: '1000000' };
+    expect(voucherValid(f)).toBe(true);
+    for (const invalid of [{ title: 'x'.repeat(101) }, { value: '2000000001' }, { minSpend: '2000000001' }, { limit: '1000001' }, { days: '1e9' }]) {
+      expect(voucherValid({ ...f, ...invalid })).toBe(false);
+    }
+    expect(voucherValid({ ...f, kind: 'PERCENT_OFF', value: '100', cap: '2000000000' })).toBe(true);
+    expect(voucherValid({ ...f, kind: 'PERCENT_OFF', value: '100', cap: '2000000001' })).toBe(false);
+    expect(batchValid({ ...emptyBatch, title: 'Batch', value: '30', quantity: '500' })).toBe(true);
+    expect(batchValid({ ...emptyBatch, title: 'Batch', value: '30', minSpend: '2000000001' })).toBe(false);
+    expect(() => batchBody({ ...emptyBatch, title: 'Batch', value: '30' }, NaN)).toThrow('business clock');
+  });
+
   it('validates and builds the coupon body like the legacy form', () => {
     const f = { ...emptyVoucher, title: 'Ten off', promoCode: 'SALE2026', kind: 'PERCENT_OFF', value: '10', cap: '30000', days: '7' };
     expect(voucherValid(f)).toBe(true);
@@ -247,7 +356,7 @@ describe('Seller Center vouchers', () => {
     fireEvent.change(within(dialog).getByLabelText('Audience'), { target: { value: 'NEW' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create voucher' }));
     await waitFor(() => expect(writes()).toHaveLength(2));
-    expect(writes()[1]).toMatchObject({ url: `${base}/coupons`, method: 'POST', body: { title: 'Welcome', promoCode: 'HELLO2026', discount: { type: 'AMOUNT_OFF', amountVnd: 20000 }, audience: 'NEW' } });
+    expect(writes()[1]).toMatchObject({ url: `${base}/coupons`, method: 'POST', body: { title: 'Welcome', promoCode: 'HELLO2026', discount: { type: 'AMOUNT_OFF', amountVnd: 20000 }, audience: 'NEW', endAt: '2040-01-08T00:00:00.000Z' } });
   });
 
   it('accepts an empty voucher code (generated by the backend) but still rejects a malformed one', () => {
@@ -318,10 +427,20 @@ describe('Seller Center vouchers', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create batch' }));
     await waitFor(() => expect(writes()).toHaveLength(1));
     const [w] = writes();
-    expect(w).toMatchObject({ url: `${base}/coupon-batches`, method: 'POST', body: { title: 'New batch', discount: { type: 'PERCENT_OFF', percentage: 30 }, quantity: 2, audience: 'ALL' } });
+    expect(w).toMatchObject({ url: `${base}/coupon-batches`, method: 'POST', body: { title: 'New batch', discount: { type: 'PERCENT_OFF', percentage: 30 }, quantity: 2, audience: 'ALL', endAt: '2040-01-31T00:00:00.000Z' } });
     expect(w.body).not.toHaveProperty('promoCode');
     expect(w.body).not.toHaveProperty('redemptionLimit');
     expect(await screen.findByRole('dialog', { name: /^Codes of / })).toBeTruthy();
+  });
+});
+
+describe('Seller Center shop', () => {
+  it('reads the signed-in shop profile and warehouses from the API', async () => {
+    renderAt('/seller-center/shop');
+    expect(await screen.findByRole('heading', { name: 'Shop from API' })).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Shop profile' })).getByText('VND')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Warehouses' })).getByText('Warehouse Hanoi')).toBeTruthy();
+    expect(writes()).toHaveLength(0);
   });
 });
 

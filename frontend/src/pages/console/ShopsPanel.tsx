@@ -3,6 +3,7 @@ import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
 import type { AsyncResult } from '../../lib/useAsync';
 import type { ShopSummary } from './types';
+import { PaginatedList } from '../../components/console/PaginatedList';
 
 export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[] }> }) {
   const [msg, setMsg] = useState<string>();
@@ -29,23 +30,23 @@ export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[
       {(d) => (
         <div>
           {msg ? <div className="state state-empty">{msg}</div> : null}
-          <div className="grid">
-            {d.items.map((s) => (
-              <article key={s.id} className="card">
+          <PaginatedList items={d.items} label="Shops" initialPageSize={6}>{(visible) => <div className="admin-shops-grid">
+            {visible.map((s) => (
+              <article key={s.id} className="card admin-shop-card">
                 <h3>{s.name}</h3>
-                <div className="muted">{s.region} / {s.currency} / TikTok shop id {s.tiktokShopId}</div>
+                <div className="muted">{s.region} / {s.currency}<span className="admin-shop-id">TikTok shop ID {s.tiktokShopId}</span></div>
                 <div className="muted">{s.counts.products} products, {s.counts.buyers} buyers, {s.counts.webhookJobs} webhook jobs</div>
-                <label>
+                <label className="admin-shop-scenario">
                   Scenario{' '}
                   <select value={s.activeScenarioId ?? ''} onChange={(e) => { const sc = s.scenarios.find((x) => x.id === e.target.value); if (sc) void activate(s.id, sc.key); }}>
                     {s.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
                   </select>
                 </label>
-                <div className="muted">{s.scenarios.find((x) => x.id === s.activeScenarioId)?.description}</div>
+                <div className="muted admin-scenario-description">{s.scenarios.find((x) => x.id === s.activeScenarioId)?.description}</div>
                 <button onClick={() => void bulk(s.id)}>Add 50 test products</button>
               </article>
             ))}
-          </div>
+          </div>}</PaginatedList>
         </div>
       )}
     </AsyncState>
