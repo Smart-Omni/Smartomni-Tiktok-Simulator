@@ -110,10 +110,10 @@ function EmptyCart() {
 
 function Cart({ buyer }: { buyer: DemoSession }) {
   const navigate = useNavigate();
-  const data = useAsync(async () => {
-    const [cart, products] = await Promise.all([getMarketplaceCart(buyer), listMarketplaceProducts().catch(() => null)]);
-    return { cart, products: (products ?? []).map(enrichProduct) };
-  }, [buyer.sessionToken]);
+  // The cart renders as soon as it is loaded. The whole catalog (paged, several seconds on a large seed) only adds images and
+  // stock limits, so it loads on its own and the lines are enriched when it arrives instead of blocking the page.
+  const data = useAsync(async () => ({ cart: await getMarketplaceCart(buyer) }), [buyer.sessionToken]);
+  const catalog = useAsync(async () => (await listMarketplaceProducts().catch(() => [])).map(enrichProduct), []);
 
   const [groups, setGroups] = useState<CartShopGroup[] | null>(null);
   // lines start selected; this holds the keys (shopId:skuId) the buyer unticked
@@ -145,7 +145,7 @@ function Cart({ buyer }: { buyer: DemoSession }) {
   }
   if (!data.data || !groups) return null;
 
-  const { products } = data.data;
+  const products = catalog.data ?? [];
   const productByKey = new Map(products.flatMap((p) => (p.shop ? [[`${p.shop.id}:${p.id}`, p] as const] : [])));
   const stockByKey = new Map(products.flatMap((p) => (p.shop ? p.skus.map((s) => [lineKey(p.shop!.id, s.id), s.stock] as const) : [])));
 
