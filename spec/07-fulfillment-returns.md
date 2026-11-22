@@ -77,3 +77,5 @@ Fixtures gồm package hợp lệ, order chưa giao được, PDF tải thành c
 - BLOCKED (repo platform chỉ để tham khảo): toàn bộ phía SmartOmni - đồng bộ webhook/polling, lưu trạng thái nguồn, chặn sửa tay completed/returned, hoàn tồn bằng receipt idempotent theo order/line, hàng đợi lỗi có audit (`docs/smartomni-requirements/phase-07.md`, mục 07b). Chưa chạy Playwright và Docker cho phần này.
 - Quyết định/blocker: `DECISIONS.md` mục `Phase 07b` (D07b-1..13). Trạng thái, quyết định, lý do từ chối, mã `ineligible_code`, `type` webhook đều là lựa chọn của simulator, chưa xác minh.
 - Ngày hoàn thành: chưa (PARTIAL).
+
+> **Note (later change):** the ON_HOLD status, the hold period and `POST /test-admin/orders/release-due` described here were removed. Payment now moves an order straight to AWAITING_SHIPMENT. See `docs/remove-on-hold-plan.md` and DECISIONS H1-H13.

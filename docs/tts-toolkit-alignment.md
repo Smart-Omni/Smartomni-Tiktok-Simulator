@@ -44,9 +44,9 @@ Toolkit chỉ có 5 lệnh sandbox. Đây là phần "nghiệp vụ" cụ thể 
 | `sandbox order transition <id>` | **một bước**, không truyền state đích; trả `before_status`, `after_status`, `transitioned` | `POST /test-admin/orders/:ref/transition` **bắt buộc `to`** | Cho phép `to` optional: khi bỏ trống thì chọn bước "happy path" kế tiếp (bảng dưới). Trả thêm `before_status`, `after_status`, `transitioned` (false nếu state cuối) |
 
 **Bước kế tiếp mặc định** (dựa trên `TRANSITIONS` trong `orders/order-state.ts`, bỏ nhánh `CANCELLED`):
-`UNPAID → ON_HOLD → AWAITING_SHIPMENT → AWAITING_COLLECTION → IN_TRANSIT → DELIVERED → COMPLETED`.
+`UNPAID → AWAITING_SHIPMENT → AWAITING_COLLECTION → IN_TRANSIT → DELIVERED → COMPLETED` (simulator không có `ON_HOLD` từ docs/remove-on-hold-plan.md).
 Khi đến `COMPLETED` / `CANCELLED` thì trả `transitioned:false`.
-Bước `UNPAID → ON_HOLD` phải đi qua `OrdersService.pay()` (đặt `paidAt` và `releaseAt`), không phải transition trơn. Bước `AWAITING_SHIPMENT → AWAITING_COLLECTION` phải đi qua `FulfillmentService.arrangeShipment` để package/tracking được tạo đúng như luồng thật. Bước `AWAITING_COLLECTION → IN_TRANSIT` đi qua `advanceShipment`.
+Bước `UNPAID → AWAITING_SHIPMENT` phải đi qua `OrdersService.pay()` (đặt `paidAt`), không phải transition trơn. Bước `AWAITING_SHIPMENT → AWAITING_COLLECTION` phải đi qua `FulfillmentService.arrangeShipment` để package/tracking được tạo đúng như luồng thật. Bước `AWAITING_COLLECTION → IN_TRANSIT` đi qua `advanceShipment`.
 
 **State canonical của toolkit** gồm `UNKNOWN, UNPAID, ON_HOLD, TO_SHIP, AWAITING_SHIPMENT, AWAITING_COLLECTION, CANCEL_PENDING, PARTIALLY_SHIPPING, SHIPPED, IN_TRANSIT, DELIVERED, COMPLETED, CANCELLED`. So với simulator:
 - `TO_SHIP`, `SHIPPED`, `CANCEL_PENDING`, `UNKNOWN` **không có** trong `ORDER_STATUSES`. OAS `order.detail.status` cũng không liệt kê chúng, nên **không thêm** vào state machine của TikTok API.
@@ -157,7 +157,7 @@ Mẫu cho mỗi operation:
 - Response: `cancel_id`, `cancel_status`.
 - Logic:
   - Thêm `AftersaleService.sellerCancel(shopId, orderExternalId, reason, lineIds?)`. Tách phần insert từ `createCancellation`, nhưng `role='SELLER'`, `type='CANCEL'`.
-  - Cho phép khi `order.status ∈ {UNPAID, ON_HOLD, AWAITING_SHIPMENT}`, kiểm tra bằng `canTransition(status,'CANCELLED')` và chặn nếu đã có package.
+  - Cho phép khi `order.status ∈ {UNPAID, AWAITING_SHIPMENT}`, kiểm tra bằng `canTransition(status,'CANCELLED')` và chặn nếu đã có package.
   - Seller tự huỷ thì **thành công ngay**:
     - status `CANCELLATION_REQUEST_SUCCESS`
     - `orders.transition(order,'CANCELLED','SELLER',{initiator:'SELLER',cancelReason})` trong **cùng transaction** với việc tạo request. Hiện `OrdersService.transition()` tự mở `$transaction` và không nhận `tx`, nên cần refactor tách phần thân thành `transitionTx(tx, …)`.

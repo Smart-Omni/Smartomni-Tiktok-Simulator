@@ -25774,9 +25774,9 @@
                 },
                 "example": {
                   "id": "5800000000000001",
-                  "from": "ON_HOLD",
+                  "from": "UNPAID",
                   "status": "AWAITING_SHIPMENT",
-                  "before_status": "ON_HOLD",
+                  "before_status": "UNPAID",
                   "after_status": "AWAITING_SHIPMENT",
                   "transitioned": true,
                   "updatedAt": "2026-10-15T08:06:00.000Z"

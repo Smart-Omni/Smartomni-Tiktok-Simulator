@@ -83,3 +83,5 @@ Baseline: POST /promotion/202406/coupons/search, GET /promotion/202406/coupons/{
   - Tài liệu: `DECISIONS.md` mục Phase 09c, `docs/smartomni-requirements/phase-09.md` Step 5, `docs/api-reference.md` (7.8, 8.7, 9), `docs/openapi.json`.
 - Bằng chứng: backend `test/coupon-batches.e2e-spec.ts` (generator, service, đốt mã, `/demo`, Search/Get, `/test-admin`); toàn bộ backend 27 suites pass; frontend Vitest (`SellerCenterPages.test.tsx`, `SellerHome.test.tsx`) pass; e2e `e2e/tests/phase09c-voucher-batches.spec.ts` (xem kết quả trong commit `test(e2e)`).
 - Chưa làm (phía SmartOmni, xem `docs/smartomni-requirements/phase-09.md`): map tier -> lô, giao mã cho khách, ghi ngày phát/claim, poll Get Coupon.
+
+> **Note (later change):** the ON_HOLD status, the hold period and `POST /test-admin/orders/release-due` described here were removed. Payment now moves an order straight to AWAITING_SHIPMENT. See `docs/remove-on-hold-plan.md` and DECISIONS H1-H13.
