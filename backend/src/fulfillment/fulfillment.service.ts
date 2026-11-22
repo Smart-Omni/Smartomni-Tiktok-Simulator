@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { Package, Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { promises as fs } from 'fs';
@@ -37,8 +37,13 @@ const DESCRIPTION: Record<string, string> = {
  * transaction), so a package can never disagree with its order and PACKAGE_UPDATE is written together with the change.
  * Everything here is FAKE: tracking numbers use the "SIM" prefix and the PDFs are stamped as test data.
  */
+/** What creating a package needs: a transition context, or the startup repair of migrated orders (DECISIONS H11). */
+type PackageContext = Pick<TransitionContext, 'tx' | 'shop' | 'after' | 'now' | 'requestId'>;
+
 @Injectable()
-export class FulfillmentService implements OnModuleInit {
+export class FulfillmentService implements OnModuleInit, OnApplicationBootstrap {
+  private readonly logger = new Logger(FulfillmentService.name);
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(OrdersService) private readonly orders: OrdersService,
@@ -78,7 +83,7 @@ export class FulfillmentService implements OnModuleInit {
     await this.emitPackage(ctx, pkg, after);
   }
 
-  private async createPackage(ctx: TransitionContext): Promise<Package> {
+  private async createPackage(ctx: PackageContext): Promise<Package> {
     const { tx, after, now, shop } = ctx;
     const externalId = numericId('5762', `package:${after.id}`);
     const pkg = await tx.package.create({
@@ -89,7 +94,44 @@ export class FulfillmentService implements OnModuleInit {
     return pkg;
   }
 
-  private async emitPackage(ctx: TransitionContext, pkg: Package, order: OrderRow): Promise<void> {
+  /**
+   * DECISIONS H11: orders the drop_on_hold migration moved from ON_HOLD to AWAITING_SHIPMENT never ran the transition listener, so they
+   * have no package. Creates the missing TO_FULFILL package (and its PACKAGE_UPDATE) exactly as the listener would. Idempotent and safe
+   * to run concurrently: the status and the missing package are re-checked under a row lock, and Package.orderId is unique.
+   * Returns the external ids of the repaired orders.
+   */
+  async repairMissingPackages(): Promise<string[]> {
+    const candidates = await this.prisma.order.findMany({ where: { status: 'AWAITING_SHIPMENT', Package: null }, select: { id: true }, orderBy: { seq: 'asc' } });
+    const repaired: string[] = [];
+    for (const { id } of candidates) {
+      try {
+        const done = await this.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
+          const after = await tx.order.findUnique({
+            where: { id },
+            include: { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } }, shop: { select: { id: true, name: true } }, Package: { select: { id: true } } },
+          });
+          if (!after || after.status !== 'AWAITING_SHIPMENT' || after.Package) return null;
+          const shop = await tx.shop.findUniqueOrThrow({ where: { id: after.shopId } });
+          const ctx: PackageContext = { tx, shop, after, now: this.clock.now() };
+          const pkg = await this.createPackage(ctx);
+          await this.emitPackage(ctx, pkg, after);
+          return after.externalId;
+        });
+        if (done) repaired.push(done);
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e; // another instance repaired it first
+      }
+    }
+    return repaired;
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    const repaired = await this.repairMissingPackages();
+    if (repaired.length) this.logger.log(`created missing packages for ${repaired.length} order(s) released from ON_HOLD`);
+  }
+
+  private async emitPackage(ctx: Pick<PackageContext, 'tx' | 'shop' | 'requestId'>, pkg: Package, order: OrderRow): Promise<void> {
     await this.emitter.emit(
       ctx.tx,
       ctx.shop,

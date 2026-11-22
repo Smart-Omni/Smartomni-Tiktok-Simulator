@@ -420,7 +420,7 @@ model CartItem {
   @@unique([buyerId, skuId])
 }
 
-// Statuses are the OAS values: UNPAID ON_HOLD AWAITING_SHIPMENT PARTIALLY_SHIPPING AWAITING_COLLECTION IN_TRANSIT DELIVERED COMPLETED CANCELLED.
+// Statuses are OAS values: UNPAID AWAITING_SHIPMENT PARTIALLY_SHIPPING AWAITING_COLLECTION IN_TRANSIT DELIVERED COMPLETED CANCELLED (never ON_HOLD, DECISIONS H1).
 // Money is integer VND per component; totals are computed by the backend and never re-derived from each other.
 model Order {
   id                    String             @id @default(uuid())
@@ -435,7 +435,6 @@ model Order {
   createdAt             DateTime
   updatedAt             DateTime
   paidAt                DateTime?
-  releaseAt             DateTime?
   rtsAt                 DateTime?
   collectionAt          DateTime?
   deliveredAt           DateTime?
@@ -444,7 +443,6 @@ model Order {
   cancelReason          String?
   cancellationInitiator String?
   buyerRequestedCancel  Boolean            @default(false)
-  isOnHold              Boolean            @default(false)
   warehouseId           String?
   stockReleased         Boolean            @default(false)
   checkoutKey           String
