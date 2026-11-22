@@ -23,10 +23,7 @@ test.beforeAll(async ({ baseURL }) => {
   const buyer = await demoSession(api, 'BUYER', BUYER_A);
   deliveredOrder = await placePaidOrder(api, buyer, SKU, 2);
   cancelOrder = await placePaidOrder(api, buyer, SKU, 1);
-  // release both holds (business clock past the hold), then ship the first order to DELIVERED
-  await api.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
-  const released = (await (await api.post('/test-admin/orders/release-due', { data: {} })).json()).released as string[];
-  expect(released).toEqual(expect.arrayContaining([deliveredOrder, cancelOrder]));
+  // paid orders are AWAITING_SHIPMENT at once (no hold); ship the first one to DELIVERED
   for (const to of ['AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED']) await transition(api, deliveredOrder, to);
   await api.dispose();
 });
