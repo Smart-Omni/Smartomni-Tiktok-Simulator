@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { BUYER_A, resetAll, SELLER_A, shot, signInAs } from './helpers';
+import { BUYER_A, demoSession, resetAll, SELLER_A, shot, signInAs } from './helpers';
 
 /** Phase 08 UI: buyer writes -> seller sees and replies -> buyer sees the reply; unsupported message types are stated explicitly. */
 test.describe.configure({ mode: 'serial' });
@@ -12,11 +12,18 @@ test.beforeAll(async ({ baseURL }) => {
   await resetAll(baseURL);
 });
 
-test('the chat page states which message types are supported and which are not simulated', async ({ page }) => {
+// The redesigned chat UI no longer prints a "Supported message types" note (removed on purpose in 2d657fe / 4b921cb);
+// the rule is still served by the chat API and the composer stays text-only, so that is what is checked here.
+test('chat is text only: the API states supported and not simulated types and the composer has no attachments', async ({ page, request }) => {
+  const buyer = await demoSession(request, 'BUYER', BUYER_A);
+  const list = await (await request.get(`/demo/shops/${buyer.shopId}/chat/conversations`, { headers: { 'x-demo-session': buyer.token } })).json();
+  expect(list.supportedTypes).toEqual(['TEXT']);
+  expect(list.unsupported).toContain('IMAGE');
+
   await signInAs(page, 'BUYER', BUYER_A, '/account/messages');
-  const note = page.getByRole('note');
-  await expect(note).toContainText('Supported message types: TEXT');
-  await expect(note).toContainText('Not simulated:');
+  const thread = page.getByRole('region', { name: 'Chat thread' });
+  await expect(thread.getByRole('textbox', { name: 'Message' })).toBeVisible();
+  await expect(thread.locator('input[type="file"]')).toHaveCount(0);
   await shot(page, 'phase08-supported-types');
 });
 
