@@ -27,7 +27,8 @@ test('a marketplace product link opens the right product for a buyer and the SKU
   await expect(page).toHaveURL(new RegExp(`${TEE}$`));
   await expect(page.getByText('Sign in to view this product.')).toBeVisible();
   await signInAs(page, 'BUYER', BUYER_A, TEE);
-  await expect(page.getByText('Sold by')).toContainText('Cửa hàng Mộc Lan');
+  // the selling shop is shown in the breadcrumb (Home > shop > product)
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Cửa hàng Mộc Lan');
   await expect(page.getByRole('heading', { level: 1, name: 'Áo thun cotton basic' })).toBeVisible();
   await page.getByRole('radio', { name: 'Đen / M' }).click();
   await expect(page.getByTestId('price')).toHaveText('₫135.000');
@@ -62,16 +63,16 @@ test('seller sees the order; the Test Console refuses to ship an ON_HOLD order t
   await expect(page.getByRole('region', { name: 'Status history' })).toContainText('Unpaid → On hold');
 
   await page.goto('/console');
-  await page.getByRole('tab', { name: 'Orders' }).click();
+  await page.getByRole('navigation', { name: 'Test Console navigation' }).getByRole('button', { name: 'Orders', exact: true }).click();
   const row = page.getByRole('row', { name: new RegExp(orderId) });
-  await row.getByRole('button', { name: 'AWAITING_COLLECTION' }).click();
-  await expect(page.getByRole('status')).toContainText('ON_HOLD -> AWAITING_COLLECTION is not allowed');
-  await expect(row.getByText('ON_HOLD')).toBeVisible(); // unchanged
+  await row.getByRole('button', { name: 'Awaiting collection' }).click(); // readable label; the API value is AWAITING_COLLECTION
+  await expect(page.getByRole('status').filter({ hasText: 'ON_HOLD -> AWAITING_COLLECTION is not allowed' })).toBeVisible(); // the console has more than one status region
+  await expect(row.getByText('On hold', { exact: true })).toBeVisible(); // unchanged
 
   // move the business clock past the hold, then release
   await request.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
   await page.getByRole('button', { name: 'Release due holds' }).click();
-  await expect(page.getByRole('status')).toContainText('Released 1 held order');
-  await expect(page.getByRole('row', { name: new RegExp(orderId) }).getByText('AWAITING_SHIPMENT')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Released 1 held order' })).toBeVisible();
+  await expect(page.getByRole('row', { name: new RegExp(orderId) }).getByText('Awaiting shipment', { exact: true })).toBeVisible();
   await request.put('/test-admin/clock', { data: { reset: true } });
 });
