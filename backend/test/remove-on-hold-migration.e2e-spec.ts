@@ -6,7 +6,7 @@ import { PersistentBusinessClock } from '../src/clock/clock';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { FulfillmentService } from '../src/fulfillment/fulfillment.service';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { createApp, resetToSeed } from './helpers';
+import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 import { TiktokTestClient } from './tiktok-client';
 
 const HOOKS = '/event/202309/webhooks';
@@ -60,9 +60,10 @@ describe('drop_on_hold migration: released orders get their package', () => {
     for (const sql of updates) await prisma.$executeRawUnsafe(sql);
   }
 
-  it('the migration releases ON_HOLD rows; the repair creates one TO_FULFILL package, links the lines and emits PACKAGE_UPDATE once', async () => {
+  it('the migration releases ON_HOLD rows; the repair tells clients (update_time, audit, ORDER_STATUS_CHANGE) and creates one TO_FULFILL package once', async () => {
     const a = await t.connect(0);
     await t.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'PACKAGE_UPDATE', address: 'http://localhost:9/pkg' } }).expect(200);
+    await t.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'ORDER_STATUS_CHANGE', address: 'http://localhost:9/order' } }).expect(200);
     const id = await legacyHeldOrder('key-legacy-0001');
     await runMigrationDataStatements();
     const row = await prisma.order.findFirstOrThrow({ where: { externalId: id }, include: { lines: true } });
@@ -70,9 +71,19 @@ describe('drop_on_hold migration: released orders get their package', () => {
     expect(row.lines.every((l) => l.displayStatus === 'AWAITING_SHIPMENT' && l.packageId === null)).toBe(true);
     expect(await prisma.package.count({ where: { orderId: row.id } })).toBe(0);
     const before = await prisma.webhookJob.count({ where: { topic: 'PACKAGE_UPDATE' } });
+    const orderEventsBefore = await prisma.webhookJob.count({ where: { topic: 'ORDER_STATUS_CHANGE' } });
+    await http.put('/test-admin/clock').set({ 'x-test-admin-token': ADMIN_TOKEN }).send({ advanceMs: 60_000 }).expect(200);
 
     const fulfillment = app.get(FulfillmentService);
     expect(await fulfillment.repairMissingPackages()).toEqual([id]);
+    // the order "moves" for clients: newer update_time, an audit row and one ORDER_STATUS_CHANGE
+    const repairedRow = await prisma.order.findUniqueOrThrow({ where: { id: row.id } });
+    expect(repairedRow.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
+    const audit = await prisma.orderAudit.findMany({ where: { orderId: row.id }, orderBy: { at: 'asc' } });
+    expect(audit[audit.length - 1]).toMatchObject({ fromStatus: 'ON_HOLD', toStatus: 'AWAITING_SHIPMENT', actor: 'SYSTEM', note: 'hold removed by migration' });
+    const orderEvents = await prisma.webhookJob.findMany({ where: { topic: 'ORDER_STATUS_CHANGE' }, orderBy: { createdAt: 'asc' } });
+    expect(orderEvents).toHaveLength(orderEventsBefore + 1);
+    expect((orderEvents[orderEvents.length - 1].payload as any).data).toMatchObject({ order_id: id, order_status: 'AWAITING_SHIPMENT', is_on_hold_order: false });
     const pkg = await prisma.package.findUniqueOrThrow({ where: { orderId: row.id } });
     expect(pkg).toMatchObject({ status: 'TO_FULFILL', trackingNumber: null });
     expect((await prisma.orderLine.findMany({ where: { orderId: row.id } })).every((l) => l.packageId === pkg.externalId)).toBe(true);
@@ -86,6 +97,8 @@ describe('drop_on_hold migration: released orders get their package', () => {
     expect([...r1, ...r2]).toEqual([]);
     expect(await prisma.package.count({ where: { orderId: row.id } })).toBe(1);
     expect(await prisma.webhookJob.count({ where: { topic: 'PACKAGE_UPDATE' } })).toBe(before + 1);
+    expect(await prisma.webhookJob.count({ where: { topic: 'ORDER_STATUS_CHANGE' } })).toBe(orderEventsBefore + 1);
+    expect(await prisma.orderAudit.count({ where: { orderId: row.id, note: 'hold removed by migration' } })).toBe(1);
   });
 
   it('a repaired order shows its package and ships like any paid order; unpaid and cancelled orders are left alone', async () => {

@@ -95,25 +95,30 @@ export class FulfillmentService implements OnModuleInit, OnApplicationBootstrap 
   }
 
   /**
-   * DECISIONS H11: orders the drop_on_hold migration moved from ON_HOLD to AWAITING_SHIPMENT never ran the transition listener, so they
-   * have no package. Creates the missing TO_FULFILL package (and its PACKAGE_UPDATE) exactly as the listener would. Idempotent and safe
-   * to run concurrently: the status and the missing package are re-checked under a row lock, and Package.orderId is unique.
-   * Returns the external ids of the repaired orders.
+   * DECISIONS H11: orders the drop_on_hold migration moved from ON_HOLD to AWAITING_SHIPMENT (plain SQL) never ran a transition, so
+   * they have no package and no client was told they moved. Paying always creates the package, so a packageless AWAITING_SHIPMENT order
+   * can only come from that migration. For each one this finishes the transition as OrdersService.transition would: bumps `updatedAt`
+   * (so update_time polling sees it), writes the ON_HOLD -> AWAITING_SHIPMENT audit row (actor SYSTEM), emits ORDER_STATUS_CHANGE, then
+   * creates the TO_FULFILL package and emits PACKAGE_UPDATE. Idempotent and safe to run concurrently: the status and the missing package
+   * are re-checked under a row lock, and Package.orderId is unique. Returns the external ids of the repaired orders.
    */
   async repairMissingPackages(): Promise<string[]> {
     const candidates = await this.prisma.order.findMany({ where: { status: 'AWAITING_SHIPMENT', Package: null }, select: { id: true }, orderBy: { seq: 'asc' } });
     const repaired: string[] = [];
+    const include = { lines: { orderBy: [{ externalId: 'asc' as const }] }, buyer: { select: { externalId: true, name: true } }, shop: { select: { id: true, name: true } }, Package: { select: { id: true } } };
     for (const { id } of candidates) {
       try {
         const done = await this.prisma.$transaction(async (tx) => {
           await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${id} FOR UPDATE`;
-          const after = await tx.order.findUnique({
-            where: { id },
-            include: { lines: { orderBy: [{ externalId: 'asc' }] }, buyer: { select: { externalId: true, name: true } }, shop: { select: { id: true, name: true } }, Package: { select: { id: true } } },
-          });
-          if (!after || after.status !== 'AWAITING_SHIPMENT' || after.Package) return null;
-          const shop = await tx.shop.findUniqueOrThrow({ where: { id: after.shopId } });
-          const ctx: PackageContext = { tx, shop, after, now: this.clock.now() };
+          const before = await tx.order.findUnique({ where: { id }, include });
+          if (!before || before.status !== 'AWAITING_SHIPMENT' || before.Package) return null;
+          const shop = await tx.shop.findUniqueOrThrow({ where: { id: before.shopId } });
+          const now = this.clock.now();
+          await tx.order.update({ where: { id }, data: { updatedAt: now } });
+          await tx.orderAudit.create({ data: { orderId: id, fromStatus: 'ON_HOLD', toStatus: 'AWAITING_SHIPMENT', actor: 'SYSTEM', note: 'hold removed by migration', at: now } });
+          const after = await tx.order.findUniqueOrThrow({ where: { id }, include });
+          await this.emitter.emit(tx, shop, 'ORDER_STATUS_CHANGE', this.orders.eventData(after));
+          const ctx: PackageContext = { tx, shop, after, now };
           const pkg = await this.createPackage(ctx);
           await this.emitPackage(ctx, pkg, after);
           return after.externalId;
@@ -128,7 +133,7 @@ export class FulfillmentService implements OnModuleInit, OnApplicationBootstrap 
 
   async onApplicationBootstrap(): Promise<void> {
     const repaired = await this.repairMissingPackages();
-    if (repaired.length) this.logger.log(`created missing packages for ${repaired.length} order(s) released from ON_HOLD`);
+    if (repaired.length) this.logger.log(`finished the ON_HOLD release of ${repaired.length} migrated order(s): audit, ORDER_STATUS_CHANGE, package`);
   }
 
   private async emitPackage(ctx: Pick<PackageContext, 'tx' | 'shop' | 'requestId'>, pkg: Package, order: OrderRow): Promise<void> {

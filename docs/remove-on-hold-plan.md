@@ -22,7 +22,7 @@ Mỗi phase chỉ commit khi gate của phase đó pass. Không push, không m�
 | H8 | Mã lỗi `order_on_hold` đổi thành `order_unpaid` (arrange shipment khi đơn chưa thanh toán). `blockedReason` chỉ còn `order_unpaid` hoặc `null`. | Tên cũ sai nghĩa khi không còn ON_HOLD. Đây là thay đổi API `/demo` và `/fulfillment`, ghi vào DECISIONS. |
 | H9 | Xóa `ORDER_HOLD_MINUTES`, `ORDER_LIFECYCLE_INTERVAL_MS`, timer trong `OrdersService`, `releaseDue()` và `POST /test-admin/orders/release-due` (route biến mất, trả 404). | Timer chỉ chạy `releaseDue`; không còn gì để giải phóng. |
 | H10 | Cột `Order.releaseAt` và `Order.isOnHold` bị xóa bằng **migration mới**. Migration đó cũng chuyển mọi dòng `Order.status`/`OrderLine.displayStatus` = `ON_HOLD` sang `AWAITING_SHIPMENT`. Không sửa migration cũ. | `status` là `String`, không phải Prisma enum, nên chỉ cần `UPDATE`. |
-| H11 | Đơn cũ được migration chuyển sang `AWAITING_SHIPMENT` sẽ chưa có package (SQL không tạo được package id). Listener fulfillment tạo package **lazy** (idempotent) khi cần: lúc arrange shipment, đọc fulfillment/package detail, hoặc transition tiếp. | Không dựa vào transition từ ON_HOLD mà state machine mới đã cấm. Có test riêng. |
+| H11 | Đơn cũ được migration chuyển sang `AWAITING_SHIPMENT` chưa có package và chưa ai được báo (SQL không tạo được package id, không phát event). `FulfillmentService.repairMissingPackages()` chạy một lần khi API khởi động. Với mỗi đơn đó, nó bump `updatedAt`, ghi audit ON_HOLD → AWAITING_SHIPMENT (actor SYSTEM), phát `ORDER_STATUS_CHANGE`, rồi tạo package `TO_FULFILL` và phát `PACKAGE_UPDATE`. Hàm idempotent. | Không dựa vào transition từ ON_HOLD mà state machine mới đã cấm. SmartOmni biết đơn đã đổi qua webhook hoặc polling `update_time`. Có test riêng. |
 | H12 | `OrderAudit` và lịch sử webhook cũ **giữ nguyên** (có thể chứa `ON_HOLD`). Frontend phải hiển thị được trạng thái lạ mà không crash (fallback: hiện chuỗi gốc). | Không viết lại lịch sử. |
 | H13 | Scenario loyalty: case "paid and still on hold" đổi thành "paid, awaiting shipment" (`stopAt: 'AWAITING_SHIPMENT'`), vẫn không bao giờ COMPLETED. Sandbox `advanceOneStep` bỏ case ON_HOLD; sandbox order `pay: true` trả `AWAITING_SHIPMENT`. | Giữ số case và ý nghĩa test biên của phase 09. |
 
@@ -85,7 +85,7 @@ Webhook `ORDER_STATUS_CHANGE` khi đặt và trả tiền: `UNPAID`, rồi `AWAI
   - `UPDATE "OrderLine" SET "displayStatus"='AWAITING_SHIPMENT' WHERE "displayStatus"='ON_HOLD'`
   - `ALTER TABLE "Order" DROP COLUMN "releaseAt", DROP COLUMN "isOnHold"`
 - `schema.prisma`: bỏ 2 field, sửa comment danh sách trạng thái.
-- `fulfillment.service.ts`: `ensurePackage(order)` idempotent. Được gọi trong `arrangeShipment`, trong listener khi đơn rời `AWAITING_SHIPMENT`, và trong các route đọc package của đơn `AWAITING_SHIPMENT` (H11).
+- `fulfillment.service.ts`: `repairMissingPackages()` idempotent, chạy lúc khởi động (H11). Listener sẵn có vẫn tạo package nếu thiếu khi đơn sang trạng thái giao hàng.
 - Test mới (`test/remove-on-hold-migration.e2e-spec.ts`):
   - Dùng raw SQL tạo một đơn `AWAITING_SHIPMENT` không có package (đúng trạng thái sau migration).
   - Fulfillment detail trả package `TO_FULFILL`.
