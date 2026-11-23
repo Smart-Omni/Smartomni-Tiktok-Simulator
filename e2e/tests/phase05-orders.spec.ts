@@ -1,9 +1,9 @@
 import { expect, request as pwRequest, test } from '@playwright/test';
-import { BUYER_A, SELLER_A, signInAs } from './helpers';
+import { BUYER_A, demoSession, placePaidOrder, SELLER_A, signInAs } from './helpers';
 
 /**
  * Phase 05 UI flow: marketplace product link -> Buyer sign-in -> pick SKU -> cart -> checkout -> fake payment ->
- * Seller sees the order -> Test Console refuses an invalid jump and releases the hold.
+ * Seller sees the order ready to ship (no hold period) -> Test Console refuses to ship an unpaid order.
  * Requires a seeded stack; resets the demo data at the start so the run is repeatable.
  */
 test.describe.configure({ mode: 'serial' });
@@ -52,27 +52,25 @@ test('buyer adds two units to the cart, checks out and pays with the fake paymen
   orderId = (await placed.locator('.font-mono').innerText()).trim();
   await page.getByRole('button', { name: 'Pay now (simulated)' }).click();
   await page.waitForURL('**/account/orders');
-  await expect(page.getByRole('article', { name: `Order ${orderId}` }).getByText('Confirming', { exact: true })).toBeVisible(); // ON_HOLD
+  await expect(page.getByRole('article', { name: `Order ${orderId}` }).getByText('To ship', { exact: true })).toBeVisible(); // paid orders are AWAITING_SHIPMENT at once
 });
 
-test('seller sees the order; the Test Console refuses to ship an ON_HOLD order then releases it', async ({ page, request }) => {
+test('seller can ship the paid order at once; the Test Console refuses to ship an UNPAID order', async ({ page, request }) => {
   await signInAs(page, 'SELLER', SELLER_A, '/seller-center/orders');
   const sellerRow = page.getByRole('row', { name: `Order ${orderId}` });
-  await expect(sellerRow.getByText('On hold', { exact: true })).toBeVisible();
+  await expect(sellerRow.getByText('To ship', { exact: true })).toBeVisible();
+  await expect(sellerRow.getByRole('button', { name: 'Arrange shipment' })).toBeVisible();
   await page.goto(`/seller-center/orders/${orderId}`);
-  await expect(page.getByRole('region', { name: 'Status history' })).toContainText('Unpaid → On hold');
+  await expect(page.getByRole('region', { name: 'Status history' })).toContainText('Unpaid → Awaiting shipment');
 
+  // an unpaid order: shipping it is an invalid jump the API refuses, and nothing changes
+  const buyer = await demoSession(request, 'BUYER', BUYER_A);
+  const unpaid = await placePaidOrder(request, buyer, 'sim-sku-a-BAG-NAT', 1, false);
   await page.goto('/console');
   await page.getByRole('navigation', { name: 'Test Console navigation' }).getByRole('button', { name: 'Orders', exact: true }).click();
-  const row = page.getByRole('row', { name: new RegExp(orderId) });
+  const row = page.getByRole('row', { name: new RegExp(unpaid) });
   await row.getByRole('button', { name: 'Awaiting collection' }).click(); // readable label; the API value is AWAITING_COLLECTION
-  await expect(page.getByRole('status').filter({ hasText: 'ON_HOLD -> AWAITING_COLLECTION is not allowed' })).toBeVisible(); // the console has more than one status region
-  await expect(row.getByText('On hold', { exact: true })).toBeVisible(); // unchanged
-
-  // move the business clock past the hold, then release
-  await request.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
-  await page.getByRole('button', { name: 'Release due holds' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Released 1 held order' })).toBeVisible();
-  await expect(page.getByRole('row', { name: new RegExp(orderId) }).getByText('Awaiting shipment', { exact: true })).toBeVisible();
-  await request.put('/test-admin/clock', { data: { reset: true } });
+  await expect(page.getByRole('status').filter({ hasText: 'UNPAID -> AWAITING_COLLECTION is not allowed' })).toBeVisible(); // the console has more than one status region
+  await expect(row.getByText('Unpaid', { exact: true })).toBeVisible(); // unchanged
+  await expect(page.getByRole('button', { name: 'Release due holds' })).toHaveCount(0);
 });

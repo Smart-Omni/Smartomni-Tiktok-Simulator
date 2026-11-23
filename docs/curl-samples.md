@@ -112,7 +112,6 @@ curl -s -X POST "${BASE_URL}${P}?app_key=${APP_KEY}&timestamp=${TS}&shop_cipher=
 Test Console / admin calls (token from your `.env`):
 
 ```bash
-curl -s -X POST http://localhost:8090/test-admin/orders/release-due -H "x-test-admin-token: $TEST_ADMIN_TOKEN"
 curl -s -X POST http://localhost:8090/test-admin/faults -H "x-test-admin-token: $TEST_ADMIN_TOKEN" -H "content-type: application/json" \
   -d '{"target":"WEBHOOK","kind":"REORDER","pathMatch":"ORDER_STATUS_CHANGE","remaining":1,"params":{"holdMs":60000}}'
 curl -s -X POST http://localhost:8090/test-admin/scenarios/loyalty-orders -H "x-test-admin-token: $TEST_ADMIN_TOKEN" -H "content-type: application/json" -d '{"shopId":"<shop row id>"}'

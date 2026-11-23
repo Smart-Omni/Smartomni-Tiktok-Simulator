@@ -18,7 +18,6 @@ const order = (id: string, status: OrderStatus, hour: number): Order => ({
   createdAt: `2026-10-21T${String(hour).padStart(2, '0')}:00:00.000Z`,
   updatedAt: `2026-10-21T${String(hour).padStart(2, '0')}:00:00.000Z`,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'An', phone: '0900000001', addressLine: 'x', district: 'y', city: 'z' },
@@ -34,7 +33,7 @@ const orders = [
   order('o5', 'IN_TRANSIT', 5),
   order('o6', 'DELIVERED', 6),
   order('o7', 'CANCELLED', 7),
-  order('o0', 'ON_HOLD', 0),
+  order('o0', 'AWAITING_SHIPMENT', 0),
 ];
 const request = (status: string) => ({ status }) as Aftersale;
 const aftersale = [request('RETURN_OR_REFUND_REQUEST_PENDING'), request('BUYER_SHIPPED_ITEM'), request('RETURN_OR_REFUND_REQUEST_COMPLETE')];
@@ -43,11 +42,11 @@ const conversations = [chat(1), chat(3), chat(0)];
 
 describe('sellerTodo', () => {
   it('counts the to-do items from orders, open aftersale requests and unread messages', () => {
-    expect(sellerTodo(orders, aftersale, conversations)).toEqual({ toPay: 2, onHold: 1, toShip: 3, inTransit: 1, returns: 2, unread: 4 });
-    expect(sellerTodo(undefined, undefined, undefined)).toEqual({ toPay: null, onHold: null, toShip: null, inTransit: null, returns: null, unread: null });
+    expect(sellerTodo(orders, aftersale, conversations)).toEqual({ toPay: 2, toShip: 3, inTransit: 1, returns: 2, unread: 4 });
+    expect(sellerTodo(undefined, undefined, undefined)).toEqual({ toPay: null, toShip: null, inTransit: null, returns: null, unread: null });
   });
 
-  it('counts To ship exactly like the Manage orders tab (ON_HOLD included)', () => {
+  it('counts To ship exactly like the Manage orders tab', () => {
     expect(sellerTodo(orders).toShip).toBe(countByTab(orders)['to-ship']);
     expect(countByTab(orders)).toEqual({ all: 8, unpaid: 2, 'to-ship': 3, shipped: 1, completed: 1, cancelled: 1 });
   });
@@ -110,7 +109,6 @@ describe('SellerHome', () => {
     const todo = screen.getByRole('region', { name: 'To-do list' });
     const expected: [string, string, string][] = [
       ['2To pay', '/seller-center/orders?tab=unpaid', 'To pay'],
-      ['1On hold', '/seller-center/orders?tab=to-ship', 'On hold'],
       ['3To ship', '/seller-center/orders?tab=to-ship', 'To ship'],
       ['1In transit', '/seller-center/orders?tab=shipped', 'In transit'],
       ['2Returns', '/seller-center/returns?status=open', 'Returns'],

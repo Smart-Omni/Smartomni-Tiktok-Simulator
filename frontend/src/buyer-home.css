@@ -7,7 +7,7 @@
 .buyer-order-status { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:7px; font-size:10px; font-weight:500; color:#687281; background:#f0f2f5; white-space:nowrap; }
 .buyer-order-status > span { width:5px; height:5px; background:currentColor; border-radius:50%; }
 .buyer-order-status[data-status=UNPAID] { color:#b2506c; background:#fff0f4; }
-.buyer-order-status:is([data-status=ON_HOLD],[data-status=AWAITING_SHIPMENT]) { color:#a87924; background:#fff5df; }
+.buyer-order-status[data-status=AWAITING_SHIPMENT] { color:#a87924; background:#fff5df; }
 .buyer-order-status:is([data-status=AWAITING_COLLECTION],[data-status=IN_TRANSIT]) { color:#447bb0; background:#ebf3fd; }
 .buyer-order-status[data-status=PARTIALLY_SHIPPING] { color:#8f65b4; background:#f3ecfc; }
 .buyer-order-status[data-status=DELIVERED] { color:#298a85; background:#e7f5f3; }

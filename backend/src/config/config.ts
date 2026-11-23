@@ -38,10 +38,6 @@ export interface AppConfig {
   orders: {
     /** Flat shipping fee (VND). A simulator choice. */
     shippingFeeVnd: number;
-    /** Minutes (business clock) an order stays ON_HOLD after payment before it is released to AWAITING_SHIPMENT. Simulator choice. */
-    holdMinutes: number;
-    /** Interval of the background release of due holds (0 disables it; /test-admin/orders/release-due always works). */
-    lifecycleIntervalMs: number;
   };
   webhook: {
     /** Rewrite localhost/127.0.0.1 subscription addresses to HOST_CALLBACK_BASE_URL (needed inside Docker). */
@@ -115,8 +111,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     orders: {
       shippingFeeVnd: int('ORDER_SHIPPING_FEE_VND', 25000, env),
-      holdMinutes: int('ORDER_HOLD_MINUTES', 30, env),
-      lifecycleIntervalMs: int('ORDER_LIFECYCLE_INTERVAL_MS', 5000, env),
     },
     webhook: { rewriteLocalhost: bool('WEBHOOK_REWRITE_LOCALHOST', false, env) },
     aftersale: { returnWindowDays: int('RETURN_WINDOW_DAYS', 15, env) },

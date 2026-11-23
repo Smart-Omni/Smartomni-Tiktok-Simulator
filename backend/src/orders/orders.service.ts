@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { BusinessClock } from '../clock/clock';
@@ -58,9 +58,7 @@ export type OrderRow = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
  * Business timestamps come from the business clock; worker scheduling and signatures never do.
  */
 @Injectable()
-export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
-  private readonly logger = new Logger(OrdersService.name);
-  private timer: NodeJS.Timeout | null = null;
+export class OrdersService {
   private readonly listeners: TransitionListener[] = [];
 
   constructor(
@@ -73,19 +71,6 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
   /** Other aggregates (packages, aftersale...) react to status changes in the same transaction. */
   addTransitionListener(listener: TransitionListener): void {
     this.listeners.push(listener);
-  }
-
-  onApplicationBootstrap(): void {
-    const { lifecycleIntervalMs } = this.config.orders;
-    if (this.config.worker.enabled && lifecycleIntervalMs > 0) {
-      this.timer = setInterval(() => {
-        this.releaseDue().catch((e: Error) => this.logger.warn(`release-due failed: ${e.message}`));
-      }, lifecycleIntervalMs);
-    }
-  }
-
-  onModuleDestroy(): void {
-    if (this.timer) clearInterval(this.timer);
   }
 
   // ---- cart -----------------------------------------------------------------------------------------------------
@@ -250,7 +235,10 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
 
   // ---- payment & transitions ------------------------------------------------------------------------------------
 
-  /** Fake payment (a /demo operation, not a TikTok API): UNPAID -> ON_HOLD. Paying twice is a no-op that reports `replayed`. */
+  /**
+   * Fake payment (a /demo operation, not a TikTok API): UNPAID -> AWAITING_SHIPMENT, no hold period (DECISIONS H1/H2); the fulfillment
+   * listener creates the TO_FULFILL package in the same transaction. Paying twice is a no-op that reports `replayed`.
+   */
   async pay(buyer: { id: string; shopId: string }, orderExternalId: string, requestId?: string): Promise<{ order: OrderRow; replayed: boolean }> {
     const order = await this.ownedByBuyer(buyer, orderExternalId);
     if (order.status !== 'UNPAID') {
@@ -258,21 +246,17 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
       return { order, replayed: true };
     }
     const now = this.clock.now();
-    const res = await this.transition(order.id, 'ON_HOLD', 'BUYER', {
-      note: 'fake payment',
-      requestId,
-      patch: { paidAt: now, releaseAt: new Date(now.getTime() + this.config.orders.holdMinutes * 60_000), isOnHold: true },
-    }).catch((e) => {
+    const res = await this.transition(order.id, 'AWAITING_SHIPMENT', 'BUYER', { note: 'fake payment', requestId, patch: { paidAt: now } }).catch((e) => {
       if (e instanceof ConflictException) return null; // lost a race with a concurrent pay/cancel: re-read below
       throw e;
     });
     return { order: res ?? (await this.mustFind(order.id)), replayed: res === null };
   }
 
-  /** Buyer cancel: immediate while UNPAID/ON_HOLD (no approval needed); later it is only a request flag (approval is Phase 07). */
+  /** Buyer cancel: immediate while UNPAID (no approval needed); a paid order is only a request (DECISIONS H7, D07b-5). */
   async buyerCancel(buyer: { id: string; shopId: string }, orderExternalId: string, reason: string, requestId?: string): Promise<OrderRow> {
     const order = await this.ownedByBuyer(buyer, orderExternalId);
-    if (order.status === 'UNPAID' || order.status === 'ON_HOLD') {
+    if (order.status === 'UNPAID') {
       return this.transition(order.id, 'CANCELLED', 'BUYER', { note: reason, requestId, cancelReason: reason, initiator: 'BUYER' });
     }
     if (order.status === 'CANCELLED') return order;
@@ -299,7 +283,7 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
       const current = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
       if (!current) throw new NotFoundException('Unknown order');
       if (!canTransition(current.status, to)) {
-        throw new OrderRuleError('invalid_transition', `${current.status} -> ${to} is not allowed${current.status === 'ON_HOLD' ? ' (an ON_HOLD order cannot be shipped)' : ''}`);
+        throw new OrderRuleError('invalid_transition', `${current.status} -> ${to} is not allowed${current.status === 'UNPAID' && to !== 'CANCELLED' && to !== 'AWAITING_SHIPMENT' ? ' (an UNPAID order cannot be shipped)' : ''}`);
       }
       const now = this.clock.now();
       const data: Prisma.OrderUncheckedUpdateManyInput = { ...(opts.patch ?? {}), status: to, updatedAt: now };
@@ -353,25 +337,10 @@ export class OrdersService implements OnApplicationBootstrap, OnModuleDestroy {
     }
   }
 
-  /** Releases every ON_HOLD order whose hold period (business clock) has elapsed. Returns the released order ids. */
-  async releaseDue(): Promise<string[]> {
-    const due = await this.prisma.order.findMany({ where: { status: 'ON_HOLD', releaseAt: { lte: this.clock.now() } }, select: { id: true, externalId: true }, orderBy: { seq: 'asc' } });
-    const released: string[] = [];
-    for (const o of due) {
-      try {
-        await this.transition(o.id, 'AWAITING_SHIPMENT', 'SYSTEM', { note: 'hold period elapsed' });
-        released.push(o.externalId);
-      } catch (e) {
-        if (!(e instanceof ConflictException) && !(e instanceof OrderRuleError)) throw e; // someone else moved it first
-      }
-    }
-    return released;
-  }
-
   // ---- reads ----------------------------------------------------------------------------------------------------
 
   eventData(o: OrderRow): Record<string, unknown> {
-    return { order_id: o.externalId, order_status: o.status, is_on_hold_order: o.isOnHold, update_time: Math.floor(o.updatedAt.getTime() / 1000) };
+    return { order_id: o.externalId, order_status: o.status, is_on_hold_order: false, update_time: Math.floor(o.updatedAt.getTime() / 1000) };
   }
 
   async listForBuyer(buyerId: string, shopId?: string): Promise<OrderRow[]> {

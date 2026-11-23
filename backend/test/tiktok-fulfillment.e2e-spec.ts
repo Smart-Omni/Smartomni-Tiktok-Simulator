@@ -36,38 +36,38 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     await app.get(PersistentBusinessClock).reset();
   });
 
-  async function placeOrder(buyer: { token: string; shopId: string }, key: string, skuId = SKU, hold = true) {
+  /** Checkout, and (by default) pay: a paid order is AWAITING_SHIPMENT at once, with its TO_FULFILL package. */
+  async function placeOrder(buyer: { token: string; shopId: string }, key: string, skuId = SKU, pay = true) {
     const c = await t.checkout(buyer, [{ skuId, quantity: 2 }], key).expect(201);
-    await t.pay(buyer, c.body.order.id).expect(201);
-    if (!hold) await release();
+    if (pay) await t.pay(buyer, c.body.order.id).expect(201);
     return c.body.order.id as string;
   }
-  const release = async () => {
-    await http.put('/test-admin/clock').set(admin).send({ advanceMs: (cfg.orders.holdMinutes + 1) * 60_000 }).expect(200);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
-  };
   const packageIdOf = async (orderId: string) => (await prisma.package.findFirstOrThrow({ where: { order: { externalId: orderId } } })).externalId;
   const arrange = (seller: { token: string; shopId: string }, orderId: string) => http.post(`/demo/shops/${seller.shopId}/orders/${orderId}/arrange-shipment`).set('x-demo-session', seller.token).send({});
   const advance = (seller: { token: string; shopId: string }, orderId: string) => http.post(`/demo/shops/${seller.shopId}/orders/${orderId}/advance-shipment`).set('x-demo-session', seller.token).send({});
 
   describe('shipping rules', () => {
-    it('refuses to arrange shipment while the order is ON_HOLD, with a clear code, and creates no package', async () => {
+    it('refuses to arrange shipment while the order is UNPAID, with a clear code, and creates no package', async () => {
       const seller = await t.sellerSession(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-hold-01');
+      const id = await placeOrder(buyer, 'key-ful-hold-01', SKU, false);
       const r = await arrange(seller, id);
       expect(r.status).toBe(400);
-      expect(r.body.code).toBe('order_on_hold');
+      expect(r.body.code).toBe('order_unpaid');
       expect(await prisma.package.count()).toBe(0);
       const view = (await http.get(`/demo/shops/${seller.shopId}/orders/${id}/fulfillment`).set('x-demo-session', seller.token).expect(200)).body;
-      expect(view.blockedReason).toBe('order_on_hold');
+      expect(view.blockedReason).toBe('order_unpaid');
       expect(view.package).toBeNull();
+      // paying makes it shippable at once: no hold period, the package exists right away
+      await t.pay(buyer, id).expect(201);
+      const ready = (await http.get(`/demo/shops/${seller.shopId}/orders/${id}/fulfillment`).set('x-demo-session', seller.token).expect(200)).body;
+      expect(ready).toMatchObject({ orderStatus: 'AWAITING_SHIPMENT', canArrange: true, blockedReason: null, package: { status: 'TO_FULFILL' } });
     });
 
-    it('creates a TO_FULFILL package when the hold ends; arrange -> collect -> deliver walks the order and package; DELIVERED is not COMPLETED', async () => {
+    it('creates a TO_FULFILL package on payment; arrange -> collect -> deliver walks the order and package; DELIVERED is not COMPLETED', async () => {
       const seller = await t.sellerSession(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-flow-01', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-flow-01', SKU);
       const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
       expect(pkg).toMatchObject({ status: 'TO_FULFILL', trackingNumber: null });
       const arranged = (await arrange(seller, id).expect(201)).body;
@@ -86,7 +86,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
       const seller = await t.sellerSession(0);
       const buyer = await t.buyerSession(0);
       const a = await t.connect(0);
-      const id = await placeOrder(buyer, 'key-ful-idem-01', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-idem-01', SKU);
       const first = (await arrange(seller, id).expect(201)).body;
       const second = (await arrange(seller, id).expect(201)).body;
       expect(second.package.trackingNumber).toBe(first.package.trackingNumber);
@@ -99,7 +99,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     it('cancelling after arrange cancels the package and records a tracking event', async () => {
       const seller = await t.sellerSession(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-canc-01', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-canc-01', SKU);
       await arrange(seller, id).expect(201);
       await http.post(`/demo/shops/${seller.shopId}/orders/${id}/cancel`).set('x-demo-session', seller.token).send({ reason: 'out of packaging' }).expect(201);
       const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
@@ -110,7 +110,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
 
     it('the Test Console jump to IN_TRANSIT also keeps package and tracking consistent', async () => {
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-tc-0001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-tc-0001', SKU);
       await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'AWAITING_COLLECTION' }).expect(201);
       await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'IN_TRANSIT' }).expect(201);
       const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
@@ -124,7 +124,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
       const a = await t.connect(0);
       const seller = a.seller;
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-trk-001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-trk-001', SKU);
       expect((await t.call('GET', tracking(id), a.accessToken).expect(200)).body.data.tracking).toEqual([]);
       await arrange(seller, id).expect(201);
       await http.put('/test-admin/clock').set(admin).send({ advanceMs: 60_000 }).expect(200);
@@ -148,7 +148,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     it('package detail conforms to the schema and carries the package/order/line ids', async () => {
       const a = await t.connect(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-det-001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-det-001', SKU);
       const pkgId = await packageIdOf(id);
       const order = (await t.call('GET', '/order/202507/orders', a.accessToken, { query: { ids: id } }).expect(200)).body.data.orders[0];
       expect(order.packages).toEqual([{ id: pkgId }]);
@@ -165,7 +165,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
       const b = await t.connect(1);
       const seller = a.seller;
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-iso-001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-iso-001', SKU);
       await arrange(seller, id).expect(201);
       const pkgId = await packageIdOf(id);
       for (const [path, query] of [[tracking(id), undefined], [pkgPath(pkgId), undefined], [`${pkgPath(pkgId)}/shipping_documents`, { document_type: 'SHIPPING_LABEL' }]] as const) {
@@ -190,13 +190,12 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
   });
 
   describe('POST ship package', () => {
-    it('ships an AWAITING_SHIPMENT package once; ON_HOLD orders have no package to ship; bad bodies are invalid_input', async () => {
+    it('ships an AWAITING_SHIPMENT package once; UNPAID orders have no package to ship; bad bodies are invalid_input', async () => {
       const a = await t.connect(0);
       const buyer = await t.buyerSession(0);
-      const held = await placeOrder(buyer, 'key-ful-ship-hold');
-      expect(await prisma.package.count({ where: { order: { externalId: held } } })).toBe(0);
-      const ready = await placeOrder(buyer, 'key-ful-ship-rdy1', SKU, true);
-      await release();
+      const unpaid = await placeOrder(buyer, 'key-ful-ship-hold', SKU, false);
+      expect(await prisma.package.count({ where: { order: { externalId: unpaid } } })).toBe(0);
+      const ready = await placeOrder(buyer, 'key-ful-ship-rdy1');
       const pkgId = await packageIdOf(ready);
       for (const body of [{ handover_method: 'TELEPORT' }, { nope: 1 }, { self_shipment: { shipping_provider_id: 'x', tracking_number: 'y' } }]) {
         const bad = await t.call('POST', `${pkgPath(pkgId)}/ship`, a.accessToken, { body });
@@ -212,7 +211,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     it('a cancelled order cannot be shipped', async () => {
       const a = await t.connect(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-ship-canc', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-ship-canc', SKU);
       const pkgId = await packageIdOf(id);
       await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'CANCELLED' }).expect(201);
       const r = await t.call('POST', `${pkgPath(pkgId)}/ship`, a.accessToken, { body: {} });
@@ -225,7 +224,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
     async function arranged() {
       const a = await t.connect(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-doc-0001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-doc-0001', SKU);
       await arrange(a.seller, id).expect(201);
       return { a, id, pkgId: await packageIdOf(id) };
     }
@@ -282,7 +281,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
         expect(r.body.simulator_fault.kind).toBe('invalid_input');
       }
       const buyer = await t.buyerSession(0);
-      const fresh = await placeOrder(buyer, 'key-ful-doc-0002', SKU, false);
+      const fresh = await placeOrder(buyer, 'key-ful-doc-0002', SKU);
       const freshPkg = await packageIdOf(fresh);
       const early = await docs(a.accessToken, freshPkg, { document_type: 'SHIPPING_LABEL' });
       expect(early.status).toBe(400);
@@ -319,7 +318,7 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
       const a = await t.connect(0);
       await t.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'PACKAGE_UPDATE', address: 'http://localhost:9/pkg' } }).expect(200);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-ful-hook-001', SKU, false);
+      const id = await placeOrder(buyer, 'key-ful-hook-001', SKU);
       await arrange(a.seller, id).expect(201);
       await advance(a.seller, id).expect(201);
       await advance(a.seller, id).expect(201);

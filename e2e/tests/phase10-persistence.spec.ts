@@ -92,10 +92,10 @@ test.beforeAll(async ({ baseURL }) => {
   const bh = { 'x-demo-session': buyer.token };
   const sh = { 'x-demo-session': seller.token };
 
-  // an order (paid, then released and shipped far enough to have a package + label)
+  // an order (paid, so AWAITING_SHIPMENT at once, then shipped far enough to have a package + label)
   const orderId = await placePaidOrder(api, buyer, SKU, 1);
+  // move the business clock so the restart check below can prove its offset is persisted
   await api.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
-  await api.post('/test-admin/orders/release-due', { data: {} });
   expect((await api.post(`/demo/shops/${seller.shopId}/orders/${orderId}/arrange-shipment`, { headers: sh, data: {} })).ok()).toBe(true);
   const label = await (await api.post(`/demo/shops/${seller.shopId}/orders/${orderId}/shipping-label`, { headers: sh, data: {} })).json();
 
@@ -159,7 +159,7 @@ async function assertSurvived(baseURL: string | undefined) {
     // the order and its history
     const detail = await (await api.get(`/demo/shops/${f.shopId}/orders/${f.orderId}`, { headers: { 'x-demo-session': f.sellerToken } })).json();
     expect(detail.order.status).toBe('AWAITING_COLLECTION');
-    expect(detail.history.map((h: { to: string }) => h.to)).toEqual(expect.arrayContaining(['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT', 'AWAITING_COLLECTION']));
+    expect(detail.history.map((h: { to: string }) => h.to)).toEqual(expect.arrayContaining(['UNPAID', 'AWAITING_SHIPMENT', 'AWAITING_COLLECTION']));
     // webhook job + attempts
     const hooks = await (await api.get(`/test-admin/webhooks?shopId=${f.shopId}`)).json();
     const job = hooks.items.find((j: { id: string }) => j.id === f.webhookJobId);

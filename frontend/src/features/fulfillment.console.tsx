@@ -12,7 +12,6 @@ interface AdminOrder {
   id: string;
   buyerName: string;
   status: string;
-  releaseAt: string | null;
 }
 
 const STEP: Record<string, string> = { AWAITING_SHIPMENT: 'AWAITING_COLLECTION', AWAITING_COLLECTION: 'IN_TRANSIT', IN_TRANSIT: 'DELIVERED' };
@@ -45,7 +44,7 @@ export function FulfillmentPanel({ shopId }: { shopId: string }) {
                   <td><span className="pill" data-tone={statusTone(o.status)}>{o.status}</span></td>
                   <td>
                     {STEP[o.status] ? <button data-tone={statusTone(STEP[o.status])} onClick={() => void go(o.id, STEP[o.status])}>{STEP[o.status]}</button> : null}
-                    {o.status === 'ON_HOLD' ? <button data-tone="warning" onClick={() => void go(o.id, 'AWAITING_COLLECTION')}>Try to ship (expect refusal)</button> : !STEP[o.status] && <span className="muted">—</span>}
+                    {o.status === 'UNPAID' ? <button data-tone="warning" onClick={() => void go(o.id, 'AWAITING_COLLECTION')}>Try to ship (expect refusal)</button> : !STEP[o.status] && <span className="muted">—</span>}
                   </td>
                 </tr>
               ))}

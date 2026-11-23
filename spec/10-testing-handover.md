@@ -75,3 +75,5 @@ Backend/API tests, JSON Schema/OpenAPI validators, Playwright, JUnit/Mockito, Po
 - BLOCKED / chưa làm: bước 5 (integration test SmartOmni với PostgreSQL/RabbitMQ thật) và bước 11 (review migration SmartOmni) vì phần SmartOmni chưa được viết trong lượt này (repo platform chỉ để tham khảo); không có bằng chứng luồng Buyer → simulator → SmartOmni → inventory; không có test AI thật (Python service ngoài repo); không gọi TikTok thật; mọi operation vẫn `unverified`.
 - Checkbox `00-overview.md` KHÔNG được tick (việc của reviewer).
 - Ngày hoàn thành: chưa (PARTIAL).
+
+> **Note (later change):** the ON_HOLD status, the hold period and `POST /test-admin/orders/release-due` described here were removed. Payment now moves an order straight to AWAITING_SHIPMENT. See `docs/remove-on-hold-plan.md` and DECISIONS H1-H13.

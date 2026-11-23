@@ -18,7 +18,6 @@ const order = (id: string, status: OrderStatus, hour: number, buyer = 'Lê Thu H
   createdAt: `2026-10-21T${String(hour).padStart(2, '0')}:00:00.000Z`,
   updatedAt: `2026-10-21T${String(hour).padStart(2, '0')}:00:00.000Z`,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: buyer, phone: '0900000002', addressLine: '45 Trần Phú', district: 'Hà Đông', city: 'Hà Nội' },
@@ -30,7 +29,7 @@ const order = (id: string, status: OrderStatus, hour: number, buyer = 'Lê Thu H
 
 const orders = [
   order('o1', 'UNPAID', 1),
-  order('o2', 'ON_HOLD', 2, 'Lê Thu Hà', { releaseAt: '2026-10-21T05:35:00.000Z' }),
+  order('o2', 'AWAITING_SHIPMENT', 2, 'Lê Thu Hà'),
   order('o3', 'AWAITING_SHIPMENT', 3, 'Trần Văn An'),
   order('o4', 'AWAITING_COLLECTION', 4),
   order('o5', 'IN_TRANSIT', 5, 'Lê Thu Hà', { paidAt: '2026-10-21T05:05:00.000Z' }),
@@ -39,8 +38,7 @@ const orders = [
 ];
 const history: OrderHistoryEntry[] = [
   { from: null, to: 'UNPAID', actor: 'BUYER', note: 'checkout', at: '2026-10-21T05:00:00.000Z' },
-  { from: 'UNPAID', to: 'ON_HOLD', actor: 'BUYER', note: 'fake payment', at: '2026-10-21T05:05:00.000Z' },
-  { from: 'ON_HOLD', to: 'AWAITING_SHIPMENT', actor: 'SYSTEM', note: 'hold period elapsed', at: '2026-10-21T05:20:00.000Z' },
+  { from: 'UNPAID', to: 'AWAITING_SHIPMENT', actor: 'BUYER', note: 'fake payment', at: '2026-10-21T05:05:00.000Z' },
   { from: 'AWAITING_SHIPMENT', to: 'AWAITING_COLLECTION', actor: 'SELLER', note: 'arrange shipment', at: '2026-10-21T06:00:00.000Z' },
   { from: 'AWAITING_COLLECTION', to: 'IN_TRANSIT', actor: 'SYSTEM', note: 'carrier collected', at: '2026-10-21T07:00:00.000Z' },
 ];
@@ -57,7 +55,6 @@ describe('seller order rules', () => {
   it('maps every status to one tab', () => {
     const expected: Record<OrderStatus, string> = {
       UNPAID: 'unpaid',
-      ON_HOLD: 'to-ship',
       AWAITING_SHIPMENT: 'to-ship',
       AWAITING_COLLECTION: 'to-ship',
       PARTIALLY_SHIPPING: 'shipped',
@@ -71,7 +68,6 @@ describe('seller order rules', () => {
 
   it('offers the actions of each status', () => {
     expect(sellerActionsFor('UNPAID', false)).toEqual(['cancel']);
-    expect(sellerActionsFor('ON_HOLD', false)).toEqual(['cancel']);
     expect(sellerActionsFor('AWAITING_SHIPMENT', false)).toEqual(['arrange', 'cancel']);
     expect(sellerActionsFor('AWAITING_COLLECTION', true)).toEqual(['label', 'advance']);
     expect(sellerActionsFor('AWAITING_COLLECTION', false)).toEqual(['advance']);
@@ -84,8 +80,15 @@ describe('seller order rules', () => {
   it('places the order on the progress bar, also when cancelled', () => {
     expect(orderProgress(orders[4], history)).toMatchObject({ current: 3, cancelled: false });
     expect(orderProgress(orders[4], history).at[1]).toBe('2026-10-21T05:05:00.000Z');
-    const cancelled = orderProgress(order('x', 'CANCELLED', 1), [history[0], history[1], { from: 'ON_HOLD', to: 'CANCELLED', actor: 'SELLER', note: 'Out of stock', at: '2026-10-21T06:00:00.000Z' }]);
+    const cancelled = orderProgress(order('x', 'CANCELLED', 1), [history[0], history[1], { from: 'AWAITING_SHIPMENT', to: 'CANCELLED', actor: 'SELLER', note: 'Out of stock', at: '2026-10-21T06:00:00.000Z' }]);
     expect(cancelled).toMatchObject({ current: 1, cancelled: true });
+    // history written before ON_HOLD was removed still counts as paid (DECISIONS H12)
+    const legacy = orderProgress(order('y', 'CANCELLED', 1), [
+      history[0],
+      { from: 'UNPAID', to: 'ON_HOLD', actor: 'BUYER', note: 'fake payment', at: '2026-10-21T05:05:00.000Z' },
+      { from: 'ON_HOLD', to: 'CANCELLED', actor: 'BUYER', note: 'x', at: '2026-10-21T05:10:00.000Z' },
+    ]);
+    expect(legacy).toMatchObject({ current: 1, cancelled: true });
   });
 });
 
@@ -152,9 +155,7 @@ describe('Seller Center orders', () => {
     await waitFor(() => expect(within(row('o4')).getByText('SIM-o4')).toBeTruthy());
     await waitFor(() => expect(within(row('o6')).getByText('SIM-o6')).toBeTruthy());
     expect(buttons(row('o1'))).toEqual(['Cancel order']);
-    expect(buttons(row('o2'))).toEqual(['Cancel order']);
-    expect(within(row('o2')).getByText(/^On hold until \d{2}\/\d{2}, \d{2}:\d{2}$/)).toBeTruthy();
-    expect(within(row('o2')).getByRole('link', { name: 'Skip the wait: Test Console → Orders → Release due holds' }).getAttribute('href')).toBe('/console');
+    expect(buttons(row('o2'))).toEqual(['Arrange shipment', 'Cancel order']);
     expect(buttons(row('o3'))).toEqual(['Arrange shipment', 'Cancel order']);
     expect(buttons(row('o4'))).toEqual(['Print label', 'Simulate carrier']);
     expect(buttons(row('o5'))).toEqual(['Print label', 'Simulate carrier']);
@@ -198,8 +199,8 @@ describe('Seller Center orders', () => {
     expect(within(progress).getByText('In transit').closest('li')?.getAttribute('aria-current')).toBe('step');
 
     const historyRows = within(screen.getByRole('region', { name: 'Status history' })).getAllByRole('row').slice(1);
-    expect(historyRows).toHaveLength(5);
-    expect(historyRows[1].textContent).toContain('Unpaid → On hold');
+    expect(historyRows).toHaveLength(4);
+    expect(historyRows[1].textContent).toContain('Unpaid → Awaiting shipment');
     expect(historyRows[1].textContent).toContain('Buyer');
     expect(historyRows[1].textContent).toContain('fake payment');
 

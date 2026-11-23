@@ -22,7 +22,6 @@ export function greeting(now: Date): string {
 
 export interface SellerTodo {
   toPay: number;
-  onHold: number;
   toShip: number;
   inTransit: number;
   returns: number;
@@ -34,8 +33,6 @@ export function sellerTodo(orders?: Order[], aftersale?: Aftersale[], conversati
   const tabs = orders ? countByTab(orders) : null;
   return {
     toPay: tabs?.unpaid ?? null,
-    // part of To ship, shown on its own because these orders cannot be shipped yet
-    onHold: orders ? orders.filter((o) => o.status === 'ON_HOLD').length : null,
     toShip: tabs?.['to-ship'] ?? null,
     inTransit: tabs?.shipped ?? null,
     returns: aftersale ? aftersale.filter((r) => OPEN_AFTERSALE.includes(r.status)).length : null,
@@ -190,7 +187,6 @@ function Home({ seller }: { seller: DemoSession }) {
   const todo = sellerTodo(orders.data?.items, aftersale.data?.items, chats.data?.items);
   const tiles: { label: string; count: number | null; to: string; source: AsyncResult<unknown> }[] = [
     { label: 'To pay', count: todo.toPay, to: '/seller-center/orders?tab=unpaid', source: orders },
-    { label: 'On hold', count: todo.onHold, to: '/seller-center/orders?tab=to-ship', source: orders },
     { label: 'To ship', count: todo.toShip, to: '/seller-center/orders?tab=to-ship', source: orders },
     { label: 'In transit', count: todo.inTransit, to: '/seller-center/orders?tab=shipped', source: orders },
     { label: 'Returns', count: todo.returns, to: '/seller-center/returns?status=open', source: aftersale },
