@@ -61,3 +61,5 @@ Callback URL là endpoint SmartOmni; các topic, chữ ký và JSON event phải
 - Chưa làm / BLOCKED: phần SmartOmni (bước 6-11: xác minh chữ ký + idempotency + polling bù + chặn sửa tay) - repo platform chỉ để tham khảo, yêu cầu ghi tại `docs/smartomni-requirements/phase-05.md`; bằng chứng Buyer → simulator → SmartOmni → inventory (cần Phase 06 + SmartOmni); Playwright (xem PROGRESS.md).
 - Quyết định/blocker: xem `DECISIONS.md` (D2-D8). Mọi hành vi chuyển trạng thái, `type` webhook ngoài ORDER_STATUS_CHANGE=1, thời lượng ON_HOLD đều là lựa chọn của simulator, chưa xác minh.
 - Ngày hoàn thành: chưa (PARTIAL).
+
+> **Note (later change):** the ON_HOLD status, the hold period and `POST /test-admin/orders/release-due` described here were removed. Payment now moves an order straight to AWAITING_SHIPMENT. See `docs/remove-on-hold-plan.md` and DECISIONS H1-H13.

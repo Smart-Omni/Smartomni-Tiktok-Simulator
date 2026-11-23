@@ -63,3 +63,5 @@ None known in the simulator. Fixed during this run (see `DECISIONS.md` C1-C4): r
 - Branches `phase-06`, `phase-07a`, `phase-07b`, `phase-08`, `phase-09a` and local worktrees `../sim-wt-*` exist for traceability; remove the worktrees with `git worktree remove ../sim-wt-06` etc. after review.
 - The platform repo is back on its original branch (`feature/docs-github-workflow`) with its own uncommitted work untouched by this run. Earlier in the session (phases 03-04) I had added files there; they remain uncommitted and are not part of this report.
 - Tokens issued before a phase added a scope must re-authorize (all new `sim.*` scopes are in `backend/src/oauth/scopes.ts`).
+
+> **Note (later change):** ON_HOLD was removed from the simulator (`docs/remove-on-hold-plan.md`, DECISIONS H1-H13). Rows above that mention ON_HOLD or release-due describe the state at the time they were written.

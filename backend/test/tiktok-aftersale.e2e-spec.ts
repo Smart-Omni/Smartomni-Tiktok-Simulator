@@ -43,15 +43,12 @@ describe('Phase 07b: cancellations, returns/refunds and aftersale', () => {
   // ---------- helpers ----------
   const stockOf = async (sku: string) => (await prisma.inventoryLevel.findMany({ where: { sku: { externalId: sku, shopId: shopAId } } })).reduce((n, l) => n + l.quantity, 0);
   const transition = (id: string, to: string) => http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to }).expect(201);
-  const advanceClock = (ms: number) => http.put('/test-admin/clock').set(admin).send({ advanceMs: ms }).expect(200);
 
-  /** A paid order released from hold (AWAITING_SHIPMENT). */
+  /** A paid order (AWAITING_SHIPMENT right after payment). */
   async function paidOrder(buyer: { token: string; shopId: string }, key: string, quantity = 1, sku = BAG) {
     const c = await t.checkout(buyer, [{ skuId: sku, quantity }], key).expect(201);
     const id = c.body.order.id as string;
     await t.pay(buyer, id).expect(201);
-    await advanceClock((cfg.orders.holdMinutes + 1) * 60_000);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
     return id;
   }
   async function deliveredOrder(buyer: { token: string; shopId: string }, key: string, quantity = 3, sku = BAG) {
@@ -240,18 +237,22 @@ describe('Phase 07b: cancellations, returns/refunds and aftersale', () => {
       expect(await prisma.aftersaleLine.count({ where: { requestId: (await prisma.aftersaleRequest.findFirstOrThrow({ where: { externalId: rid } })).id, active: true } })).toBe(0);
     });
 
-    it('UNPAID and ON_HOLD buyer cancels are immediate and create NO aftersale record; a seller cancel of a paid order is recorded as CANCEL', async () => {
+    it('an UNPAID buyer cancel is immediate with NO aftersale record; a paid buyer cancel is a pending BUYER_CANCEL; a seller cancel of a paid order is CANCEL', async () => {
       const buyer = await t.buyerSession(0);
       const c1 = await t.checkout(buyer, [{ skuId: BAG, quantity: 1 }], 'key-can-0003').expect(201);
-      await http.post(`/demo/shops/${buyer.shopId}/orders/${c1.body.order.id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'x' }).expect(201);
+      const r1 = await http.post(`/demo/shops/${buyer.shopId}/orders/${c1.body.order.id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'x' }).expect(201);
+      expect(r1.body.order.status).toBe('CANCELLED');
+      expect(await prisma.aftersaleRequest.count()).toBe(0);
+      // paid orders go straight to AWAITING_SHIPMENT (no hold), so a buyer cancel is a request the seller approves (DECISIONS H7)
       const c2 = await t.checkout(buyer, [{ skuId: BAG, quantity: 1 }], 'key-can-0004').expect(201);
       await t.pay(buyer, c2.body.order.id).expect(201);
-      await http.post(`/demo/shops/${buyer.shopId}/orders/${c2.body.order.id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'x' }).expect(201);
-      expect(await prisma.aftersaleRequest.count()).toBe(0);
+      const r2 = await http.post(`/demo/shops/${buyer.shopId}/orders/${c2.body.order.id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'x' }).expect(201);
+      expect(r2.body.order).toMatchObject({ status: 'AWAITING_SHIPMENT', buyerRequestedCancel: true });
+      expect(await prisma.aftersaleRequest.findFirstOrThrow()).toMatchObject({ kind: 'CANCELLATION', type: 'BUYER_CANCEL', role: 'BUYER' });
       const id = await paidOrder(buyer, 'key-can-0005', 1);
       const seller = await t.sellerSession(0);
       await http.post(`/demo/shops/${seller.shopId}/orders/${id}/cancel`).set('x-demo-session', seller.token).send({ reason: 'out of stock' }).expect(201);
-      const rec = await prisma.aftersaleRequest.findFirstOrThrow();
+      const rec = await prisma.aftersaleRequest.findFirstOrThrow({ where: { order: { externalId: id } } });
       expect(rec).toMatchObject({ kind: 'CANCELLATION', type: 'CANCEL', status: 'CANCELLATION_REQUEST_SUCCESS', role: 'SELLER' });
     });
 

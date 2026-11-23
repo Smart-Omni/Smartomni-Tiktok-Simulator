@@ -35,12 +35,9 @@ describe('OAS alignment P1: Search Packages, Batch Ship, Read Message, Create Co
     token = (await t.connect(0)).accessToken;
   });
 
-  const advanceClock = (ms: number) => http.put('/test-admin/clock').set(admin).send({ advanceMs: ms }).expect(200);
   async function awaitingShipment(buyer: { token: string; shopId: string }, key: string) {
     const id = (await t.checkout(buyer, [{ skuId: BAG, quantity: 1 }], key).expect(201)).body.order.id as string;
     await t.pay(buyer, id).expect(201);
-    await advanceClock((cfg.orders.holdMinutes + 1) * 60_000);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
     const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
     return { orderId: id, packageId: pkg.externalId };
   }

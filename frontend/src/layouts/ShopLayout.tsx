@@ -12,17 +12,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { loginUrl } from '@/components/RequireRole';
 import { useAuth } from '@/lib/auth';
-import { getMe } from '@/lib/endpoints';
+import { getMe, getMarketplaceCart } from '@/lib/endpoints';
 import type { DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
+import tiktokShopLogo from '@/assets/tiktok-shop-logo.svg';
 
 const nav: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'For you', icon: Compass },
   { to: '/seller-center', label: 'Sell', icon: Store },
 ];
-
-const footerLinks = ['Company', 'Program', 'Terms & Policies'];
 
 export function Logo({ withName = false, className }: { withName?: boolean; className?: string }) {
   return (
@@ -43,40 +42,6 @@ function MoreMenu({ children }: { children: ReactNode }) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-/** Home only: full sidebar (280px). */
-function Sidebar({ className }: { className?: string }) {
-  return (
-    <aside className={cn('fixed inset-y-0 left-0 z-40 w-[280px] flex-col border-r border-line-soft bg-white px-4 py-5', className)}>
-      <Logo withName className="px-2" />
-      <nav className="mt-6 flex flex-col gap-1">
-        {nav.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end
-            className={({ isActive }) =>
-              cn('flex h-12 items-center gap-3 rounded-lg px-3 text-[17px] font-semibold hover:bg-surface-2', isActive ? 'text-buyer' : 'text-ink')
-            }
-          >
-            <Icon className="size-6" />
-            {label}
-          </NavLink>
-        ))}
-        <MoreMenu>
-          <button type="button" className="flex h-12 cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-[17px] font-semibold hover:bg-surface-2">
-            <Ellipsis className="size-6" />
-            More
-          </button>
-        </MoreMenu>
-      </nav>
-      <footer className="mt-auto flex flex-col gap-1 border-t border-line-soft px-2 pt-4 text-xs text-muted-2">
-        {footerLinks.map((l) => <span key={l}>{l}</span>)}
-        <span className="mt-2">© 2026 Tiptop Shop · simulator, fake data</span>
-      </footer>
-    </aside>
   );
 }
 
@@ -102,7 +67,7 @@ function Rail({ className }: { className?: string }) {
   );
 }
 
-function SearchPill() {
+function SearchPill({ wide = false }: { wide?: boolean }) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const urlQ = params.get('q') ?? '';
@@ -115,8 +80,8 @@ function SearchPill() {
     navigate(term ? `/?q=${encodeURIComponent(term)}` : '/');
   };
   return (
-    <form role="search" onSubmit={submit} className="flex h-10 w-full max-w-[360px] items-center gap-2 rounded-full bg-surface px-4 focus-within:ring-2 focus-within:ring-ring/40">
-      <Search className="size-4 shrink-0 text-muted-foreground" />
+    <form role="search" onSubmit={submit} className={cn("flex w-full items-center gap-2 focus-within:ring-2 focus-within:ring-ring/40", wide ? "buyer-header-search" : "h-10 max-w-[360px] rounded-full bg-surface px-4")}>
+      {!wide && <Search className="size-4 shrink-0 text-muted-foreground" />}
       <input
         type="search"
         value={q}
@@ -125,6 +90,7 @@ function SearchPill() {
         aria-label="Search products"
         className="h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-2"
       />
+      {wide && <button type="submit" aria-label="Search" className="buyer-home-search-button"><Search size={20} /></button>}
     </form>
   );
 }
@@ -165,6 +131,16 @@ function BuyerMenu({ buyer }: { buyer: DemoSession }) {
   );
 }
 
+function HeaderCart({ buyer }: { buyer: DemoSession | null }) {
+  const cart = useAsync(() => buyer ? getMarketplaceCart(buyer) : Promise.resolve(null), [buyer?.sessionToken]);
+  useEffect(() => {
+    window.addEventListener('shop-cart-updated', cart.reload);
+    return () => window.removeEventListener('shop-cart-updated', cart.reload);
+  }, [cart.reload]);
+  const count = buyer ? cart.data?.shops?.reduce((sum, group) => sum + group.items.reduce((n, item) => n + item.quantity, 0), 0) ?? 0 : 0;
+  return <Link to="/cart" className="buyer-header-cart" aria-label={`Cart (${count})`}><ShoppingCart size={23} /><span className="buyer-cart-count">{count > 99 ? '99+' : count}</span></Link>;
+}
+
 function AccountPill() {
   const { buyer } = useAuth();
   const location = useLocation();
@@ -196,23 +172,39 @@ function AccountPill() {
 
 /** Buyer shell for /, /product/:id, /cart, /checkout and /account/*. */
 export function ShopLayout() {
-  const home = useLocation().pathname === '/';
+  const location = useLocation();
+  const pathname = location.pathname;
+  const home = pathname === '/' || pathname.startsWith('/product/') || pathname.startsWith('/shop/') || pathname === '/cart' || pathname === '/checkout' || pathname === '/account/orders' || pathname === '/account/messages';
+  const { buyer } = useAuth();
+  if (pathname === '/account/messages') return <div className="buyer-messaging-shell font-sans text-ink"><Outlet /></div>;
   return (
-    <div className="min-h-screen bg-white font-sans text-[15px] text-ink">
-      {home ? (
-        <>
-          <Sidebar className="hidden lg:flex" />
-          <Rail className="lg:hidden" />
-        </>
-      ) : (
-        <Rail />
-      )}
-      <div className={cn('min-h-screen', home ? 'pl-[76px] lg:pl-[280px]' : 'pl-[76px]')}>
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur">
-          <SearchPill />
-          <AccountPill />
-        </header>
-        <main className="px-6 pb-12">
+    <div className={cn("min-h-screen font-sans text-[15px] text-ink", home ? "buyer-home-shell" : "bg-white")}>
+      {!home && <Rail />}
+      <div className={cn('min-h-screen', home ? 'buyer-home-frame' : 'pl-[76px]')}>
+        {home ? (
+          <header className="buyer-home-header">
+            <div className="buyer-home-utility">
+              <div className="buyer-home-toplinks">
+                <Link to="/console">Test Console</Link>
+                <span aria-hidden="true">|</span>
+                <Link to="/seller-center">Seller Center</Link>
+                <span aria-hidden="true">|</span>
+                {buyer ? <BuyerMenu buyer={buyer} /> : <><Link to={loginUrl(pathname + location.search)}>Sign in</Link><span aria-hidden="true">|</span><Link to={loginUrl(pathname + location.search)}>Sign up</Link></>}
+              </div>
+            </div>
+            <div className="buyer-home-primary">
+              <Link to="/" className="buyer-home-brand" aria-label="TikTok SHOP SIMULATOR"><img src={tiktokShopLogo} alt="TikTok Shop" /></Link>
+              <SearchPill wide />
+              <HeaderCart buyer={buyer ?? null} />
+            </div>
+          </header>
+        ) : (
+          <div className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-white/95 px-6 backdrop-blur">
+            <SearchPill />
+            <AccountPill />
+          </div>
+        )}
+        <main className={home ? "buyer-home-main" : "px-6 pb-12"}>
           <Outlet />
         </main>
       </div>

@@ -103,7 +103,7 @@ export class AftersaleService implements OnModuleInit {
       if (prior && prior.role === 'SELLER') return prior; // repeated call: same cancel_id
       throw new OrderRuleError('cancel_not_allowed', 'the order is already cancelled by someone else');
     }
-    if (!['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT'].includes(order.status)) throw new OrderRuleError('cancel_not_allowed', `a seller cannot cancel an order in ${order.status}`);
+    if (!['UNPAID', 'AWAITING_SHIPMENT'].includes(order.status)) throw new OrderRuleError('cancel_not_allowed', `a seller cannot cancel an order in ${order.status}`);
     if (lineIds && (lineIds.length !== order.lines.length || order.lines.some((l) => !lineIds.includes(l.externalId)))) {
       throw new OrderRuleError('partial_cancel_unsupported', 'partial cancellation is not supported for VN: pass every order line item id or none');
     }
@@ -127,7 +127,7 @@ export class AftersaleService implements OnModuleInit {
     return created;
   }
 
-  /** Buyer asks to cancel a PAID order that is still AWAITING_SHIPMENT (needs seller approval). UNPAID/ON_HOLD cancels are immediate and create no record. */
+  /** Buyer asks to cancel a PAID order that is still AWAITING_SHIPMENT (needs seller approval). UNPAID cancels are immediate and create no record. */
   async createCancellation(buyer: Buyer, orderExternalId: string, reason: string, requestId?: string): Promise<AftersaleRow> {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -612,7 +612,7 @@ export class AftersaleService implements OnModuleInit {
       }
       return;
     }
-    // Buyer cancels of UNPAID/ON_HOLD orders are immediate and are NOT aftersale records; later cancels by seller/system are.
+    // Buyer cancels of UNPAID orders are immediate and are NOT aftersale records; later cancels by seller/system are.
     if (ctx.actor === 'BUYER') return;
     if (!ctx.forceRecord && !['AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'].includes(ctx.before.status)) return;
     const lines = await tx.orderLine.findMany({ where: { orderId: ctx.after.id, aftersaleLines: { none: { active: true } } } });

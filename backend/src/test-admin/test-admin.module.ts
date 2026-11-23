@@ -295,7 +295,6 @@ export class TestAdminController {
         units: o._count.lines,
         createdAt: o.createdAt.toISOString(),
         updatedAt: o.updatedAt.toISOString(),
-        releaseAt: o.releaseAt?.toISOString() ?? null,
       })),
     };
   }
@@ -306,7 +305,7 @@ export class TestAdminController {
     return { orderId: order.externalId, status: order.status, history: (await this.orders.audits(order.id)).map((a) => ({ from: a.fromStatus, to: a.toStatus, actor: a.actor, note: a.note, at: a.at.toISOString() })) };
   }
 
-  /** Force a transition through the same state machine the apps use (an invalid jump, e.g. ON_HOLD -> AWAITING_COLLECTION, is refused with 400). */
+  /** Force a transition through the same state machine the apps use (an invalid jump, e.g. UNPAID -> AWAITING_COLLECTION, is refused with 400). */
   @Post('orders/:ref/transition')
   async transitionOrder(@Req() req: Rq, @Param('ref') ref: string, @Body(new ZodPipe(OrderTransition)) body: z.infer<typeof OrderTransition>) {
     const order = await this.orders.findForAdmin(ref, body.shopId);
@@ -324,12 +323,6 @@ export class TestAdminController {
       transitioned: updated !== null && updated.status !== order.status,
       updatedAt: after.updatedAt.toISOString(),
     };
-  }
-
-  /** Release every ON_HOLD order whose hold period (business clock) has elapsed; advance the clock first to test the boundary. */
-  @Post('orders/release-due')
-  async releaseDue() {
-    return { released: await this.orders.releaseDue() };
   }
 
   /** Generates ACTIVATE products with several priced SKUs, to exercise multi-page imports. Fake data only. */

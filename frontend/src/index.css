@@ -8,7 +8,10 @@
 @import "tw-animate-css";
 @import "./legacy-defaults.css" layer(legacy);
 @import "./styles.css" layer(legacy);
+/* The desktop Admin workspace overrides are scoped to .admin-console. */
+@import "./console.css" layer(legacy);
 @import "./legacy-isolation.css" layer(legacy-isolation);
+@import "./seller.css";
 
 /* Legacy pages use class="inline" on labels (inline-flex in styles.css); don't let Tailwind's `inline` utility override it. */
 @source not inline("inline");
@@ -26,9 +29,9 @@
 }
 
 .theme-seller {
-  --primary: #00807c;
+  --primary: #202020;
   --primary-foreground: #ffffff;
-  --ring: #00807c;
+  --ring: #777777;
 }
 
 @theme inline {
@@ -83,3 +86,4 @@
     @apply border-border outline-ring/50;
   }
 }
+@import "./buyer-home.css" layer(components);

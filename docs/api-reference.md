@@ -291,8 +291,7 @@ Bảng chuyển trạng thái là mô hình của simulator (OAS chỉ liệt k�
 
 | Từ | Có thể sang |
 |---|---|
-| `UNPAID` | `ON_HOLD`, `CANCELLED` |
-| `ON_HOLD` | `AWAITING_SHIPMENT`, `CANCELLED` |
+| `UNPAID` | `AWAITING_SHIPMENT`, `CANCELLED` |
 | `AWAITING_SHIPMENT` | `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `CANCELLED` |
 | `PARTIALLY_SHIPPING` | `AWAITING_COLLECTION`, `CANCELLED` |
 | `AWAITING_COLLECTION` | `IN_TRANSIT`, `CANCELLED` |
@@ -300,8 +299,10 @@ Bảng chuyển trạng thái là mô hình của simulator (OAS chỉ liệt k�
 | `DELIVERED` | `COMPLETED` |
 | `COMPLETED`, `CANCELLED` | (trạng thái cuối) |
 
-- Thanh toán đưa đơn sang `ON_HOLD`. Đơn giữ ở đó `ORDER_HOLD_MINUTES` phút (mặc định 30, tính theo đồng hồ nghiệp vụ), rồi được giải phóng sang `AWAITING_SHIPMENT` bởi timer nền (`ORDER_LIFECYCLE_INTERVAL_MS`) hoặc `POST /test-admin/orders/release-due`. Đơn `ON_HOLD` chưa giao được.
-- `recipient_address` không có trong response khi đơn ở `UNPAID`/`ON_HOLD`.
+- Thanh toán đưa đơn thẳng sang `AWAITING_SHIPMENT` (không có thời gian giữ đơn, không có `ON_HOLD`; xem DECISIONS H1). Package `TO_FULFILL` được tạo ngay trong cùng transaction, nên seller giao được liền.
+- `recipient_address` không có trong response khi đơn ở `UNPAID`. `is_on_hold_order` luôn là `false`; `release_date` không được gửi.
+- Lọc Search Order với `order_status: "ON_HOLD"` vẫn hợp lệ (giá trị có trong OAS) nhưng luôn trả danh sách rỗng.
+- Buyer hủy ngay chỉ khi đơn `UNPAID`. Sau khi trả tiền, hủy từ buyer là yêu cầu chờ seller duyệt (DECISIONS H7).
 - Checkout idempotent theo `checkoutKey`: gửi lại cùng key trả về đúng đơn cũ.
 - Kiện hàng (fulfillment) đi theo trạng thái đơn thông qua listener chạy trong cùng transaction DB.
 - Mọi thay đổi trạng thái được ghi lịch sử (xem `GET /demo/shops/{shopId}/orders/{orderId}`, `GET /test-admin/orders/{ref}/audit`).
@@ -416,7 +417,6 @@ Với `target: API`, shop của request được xác định từ header `x-tts
 | `SEED_APP_REDIRECT_URIS` | callback SmartOmni local, `smartomni://oauth/tiktok` | Redirect URI hợp lệ (phân tách bằng dấu phẩy) |
 | `SEED_APP_SCOPES` | tất cả scope `sim.*` | Scope cấp cho app seed |
 | `OAUTH_*_TTL_MS`, `OAUTH_SIGNATURE_WINDOW_MS` | xem mục 4.1 | Thời hạn token và cửa sổ ký |
-| `ORDER_HOLD_MINUTES` | `30` | Thời gian giữ đơn sau thanh toán |
 | `ORDER_SHIPPING_FEE_VND` | `25000` | Phí vận chuyển |
 | `RETURN_WINDOW_DAYS` | `15` | Hạn yêu cầu trả hàng |
 | `DEMO_SESSION_TTL_MS` | 8 giờ | Thời hạn phiên demo |
@@ -1333,7 +1333,7 @@ Ví dụ:
 **Phản hồi**:
 
 - `200`: Shipment arranged.
-- `400`: invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, non-seconds timestamp, or a validation failure of the endpoint. Also: invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_on_hold, order_cancelled).
+- `400`: invalid_input: missing app_key/timestamp/sign/x-tts-access-token, repeated query parameter, non-seconds timestamp, or a validation failure of the endpoint. Also: invalid_input (non-object body, unknown field, bad handover_method, self_shipment present) or order_not_shippable (message starts with the rule code, e.g. order_unpaid, order_cancelled).
 - `401`: unknown_app_key, stale_timestamp, bad_signature, token_invalid, authorization_revoked or token_expired.
 - `403`: token_invalid (token issued to another app_key), missing_scope (token lacks the endpoint scope) or shop_cipher_mismatch.
 - `404`: package_not_found: not in this shop.
@@ -1875,7 +1875,7 @@ Seller chủ động hủy đơn. _(Seller Cancel Order (202309))_
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Cancels a whole order on behalf of the seller. Allowed in UNPAID, ON_HOLD and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.
+Cancels a whole order on behalf of the seller. Allowed in UNPAID and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.
 
 </details>
 
@@ -3444,7 +3444,7 @@ Thanh toán giả lập. _(Fake payment)_
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-BUYER only, own order. UNPAID -> ON_HOLD with `paidAt` and `releaseAt` (business clock + configured hold minutes); the lifecycle worker later moves it to AWAITING_SHIPMENT. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.
+BUYER only, own order. UNPAID -> AWAITING_SHIPMENT with `paidAt` (business clock); there is no hold period and the TO_FULFILL package is created in the same transaction. Any status other than UNPAID returns the order unchanged with `replayed: true`, except CANCELLED which is 400 `order_cancelled`. Not a TikTok API.
 
 </details>
 
@@ -3485,7 +3485,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Both roles. BUYER (own order): UNPAID or ON_HOLD cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to "no reason given".
+Both roles. BUYER (own order): UNPAID cancels immediately (stock and coupon redemption released); AWAITING_SHIPMENT does NOT cancel but opens an aftersale cancellation request that the seller must approve (the returned order shows `buyerRequestedCancel: true`); an already CANCELLED order is returned as is; any other status is 400 `cancel_not_allowed`. SELLER: transitions the order to CANCELLED through the state machine (invalid transition => 400 `invalid_transition`, e.g. already CANCELLED, IN_TRANSIT, DELIVERED or COMPLETED). Body is optional; `reason` defaults to "no reason given".
 
 </details>
 
@@ -3557,14 +3557,14 @@ Sắp xếp vận chuyển (seller). _(Arrange shipment (seller))_
 **Phản hồi**:
 
 - `201`: Fulfillment view.
-- `400`: order_on_hold / order_cancelled / order_not_shippable.
+- `400`: order_unpaid / order_cancelled / order_not_shippable.
 - `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
 - `403`: The path `shopId` is not the shop of the session (assertOwnShop). Or The session is not a SELLER session.
 - `404`: Unknown order.
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-SELLER only. FulfillmentService.arrangeShipment: UNPAID/ON_HOLD => 400 `order_on_hold`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.
+SELLER only. FulfillmentService.arrangeShipment: UNPAID => 400 `order_unpaid`, CANCELLED => 400 `order_cancelled`, AWAITING_SHIPMENT => moves to AWAITING_COLLECTION (creating tracking number and tracking event), already shipped orders return the existing package (repeat is a no-op); other statuses 400 `order_not_shippable`. Responds with the fulfillment view.
 
 </details>
 
@@ -3617,7 +3617,7 @@ Kiện hàng và hành trình của đơn. _(Package and tracking of an order)_
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_on_hold, order_unpaid or null.
+Both roles. Buyer: only own orders (otherwise 404) and no seller-only fields (`package.canArrange` omitted, `canArrange` false). Seller: any order of the shop. `package` is null until a package exists (created when the order reaches AWAITING_SHIPMENT). `blockedReason` is order_unpaid or null.
 
 </details>
 
@@ -3804,7 +3804,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID/ON_HOLD orders are cancelled directly with POST .../orders/{orderId}/cancel instead.
+BUYER only. For an AWAITING_SHIPMENT order creates a CANCELLATION request (pending seller approval) and flags the order `buyerRequestedCancel`; repeating while one is pending returns the same request. Other order statuses => 400 `cancel_not_allowed`; unknown/foreign order => 404. UNPAID orders are cancelled directly with POST .../orders/{orderId}/cancel instead.
 
 </details>
 
@@ -4125,13 +4125,13 @@ Danh sách coupon. _(List coupons)_
 
 | Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|---|
-| `shopId` | path | có | string | Shop id of the session (`shopId` returned by POST /demo/sessions). Any other shop id answers 403. |
+| `shopId` | path | có | string | SELLER: own shop only. BUYER: any ACTIVE marketplace shop. |
 
 **Phản hồi**:
 
 - `200`: Seller view (full) or buyer view (usable only); the `items` shape differs by role.
 - `401`: Missing, unknown or expired `x-demo-session` header (DemoSessionGuard).
-- `403`: The path `shopId` is not the shop of the session (assertOwnShop).
+- `403`: Seller accessing another shop, or buyer accessing an inactive or unknown shop.
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
@@ -4931,7 +4931,7 @@ Danh sách đơn hàng. _(List orders)_
 | Tên | Vị trí | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|---|
 | `shopId` | query |  | string | Internal shop id (UUID, the `id` returned by GET /test-admin/shops). |
-| `status` | query |  | string: `UNPAID`, `ON_HOLD`, `AWAITING_SHIPMENT`, `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `IN_TRANSIT`, `DELIVERED`, `COMPLETED`, `CANCELLED` | Order status filter |
+| `status` | query |  | string: `UNPAID`, `AWAITING_SHIPMENT`, `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `IN_TRANSIT`, `DELIVERED`, `COMPLETED`, `CANCELLED` | Order status filter |
 | `limit` | query |  | integer [min 1, max 200] | Max rows, clamped to [1, 200]; non-numeric or 0 falls back to 50. |
 | `pageSize` | query |  | integer [min 1, max 10] | Toolkit-style page size, clamped to [1, 10]; when sent it wins over `limit`. |
 
@@ -4943,23 +4943,6 @@ Danh sách đơn hàng. _(List orders)_
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
 Newest first (by seq). `status` is used in the query unvalidated; an unknown value simply returns no rows.
-
-</details>
-
-#### `POST /test-admin/orders/release-due`
-
-Giải phóng các đơn ON_HOLD đã đến hạn. _(Release due ON_HOLD orders)_
-
-- Xác thực: Header `x-test-admin-token`
-
-**Phản hồi**:
-
-- `201`: External ids of the released orders (201 Created).
-- `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
-
-<details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
-
-Moves every ON_HOLD order whose `releaseAt` is <= business clock now to AWAITING_SHIPMENT (actor SYSTEM, note `hold period elapsed`). Advance the clock first (PUT /test-admin/clock) to test the boundary. No body. Orders another process moved first are skipped silently.
 
 </details>
 
@@ -5005,7 +4988,7 @@ Looks up an order by row id or external id (add `shopId` if the external id exis
 
 | Trường | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|
-| `to` |  | string: `UNPAID`, `ON_HOLD`, `AWAITING_SHIPMENT`, `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `IN_TRANSIT`, `DELIVERED`, `COMPLETED`, `CANCELLED` | Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, ON_HOLD releases, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false. |
+| `to` |  | string: `UNPAID`, `AWAITING_SHIPMENT`, `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `IN_TRANSIT`, `DELIVERED`, `COMPLETED`, `CANCELLED` | Target status. OPTIONAL: when omitted the order moves ONE happy-path step (UNPAID pays, AWAITING_SHIPMENT arranges the package, AWAITING_COLLECTION and IN_TRANSIT advance the carrier, DELIVERED completes); a COMPLETED or CANCELLED order stays and `transitioned` is false. |
 | `shopId` |  | string [minLength 1] | Disambiguates the order ref across shops |
 | `note` |  | string [maxLength 300] | Audit note (max 300); default `test console` |
 | `cancelReason` |  | string [maxLength 300] | Used when to=CANCELLED (max 300); falls back to note |
@@ -5014,22 +4997,22 @@ Ví dụ:
 
 ```json
 {
-  "to": "AWAITING_SHIPMENT",
-  "note": "skip the hold"
+  "to": "CANCELLED",
+  "cancelReason": "out of stock"
 }
 ```
 
 **Phản hồi**:
 
 - `201`: Transition applied (201 Created).
-- `400`: Validation failed (zod): body `{ statusCode: 400, message: "Validation failed", issues: [{path, message}] }`. Also order id ambiguous across shops, or Business rule violated. Body is `{ code, message }` (Nest `BadRequestException` with an object; no `statusCode`). Code `invalid_transition`, e.g. `ON_HOLD -> AWAITING_COLLECTION is not allowed (an ON_HOLD order cannot be shipped)`.
+- `400`: Validation failed (zod): body `{ statusCode: 400, message: "Validation failed", issues: [{path, message}] }`. Also order id ambiguous across shops, or Business rule violated. Body is `{ code, message }` (Nest `BadRequestException` with an object; no `statusCode`). Code `invalid_transition`, e.g. `UNPAID -> AWAITING_COLLECTION is not allowed (an UNPAID order cannot be shipped)`.
 - `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
 - `404`: Unknown order.
 - `409`: The order changed concurrently; retry.
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to ON_HOLD or CANCELLED; ON_HOLD to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.
+Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.
 
 </details>
 
@@ -5076,7 +5059,7 @@ Tạo đơn sandbox (hàng loạt). _(Create sandbox orders (batch))_
 | `order_count` |  | integer [min 1, max 10] |  |
 | `logistics_service_id` |  | string | Optional; one of the simulator delivery option ids |
 | `payment_method` |  | string | Optional label stored as the order payment method name |
-| `pay` |  | boolean | Default true: pay after checkout (the order becomes ON_HOLD) |
+| `pay` |  | boolean | Default true: pay after checkout (the order becomes AWAITING_SHIPMENT) |
 
 Ví dụ:
 
@@ -5731,7 +5714,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule "points only after N days since completion" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and still ON_HOLD. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.
+Creates five paid orders for one buyer (first buyer by external id unless `buyerId` is given) for the SmartOmni rule "points only after N days since completion" (N = `thresholdDays`; a SmartOmni rule, not a TikTok policy): completed N+1 days ago, exactly N days ago, N days minus 1 hour ago, DELIVERED only, and paid but still AWAITING_SHIPMENT. Each is checked out (1 unit of the first on-sale SKU with stock >= 10), paid and driven through the real state machine while the business clock is temporarily set (frozen) to the wanted time; the clock is restored afterwards (frozen stays frozen, a running clock keeps running). Not atomic: a failure midway leaves the orders already created.
 
 </details>
 

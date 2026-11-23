@@ -1,7 +1,7 @@
 import { expect, Page, request as pwRequest, test } from '@playwright/test';
 import { BUYER_A, demoSession, placePaidOrder, resetAll, SELLER_A, shot, signInAs } from './helpers';
 
-/** Phase 07a UI: an ON_HOLD order cannot be shipped; after the hold the seller ships, the buyer follows tracking, the label PDF downloads. */
+/** Phase 07a UI: an UNPAID order cannot be shipped; a paid order ships at once, the buyer follows tracking, the label PDF downloads. */
 test.describe.configure({ mode: 'serial' });
 
 let orderId = '';
@@ -18,26 +18,24 @@ test.beforeAll(async ({ baseURL }) => {
 const ORDERS = '/seller-center/orders';
 const sellerRow = (page: Page) => page.getByRole('row', { name: `Order ${orderId}` });
 
-test('an ON_HOLD order shows when the hold ends and the API refuses to arrange shipment', async ({ page, request }) => {
+test('an UNPAID order has nothing to ship and the API refuses to arrange shipment', async ({ page, request }) => {
+  const buyer = await demoSession(request, 'BUYER', BUYER_A);
+  const unpaid = await placePaidOrder(request, buyer, SKU, 1, false);
   await signInAs(page, 'SELLER', SELLER_A, ORDERS);
-  const row = sellerRow(page);
-  await expect(row.getByText('On hold', { exact: true })).toBeVisible();
-  await expect(row.getByText(/^On hold until /)).toBeVisible();
-  await expect(row.getByRole('link', { name: /Release due holds/ })).toBeVisible();
+  const row = page.getByRole('row', { name: `Order ${unpaid}` });
+  await expect(row.getByText('Unpaid', { exact: true })).toBeVisible();
   await expect(row.getByRole('button', { name: 'Arrange shipment' })).toHaveCount(0);
-  await shot(page, 'phase07a-on-hold');
+  await expect(page.getByText(/On hold/)).toHaveCount(0);
+  await shot(page, 'phase07a-unpaid');
 
-  // even bypassing the UI, the backend refuses (400 order_on_hold) and creates nothing
+  // even bypassing the UI, the backend refuses (400 order_unpaid) and creates nothing
   const seller = await demoSession(request, 'SELLER', SELLER_A);
-  const res = await request.post(`/demo/shops/${seller.shopId}/orders/${orderId}/arrange-shipment`, { headers: { 'x-demo-session': seller.token }, data: {} });
+  const res = await request.post(`/demo/shops/${seller.shopId}/orders/${unpaid}/arrange-shipment`, { headers: { 'x-demo-session': seller.token }, data: {} });
   expect(res.status()).toBe(400);
-  expect(JSON.stringify(await res.json())).toContain('order_on_hold');
+  expect(JSON.stringify(await res.json())).toContain('order_unpaid');
 });
 
-test('after the hold the seller arranges shipment and the buyer sees tracking progress', async ({ page, request }) => {
-  await request.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
-  const released = await request.post('/test-admin/orders/release-due', { data: {} });
-  expect((await released.json()).released).toContain(orderId);
+test('right after payment the seller arranges shipment and the buyer sees tracking progress', async ({ page, request }) => {
 
   await signInAs(page, 'SELLER', SELLER_A, ORDERS);
   const row = sellerRow(page);

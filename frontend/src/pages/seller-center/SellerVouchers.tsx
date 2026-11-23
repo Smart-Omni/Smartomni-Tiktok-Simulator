@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Copy, Download, Plus } from 'lucide-react';
+import { Copy, Download, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,38 +11,49 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
-import { createCoupon, createCouponBatch, deactivateCouponBatch, getCoupons, getCouponBatch, listCouponBatches, patchCoupon } from '@/lib/endpoints';
+import { createCoupon, createCouponBatch, deactivateCouponBatch, getBusinessClock, getCoupons, getCouponBatch, listCouponBatches, patchCoupon } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
-import type { CouponBatchCode, DemoSession } from '@/lib/types';
+import type { Coupon, CouponBatchCode, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
 /** Form rules and request body from the former /seller Coupons tab. */
-const isWhole = (v: string): boolean => /^\d+$/.test(v) && Number(v) >= 1;
+const DAY_MS = 86_400_000;
+const wholeInRange = (v: string, max: number) => /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
 export const emptyVoucher = { title: '', promoCode: '', kind: 'AMOUNT_OFF', value: '', cap: '', minSpend: '', days: '7', limit: '', audience: 'ALL' };
 export type VoucherForm = typeof emptyVoucher;
 
-const discountOk = (f: { kind: string; value: string; cap: string }) => isWhole(f.value) && (f.kind === 'AMOUNT_OFF' || Number(f.value) <= 100) && (f.cap === '' || isWhole(f.cap));
+function fieldError(f: Record<string, string>, key: string): string | undefined {
+  const value = f[key];
+  if (key === 'title') return value.trim().length >= 1 && value.trim().length <= 100 ? undefined : 'Enter a title of 1–100 characters.';
+  if (key === 'promoCode') return value.trim() === '' || /^[A-Za-z0-9]{6,12}$/.test(value.trim()) ? undefined : 'Use 6–12 letters or digits, or leave empty.';
+  if (['cap', 'minSpend', 'limit'].includes(key) && value === '') return undefined;
+  const max = key === 'quantity' ? 500 : key === 'limit' ? 1_000_000 : key === 'days' ? 99_999_999 : key === 'value' && f.kind === 'PERCENT_OFF' ? 100 : 2_000_000_000;
+  if (['quantity', 'limit', 'days', 'value', 'cap', 'minSpend'].includes(key)) {
+    if (key === 'cap' && f.kind !== 'PERCENT_OFF') return undefined;
+    return wholeInRange(value, max) ? undefined : `Enter a whole number from 1 to ${max.toLocaleString('en-US')}.`;
+  }
+  return undefined;
+}
+const formValid = (f: Record<string, string>) => Object.keys(f).every((key) => !fieldError(f, key));
+function expiresAt(days: string, businessNow: number): string {
+  const end = businessNow + Number(days) * DAY_MS;
+  if (!Number.isFinite(businessNow) || !Number.isFinite(new Date(end).getTime())) throw new Error('Cannot calculate expiry from the business clock and valid days.');
+  return new Date(end).toISOString();
+}
 const discountOf = (f: { kind: string; value: string; cap: string }) =>
   f.kind === 'AMOUNT_OFF' ? { type: 'AMOUNT_OFF', amountVnd: Number(f.value) } : { type: 'PERCENT_OFF', percentage: Number(f.value), ...(f.cap ? { maxDiscountVnd: Number(f.cap) } : {}) };
 
 /** An empty code is allowed: the backend then generates a 10-character code. */
 export function voucherValid(f: VoucherForm): boolean {
-  return (
-    f.title.trim() !== '' &&
-    (f.promoCode === '' || /^[A-Za-z0-9]{6,12}$/.test(f.promoCode)) &&
-    discountOk(f) &&
-    isWhole(f.days) &&
-    (f.minSpend === '' || isWhole(f.minSpend)) &&
-    (f.limit === '' || isWhole(f.limit))
-  );
+  return formValid(f);
 }
 
-export function voucherBody(f: VoucherForm, now = Date.now()) {
-  const endAt = new Date(now + Number(f.days) * 86_400_000).toISOString();
+export function voucherBody(f: VoucherForm, businessNow: number) {
+  const endAt = expiresAt(f.days, businessNow);
   return {
-    title: f.title,
-    ...(f.promoCode ? { promoCode: f.promoCode } : {}),
+    title: f.title.trim(),
+    ...(f.promoCode.trim() ? { promoCode: f.promoCode.trim() } : {}),
     discount: discountOf(f),
     endAt,
     audience: f.audience,
@@ -56,15 +67,15 @@ export const emptyBatch = { title: '', kind: 'PERCENT_OFF', value: '', cap: '', 
 export type BatchForm = typeof emptyBatch;
 
 export function batchValid(f: BatchForm): boolean {
-  return f.title.trim() !== '' && discountOk(f) && isWhole(f.days) && (f.minSpend === '' || isWhole(f.minSpend)) && isWhole(f.quantity) && Number(f.quantity) <= MAX_BATCH_QUANTITY;
+  return formValid(f);
 }
 
 /** No promoCode and no redemptionLimit: every code is generated and single-use. */
-export function batchBody(f: BatchForm, now = Date.now()) {
+export function batchBody(f: BatchForm, businessNow: number) {
   return {
-    title: f.title,
+    title: f.title.trim(),
     discount: discountOf(f),
-    endAt: new Date(now + Number(f.days) * 86_400_000).toISOString(),
+    endAt: expiresAt(f.days, businessNow),
     audience: f.audience,
     quantity: Number(f.quantity),
     ...(f.minSpend ? { minSpendVnd: Number(f.minSpend) } : {}),
@@ -95,6 +106,7 @@ function FormDialog({ title, description, submit, canSubmit, onClose, onSubmit, 
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (!canSubmit || busy) return;
             setBusy(true);
             setError(undefined);
             try {
@@ -128,6 +140,7 @@ function FormDialog({ title, description, submit, canSubmit, onClose, onSubmit, 
 /** Text inputs and selects bound to one form object. */
 function useFormFields<F extends Record<string, string>>(prefix: string, initial: F) {
   const [f, setF] = useState(initial);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const text = (key: keyof F & string, label: string, extra: { placeholder?: string; numeric?: boolean; maxLength?: number; upper?: boolean; hint?: string } = {}) => (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={`${prefix}-${key}`}>{label}</Label>
@@ -137,8 +150,12 @@ function useFormFields<F extends Record<string, string>>(prefix: string, initial
         placeholder={extra.placeholder}
         maxLength={extra.maxLength}
         inputMode={extra.numeric ? 'numeric' : undefined}
+        onBlur={() => setTouched((previous) => ({ ...previous, [key]: true }))}
+        aria-invalid={touched[key] && !!fieldError(f, key)}
+        aria-describedby={touched[key] && fieldError(f, key) ? `${prefix}-${key}-error` : undefined}
         onChange={(e) => setF({ ...f, [key]: extra.upper ? e.target.value.toUpperCase() : e.target.value })}
       />
+      {touched[key] && fieldError(f, key) ? <span id={`${prefix}-${key}-error`} className="text-xs text-destructive" role="alert">{fieldError(f, key)}</span> : null}
       {extra.hint ? <span className="text-xs text-muted-foreground">{extra.hint}</span> : null}
     </div>
   );
@@ -170,7 +187,7 @@ function NewVoucherDialog({ onClose, onCreate }: { onClose: () => void; onCreate
   const { f, text, select } = useFormFields('voucher', emptyVoucher);
   return (
     <FormDialog title="New voucher" description="Validity starts now on the business clock. Code and discount cannot be changed afterwards." submit="Create voucher" canSubmit={voucherValid(f)} onClose={onClose} onSubmit={() => onCreate(f)}>
-      {text('title', 'Title')}
+      {text('title', 'Title', { maxLength: 100 })}
       {text('promoCode', 'Code', { placeholder: '6-12 letters/digits', maxLength: 12, upper: true, hint: 'Leave empty to generate a 10-character code' })}
       {select('kind', 'Discount type', KIND_OPTIONS)}
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
@@ -194,7 +211,7 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
       onClose={onClose}
       onSubmit={() => onCreate(f)}
     >
-      {text('title', 'Title', { placeholder: 'Loyalty Diamond 30%' })}
+      {text('title', 'Title', { placeholder: 'Loyalty Diamond 30%', maxLength: 100 })}
       {text('quantity', `Quantity (1-${MAX_BATCH_QUANTITY})`, { numeric: true })}
       {select('kind', 'Discount type', KIND_OPTIONS)}
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
@@ -206,8 +223,32 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
   );
 }
 
+const localDateTime = (iso: string) => {
+  const date = new Date(iso);
+  return Number.isFinite(date.getTime()) ? new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 19) : '';
+};
+export interface VoucherEdit { title: string; startAt: string; endAt: string; limit: string; minSpend: string }
+export function voucherEditError(f: VoucherEdit, redeemed: number): string | undefined {
+  if (!f.title.trim() || f.title.trim().length > 100) return 'Title must contain 1–100 characters.';
+  const start = Date.parse(f.startAt), end = Date.parse(f.endAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'End time must be after start time.';
+  if (f.limit !== '' && (!wholeInRange(f.limit, 1_000_000) || Number(f.limit) < redeemed)) return `Redemption limit must be between ${Math.max(1, redeemed)} and 1,000,000.`;
+  if (f.minSpend !== '' && !wholeInRange(f.minSpend, 2_000_000_000)) return 'Minimum spend must be 1–2,000,000,000 VND, or empty.';
+}
+export const voucherEditBody = (f: VoucherEdit) => ({ title: f.title.trim(), startAt: new Date(f.startAt).toISOString(), endAt: new Date(f.endAt).toISOString(), redemptionLimit: f.limit === '' ? null : Number(f.limit), minSpendVnd: f.minSpend === '' ? null : Number(f.minSpend) });
+
+function EditVoucherDialog({ coupon, onClose, onSave }: { coupon: Coupon; onClose: () => void; onSave: (body: ReturnType<typeof voucherEditBody>) => Promise<void> }) {
+  const [f, setF] = useState<VoucherEdit>({ title: coupon.title, startAt: localDateTime(coupon.startAt), endAt: localDateTime(coupon.endAt), limit: coupon.redemptionLimit == null ? '' : String(coupon.redemptionLimit), minSpend: coupon.minSpendVnd == null ? '' : String(coupon.minSpendVnd) });
+  const error = voucherEditError(f, coupon.redeemedCount);
+  return <FormDialog title="Edit voucher" description={coupon.promoCode ?? coupon.id} submit="Save voucher" canSubmit={!error} onClose={onClose} onSubmit={() => onSave({ ...voucherEditBody(f), startAt: f.startAt === localDateTime(coupon.startAt) ? coupon.startAt : new Date(f.startAt).toISOString(), endAt: f.endAt === localDateTime(coupon.endAt) ? coupon.endAt : new Date(f.endAt).toISOString() })}>
+    {([['title', 'Title', 'text'], ['startAt', 'Starts at', 'datetime-local'], ['endAt', 'Ends at', 'datetime-local'], ['limit', 'Redemption limit (optional)', 'text'], ['minSpend', 'Minimum spend VND (optional)', 'text']] as const).map(([key, label, type]) => <label key={key} className="flex flex-col gap-2 text-xs"><span>{label}</span><Input aria-label={label} type={type} step={type === 'datetime-local' ? 1 : undefined} maxLength={key === 'title' ? 100 : undefined} inputMode={key === 'limit' || key === 'minSpend' ? 'numeric' : undefined} value={f[key]} onChange={(e) => setF({ ...f, [key]: e.target.value })} /></label>)}
+    {error && <p role="alert" className="text-xs text-destructive sm:col-span-2">{error}</p>}
+  </FormDialog>;
+}
+
 function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchId: string; onClose: () => void }) {
   const detail = useAsync(() => getCouponBatch(seller, batchId), [seller.sessionToken, seller.shopId, batchId]);
+  const [deactivating, setDeactivating] = useState<CouponBatchCode>();
   const copyAll = async (codes: CouponBatchCode[]) => {
     try {
       await navigator.clipboard.writeText(codes.map((c) => c.promoCode).join('\n'));
@@ -252,6 +293,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
                       <TableHead className="pl-4">Code</TableHead>
                       <TableHead>Used</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -262,6 +304,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
                         <TableCell>
                           <StatusPill status={c.status} />
                         </TableCell>
+                        <TableCell className="text-right"><Button variant="outline" size="sm" disabled={c.status === 'DEACTIVATED'} aria-label={`Deactivate ${c.promoCode}`} onClick={() => setDeactivating(c)}>Deactivate</Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -270,15 +313,17 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
             </div>
           )}
         </Loaded>
+        {deactivating && <FormDialog title="Deactivate code?" description={`${deactivating.promoCode} cannot be reactivated afterwards.`} submit="Deactivate code" canSubmit onClose={() => setDeactivating(undefined)} onSubmit={async () => { await patchCoupon(seller, deactivating.id, { deactivated: true }); setDeactivating(undefined); detail.reload(); toast.success('Code deactivated'); }}><span className="text-xs text-muted-foreground sm:col-span-2">Other codes in this batch stay available.</span></FormDialog>}
       </DialogContent>
     </Dialog>
   );
 }
 
-function SingleVouchers({ seller }: { seller: DemoSession }) {
+function SingleVouchers({ seller, tabs }: { seller: DemoSession; tabs: ReactNode }) {
   const list = useAsync(() => getCoupons(seller), [seller.sessionToken, seller.shopId], 10000);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Coupon>();
 
   const toggle = async (id: string, deactivated: boolean) => {
     setBusy(id);
@@ -295,17 +340,17 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-muted-foreground">Vouchers are seller-created demo data. Buyers type the code at checkout; the backend prices the discount.</p>
-        <Button className="ml-auto" onClick={() => setCreating(true)}>
+      <SellerCard className="seller-voucher-panel">
+      <div className="seller-voucher-toolbar">
+        {tabs}
+        <Button onClick={() => setCreating(true)}>
           <Plus /> New voucher
         </Button>
       </div>
-      <SellerCard>
         <Loaded result={list} what="vouchers">
           {(d) =>
             d.items.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No vouchers yet. Create one with New voucher.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">No vouchers yet.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -337,6 +382,7 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
                         <StatusPill status={c.status} />
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(c)}><Pencil size={13} />Edit</Button>
                         <Button size="sm" variant="outline" disabled={busy === c.id} onClick={() => toggle(c.id, c.status !== 'DEACTIVATED')}>
                           {c.status === 'DEACTIVATED' ? 'Reactivate' : 'Deactivate'}
                         </Button>
@@ -349,12 +395,14 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
           }
         </Loaded>
       </SellerCard>
+      {editing && <EditVoucherDialog coupon={editing} onClose={() => setEditing(undefined)} onSave={async (body) => { await patchCoupon(seller, editing.id, body); toast.success('Voucher saved'); setEditing(undefined); list.reload(); }} />}
 
       {creating ? (
         <NewVoucherDialog
           onClose={() => setCreating(false)}
           onCreate={async (f) => {
-            await createCoupon(seller, voucherBody(f));
+            const clock = await getBusinessClock();
+            await createCoupon(seller, voucherBody(f, Date.parse(clock.now)));
             toast.success('Voucher created');
             setCreating(false);
             list.reload();
@@ -365,7 +413,7 @@ function SingleVouchers({ seller }: { seller: DemoSession }) {
   );
 }
 
-function CodeBatches({ seller }: { seller: DemoSession }) {
+function CodeBatches({ seller, tabs }: { seller: DemoSession; tabs: ReactNode }) {
   const list = useAsync(() => listCouponBatches(seller), [seller.sessionToken, seller.shopId], 10000);
   const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -386,17 +434,17 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-muted-foreground">Batches of single-use codes for SmartOmni loyalty vouchers. Codes are hidden from buyers; SmartOmni pulls them with Search Coupon List.</p>
-        <Button className="ml-auto" onClick={() => setCreating(true)}>
+      <SellerCard className="seller-voucher-panel">
+      <div className="seller-voucher-toolbar">
+        {tabs}
+        <Button onClick={() => setCreating(true)}>
           <Plus /> New code batch
         </Button>
       </div>
-      <SellerCard>
         <Loaded result={list} what="code batches">
           {(d) =>
             d.items.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">No code batches yet. Create one with New code batch.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">No code batches yet.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -444,7 +492,8 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
         <NewBatchDialog
           onClose={() => setCreating(false)}
           onCreate={async (f) => {
-            const created = await createCouponBatch(seller, batchBody(f));
+            const clock = await getBusinessClock();
+            const created = await createCouponBatch(seller, batchBody(f, Date.parse(clock.now)));
             toast.success(`${created.codes.length} codes created`);
             setCreating(false);
             setViewing(created.batch.id);
@@ -469,22 +518,15 @@ function CodeBatches({ seller }: { seller: DemoSession }) {
 function Vouchers({ seller }: { seller: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'batches' ? 'batches' : 'vouchers';
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Vouchers</h1>
+  const tabs = (
       <Tabs value={tab} onValueChange={(v) => setParams(v === 'batches' ? { tab: 'batches' } : {}, { replace: true })}>
-        <TabsList variant="line" className="h-11 justify-start gap-2 border-b border-line-soft">
-          <TabsTrigger value="vouchers" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Vouchers
-          </TabsTrigger>
-          <TabsTrigger value="batches" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Code batches
-          </TabsTrigger>
+        <TabsList variant="line" className="h-11 justify-start gap-2">
+          <TabsTrigger value="vouchers">Vouchers</TabsTrigger>
+          <TabsTrigger value="batches">Code batches</TabsTrigger>
         </TabsList>
       </Tabs>
-      {tab === 'batches' ? <CodeBatches seller={seller} /> : <SingleVouchers seller={seller} />}
-    </div>
   );
+  return <div className="seller-vouchers-page">{tab === 'batches' ? <CodeBatches seller={seller} tabs={tabs} /> : <SingleVouchers seller={seller} tabs={tabs} />}</div>;
 }
 
 export function SellerVouchers() {

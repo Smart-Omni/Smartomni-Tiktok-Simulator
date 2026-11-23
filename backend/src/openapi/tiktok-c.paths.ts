@@ -50,7 +50,7 @@ export const paths: PathsFragment = {
     post: sop({
       tag: AF,
       summary: 'Seller Cancel Order (202309)',
-      description: 'Cancels a whole order on behalf of the seller. Allowed in UNPAID, ON_HOLD and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.',
+      description: 'Cancels a whole order on behalf of the seller. Allowed in UNPAID and AWAITING_SHIPMENT without a package; partial lines are rejected (VN). Repeating the call returns the same cancel_id.',
       handler: 'AftersaleController.sellerCancel',
       scope: 'sim.aftersale.write',
       body: obj({ order_id: str(), cancel_reason: str(), order_line_item_ids: { type: 'array', items: str() }, skus: { type: 'array', items: loose } }),

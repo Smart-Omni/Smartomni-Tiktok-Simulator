@@ -1,8 +1,13 @@
+import { PageActions } from '../components/console/PageActions';
+import { RefreshCw } from 'lucide-react';
+import { PaginatedList } from '../components/console/PaginatedList';
 import { useState } from 'react';
 import { AsyncState } from '../components/AsyncState';
 import { api, vnd } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { ArbitrationPanel } from '../pages/console/ArbitrationPanel';
+import { statusTone } from '../components/console/statusTone';
 
 interface AdminAftersale {
   id: string;
@@ -21,6 +26,7 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminAftersale[] }>(`/test-admin/aftersale?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
   const [msg, setMsg] = useState<string>();
   const [history, setHistory] = useState<{ id: string; data: History }>();
+  const [arbitrationRef, setArbitrationRef] = useState<string>();
   async function complete(id: string) {
     try {
       await api(`/test-admin/aftersale/${id}/complete?shopId=${encodeURIComponent(shopId)}`, { method: 'POST', body: {} });
@@ -39,34 +45,36 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   }
   return (
     <div>
-      <p className="muted">Complete = the refund was paid out (SUCCESS to COMPLETE). Returns never change the order status and the simulator never adds stock back.</p>
+      <PageActions><button className="admin-icon-action" onClick={list.reload}><RefreshCw size={13} />Refresh</button></PageActions>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No cancellation or return requests for this shop.">
         {(d) => (
-          <table>
-            <thead><tr><th>Request</th><th>Order</th><th>Kind</th><th>Units</th><th>Status</th><th className="num">Refund</th><th /></tr></thead>
+          <PaginatedList items={d.items} label="Requests">{(visible) => <div className="scroll"><table className="admin-data-table">
+            <thead><tr><th>Request</th><th>Order</th><th>Kind</th><th>Units</th><th>Status</th><th className="num">Refund</th><th>Actions</th></tr></thead>
             <tbody>
-              {d.items.map((r) => (
+              {visible.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.orderId}</td>
                   <td>{r.kind} / {r.type}</td>
                   <td>{r.units}</td>
-                  <td><span className="pill">{r.status}</span></td>
+                  <td><span className="pill" data-tone={statusTone(r.status)}>{r.status}</span></td>
                   <td className="num">{vnd(r.refundTotalVnd)}</td>
-                  <td>
+                  <td><div className="admin-table-actions">
                     <button onClick={() => void show(r.id)}>History</button>{' '}
-                    {r.status.endsWith('REQUEST_SUCCESS') ? <button onClick={() => void complete(r.id)}>Complete refund</button> : null}
-                  </td>
+                    {r.kind === 'RETURN' && <button type="button" data-tone="warning" onClick={() => setArbitrationRef(r.id)}>Arbitrate</button>}{' '}
+                    {r.status.endsWith('REQUEST_SUCCESS') ? <button data-tone="success" onClick={() => void complete(r.id)}>Complete refund</button> : null}
+                  </div></td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>}</PaginatedList>
         )}
       </AsyncState>
+      {arbitrationRef && <section aria-label="Arbitrate selected return"><div className="admin-section-title"><h2>Dispute · {arbitrationRef}</h2><button type="button" onClick={() => setArbitrationRef(undefined)}>Close arbitration</button></div><ArbitrationPanel key={arbitrationRef} shopId={shopId} initialRef={arbitrationRef} /></section>}
       {history ? (
         <section className="card" aria-label="aftersale history">
-          <h3>History of {history.id}</h3>
+          <div className="admin-section-title"><h3>History of {history.id}</h3><button onClick={() => setHistory(undefined)}>Close history</button></div>
           <ul className="list">{history.data.records.map((h, i) => <li key={i}><span>{h.from ?? 'new'} → {h.to}</span><span className="muted">{h.actor} · {new Date(h.at).toLocaleString()}</span></li>)}</ul>
         </section>
       ) : null}

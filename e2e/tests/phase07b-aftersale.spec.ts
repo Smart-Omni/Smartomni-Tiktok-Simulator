@@ -23,10 +23,7 @@ test.beforeAll(async ({ baseURL }) => {
   const buyer = await demoSession(api, 'BUYER', BUYER_A);
   deliveredOrder = await placePaidOrder(api, buyer, SKU, 2);
   cancelOrder = await placePaidOrder(api, buyer, SKU, 1);
-  // release both holds (business clock past the hold), then ship the first order to DELIVERED
-  await api.put('/test-admin/clock', { data: { advanceMs: 31 * 60_000 } });
-  const released = (await (await api.post('/test-admin/orders/release-due', { data: {} })).json()).released as string[];
-  expect(released).toEqual(expect.arrayContaining([deliveredOrder, cancelOrder]));
+  // paid orders are AWAITING_SHIPMENT at once (no hold); ship the first one to DELIVERED
   for (const to of ['AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED']) await transition(api, deliveredOrder, to);
   await api.dispose();
 });
@@ -64,7 +61,8 @@ test('buyer requests a partial return (1 of 2 units); seller approves; the order
 
   const dialog = await requestReturn(page, deliveredOrder, 1);
   await expect(dialog).toHaveCount(0);
-  await expect(card(page, deliveredOrder)).toContainText(/Return request: .*pending/i);
+  // the new order card lists returns in its own "Return requests" section with a buyer-facing status label
+  await expect(card(page, deliveredOrder).getByRole('region', { name: 'Return requests' })).toContainText('Awaiting seller review');
   await shot(page, 'phase07b-buyer-requested');
 
   await signInAs(page, 'SELLER', SELLER_A, '/seller-center/returns?status=open');

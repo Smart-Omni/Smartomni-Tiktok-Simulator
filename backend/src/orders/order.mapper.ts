@@ -8,7 +8,7 @@ const defined = <T extends Record<string, unknown>>(o: T): Partial<T> => Object.
 
 /** `data.orders[]` item for Get Order List / Get Order Detail (OAS: schemas/ops/order.*.response.json). Money fields are strings. */
 export function orderItem(o: OrderWithLines) {
-  const hasAddress = o.status !== 'UNPAID' && o.status !== 'ON_HOLD'; // OAS: recipient_address is not available under UNPAID / ON_HOLD
+  const hasAddress = o.status !== 'UNPAID'; // OAS: recipient_address is not available under UNPAID (the simulator has no ON_HOLD, DECISIONS H6)
   const subTotal = o.originalProductPrice - o.sellerDiscount - o.platformDiscount;
   const shippingFee = o.originalShippingFee - o.shippingFeeDiscount;
   return defined({
@@ -17,7 +17,6 @@ export function orderItem(o: OrderWithLines) {
     create_time: secs(o.createdAt),
     update_time: secs(o.updatedAt),
     paid_time: secs(o.paidAt),
-    release_date: secs(o.releaseAt),
     rts_time: secs(o.rtsAt),
     collection_time: secs(o.collectionAt),
     delivery_time: secs(o.deliveredAt),
@@ -25,7 +24,7 @@ export function orderItem(o: OrderWithLines) {
     cancel_reason: o.cancelReason ?? undefined,
     cancellation_initiator: o.cancellationInitiator ?? undefined,
     is_buyer_request_cancel: o.buyerRequestedCancel,
-    is_on_hold_order: o.isOnHold,
+    is_on_hold_order: false, // OAS field kept for SmartOmni; the simulator never holds an order (DECISIONS H4)
     user_id: o.buyer.externalId,
     buyer_nickname: o.buyer.name,
     buyer_message: o.buyerMessage,

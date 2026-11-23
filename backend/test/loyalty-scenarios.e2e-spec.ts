@@ -29,7 +29,7 @@ describe('Phase 09b (simulator side): loyalty test data generated with the busin
     await app.get(PersistentBusinessClock).reset();
   });
 
-  it('creates orders on both sides of the 15-day boundary with real completion times; DELIVERED and ON_HOLD orders never complete', async () => {
+  it('creates orders on both sides of the 15-day boundary with real completion times; DELIVERED and AWAITING_SHIPMENT orders never complete', async () => {
     const shop = await prisma.shop.findFirstOrThrow({ where: { name: { contains: 'Mộc Lan' } } });
     const realBefore = Date.now();
     const res = await http.post('/test-admin/scenarios/loyalty-orders').set(admin).send({ shopId: shop.id }).expect(201);
@@ -49,7 +49,9 @@ describe('Phase 09b (simulator side): loyalty test data generated with the busin
     const delivered = byLabel(/delivered but not completed/);
     expect(delivered.status).toBe('DELIVERED');
     expect(delivered.completedAt).toBeNull();
-    expect(byLabel(/on hold/).status).toBe('ON_HOLD');
+    const awaiting = byLabel(/awaiting shipment/);
+    expect(awaiting.status).toBe('AWAITING_SHIPMENT');
+    expect(awaiting.completedAt).toBeNull();
 
     // money components stay separate: the claimable base is sub_total, not total_amount
     for (const o of res.body.orders) {

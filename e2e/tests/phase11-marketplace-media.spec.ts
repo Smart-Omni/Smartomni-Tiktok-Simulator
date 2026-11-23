@@ -40,7 +40,8 @@ test('seller creates a product with an uploaded image and a category on the prod
   await expect(card.getByRole('img', { name: `Main image of ${TITLE}` })).toBeVisible();
   await expect(card.getByText('Nhà cửa & Đời sống')).toBeVisible();
 
-  // give the new variant stock so a buyer can order it
+  // give the new variant stock so a buyer can order it (the card is collapsed until "Manage")
+  await card.getByRole('button', { name: 'Manage' }).click();
   await card.getByRole('textbox', { name: /^Stock of E2E-CUSH-1 in / }).first().fill('20');
   await card.getByRole('row', { name: 'SKU E2E-CUSH-1' }).getByRole('button', { name: 'Set' }).last().click();
   await expect(page.getByText('Stock updated')).toBeVisible();

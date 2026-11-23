@@ -60,8 +60,7 @@ export function ResetPanel({ shops, defaultShopId, onDone }: { shops: ShopSummar
   return (
     <div>
       <div className="card">
-        <h3>Reset simulator data</h3>
-        <p className="muted">Only the simulator database is affected; SmartOmni databases are never touched.</p>
+        <div className="admin-log-filters admin-reset-fields">
         <label>Scope{' '}
           <select value={scope} onChange={(e) => { setScope(e.target.value as (typeof SCOPES)[number]); setPlan(undefined); }}>
             {SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -74,11 +73,11 @@ export function ResetPanel({ shops, defaultShopId, onDone }: { shops: ShopSummar
             </select>
           </label>
         ) : null}{' '}
-        <button onClick={prepare} disabled={busy || (scope === 'SHOP' && shops.length === 0)}>Review impact</button>
+        <button className="admin-primary" onClick={prepare} disabled={busy || (scope === 'SHOP' && shops.length === 0)}>Review impact</button></div>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
       {plan ? (
-        <div className="card danger">
+        <div className="card danger admin-reset-confirmation">
           <h3>Confirm {plan.scope} reset</h3>
           <p>{plan.description}</p>
           <p className="muted">Database: <code>{plan.database}</code>. Will delete: <code>{JSON.stringify(plan.affects)}</code>. Token valid until {plan.expiresAt}.</p>

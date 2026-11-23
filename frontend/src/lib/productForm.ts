@@ -91,30 +91,38 @@ export interface ProductFormState {
   brandId: string;
   attributes: AttributeValues;
   weightKg: string;
+  weightUnit?: 'KILOGRAM' | 'POUND';
+  dimensionsUnit?: 'CENTIMETER' | 'INCH';
   length: string;
   width: string;
   height: string;
 }
 
-export type FormErrors = Partial<Record<'title' | 'images' | 'category' | 'weight' | 'dimensions' | `attr:${string}`, string>>;
+export type FormErrors = Partial<Record<'title' | 'description' | 'images' | 'category' | 'weight' | 'dimensions' | `attr:${string}`, string>>;
 
-const positive = (v: string) => v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) > 0;
+const positive = (v: string) => v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) <= 1_000_000;
 
 export function validateProductForm(f: ProductFormState, leaf: boolean, attributes: CategoryAttribute[], rules: CategoryRules | undefined): FormErrors {
   const e: FormErrors = {};
   if (!f.title.trim()) e.title = 'Enter a product title';
   else if (f.title.trim().length > 500) e.title = 'The title can have at most 500 characters';
+  if (f.description.length > 10000) e.description = 'Description can have at most 10,000 characters.';
   if (f.pendingImages > 0) e.images = 'Wait for the images to finish uploading (or remove the failed ones)';
   else if (f.imageUris.length === 0) e.images = 'Add at least one image';
   else if (f.imageUris.length > MAX_IMAGES) e.images = `At most ${MAX_IMAGES} images`;
   if (!f.categoryId) e.category = 'Choose a category';
   else if (!leaf) e.category = 'Choose a category down to the last level';
-  for (const a of attributes) if (a.isRequired && !f.attributes[a.id]?.length) e[`attr:${a.id}`] = `${a.name} is required`;
-  if (f.weightKg.trim() !== '' && !positive(f.weightKg)) e.weight = 'Weight must be a positive number';
+  for (const a of attributes) {
+    const values = f.attributes[a.id] ?? [];
+    if (a.isRequired && !values.length) e[`attr:${a.id}`] = `${a.name} is required`;
+    else if (values.length > 50 || (!a.isMultipleSelection && values.length > 1)) e[`attr:${a.id}`] = `${a.name}: too many values.`;
+    else if (values.some((v) => !v.trim() || v.trim().length > 200)) e[`attr:${a.id}`] = `${a.name}: each value must contain 1–200 characters.`;
+  }
+  if (f.weightKg.trim() !== '' && !positive(f.weightKg)) e.weight = 'Weight must be greater than 0 and at most 1,000,000.';
   const dims = [f.length, f.width, f.height];
   const anyDim = dims.some((d) => d.trim() !== '');
   if ((anyDim || rules?.packageDimensionsRequired) && !dims.every(positive)) {
-    e.dimensions = rules?.packageDimensionsRequired ? 'This category requires the package length, width and height' : 'Length, width and height must all be positive numbers';
+    e.dimensions = rules?.packageDimensionsRequired ? 'This category requires valid package length, width and height (0–1,000,000, excluding 0).' : 'Length, width and height must all be positive numbers no greater than 1,000,000.';
   }
   return e;
 }
@@ -128,8 +136,8 @@ export function listingBody(f: ProductFormState, attributes: CategoryAttribute[]
     brandId: f.brandId || null,
     images: f.imageUris,
     productAttributes: attributesPayload(f.attributes, attributes),
-    packageWeight: positive(f.weightKg) ? { value: Number(f.weightKg), unit: 'KILOGRAM' } : null,
-    packageDimensions: dims.every(positive) ? { length: Number(f.length), width: Number(f.width), height: Number(f.height), unit: 'CENTIMETER' } : null,
+    packageWeight: positive(f.weightKg) ? { value: Number(f.weightKg), unit: f.weightUnit ?? 'KILOGRAM' } : null,
+    packageDimensions: dims.every(positive) ? { length: Number(f.length), width: Number(f.width), height: Number(f.height), unit: f.dimensionsUnit ?? 'CENTIMETER' } : null,
   };
 }
 

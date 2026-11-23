@@ -32,7 +32,7 @@ export function StatusPanel({ onSeeded }: { onSeeded: () => void }) {
     <AsyncState {...status} onRetry={status.reload}>
       {(s) => (
         <div>
-          <div className="grid">
+          <div className="grid admin-health-grid">
             <div className="card"><h3>Database</h3><span className={`pill ${s.database.status === 'up' ? 'ok' : 'bad'}`}>{s.database.status}</span> <span className="muted">{s.database.name}</span></div>
             <div className="card">
               <h3>Webhook worker</h3>
@@ -45,10 +45,10 @@ export function StatusPanel({ onSeeded }: { onSeeded: () => void }) {
           </div>
           <div className="card">
             <h3>Seed data</h3>
-            {s.seed ? <code>{JSON.stringify(s.seed)}</code> : <span className="muted">unavailable</span>}
+            {s.seed ? <dl className="admin-seed-counts">{Object.entries(s.seed).map(([label, count]) => <div key={label}><dt>{label}</dt><dd>{count.toLocaleString()}</dd></div>)}</dl> : <span className="muted">unavailable</span>}
             <div><button onClick={seed}>Run seed (idempotent)</button> {msg ? <span className="muted">{msg}</span> : null}</div>
           </div>
-          <div className="card muted">API base: {s.publicApiBaseUrl} / callback host: {s.hostCallbackBaseUrl}</div>
+          <details className="admin-connection-details"><summary>Connection details</summary><p>API: {s.publicApiBaseUrl}<br />Callback: {s.hostCallbackBaseUrl}</p></details>
         </div>
       )}
     </AsyncState>

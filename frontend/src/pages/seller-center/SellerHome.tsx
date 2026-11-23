@@ -1,19 +1,16 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownRight, ArrowUpRight, ChevronRight, Store } from 'lucide-react';
+import { ChevronRight, Store } from 'lucide-react';
 import { OrderStatusBadge } from '@/components/seller/OrderStatusBadge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { MockBadge } from '@/components/ui/mock-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSellerContext } from '@/layouts/SellerLayout';
 import { useAuth } from '@/lib/auth';
 import { getCatalog, getCoupons, getShop, listAftersale, listConversations, listCouponBatches, listOrders } from '@/lib/endpoints';
-import { compactCount, shopPrice } from '@/lib/format';
+import { shopPrice } from '@/lib/format';
 import { countByTab, OPEN_AFTERSALE } from '@/lib/sellerOrders';
 import type { Aftersale, Conversation, DemoSession, Order } from '@/lib/types';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
-import { mockBusinessOverview, type MockMetric } from '@/mocks';
 
 const POLL_MS = 30_000;
 const LOW_STOCK = 5;
@@ -25,7 +22,6 @@ export function greeting(now: Date): string {
 
 export interface SellerTodo {
   toPay: number;
-  onHold: number;
   toShip: number;
   inTransit: number;
   returns: number;
@@ -37,8 +33,6 @@ export function sellerTodo(orders?: Order[], aftersale?: Aftersale[], conversati
   const tabs = orders ? countByTab(orders) : null;
   return {
     toPay: tabs?.unpaid ?? null,
-    // part of To ship, shown on its own because these orders cannot be shipped yet
-    onHold: orders ? orders.filter((o) => o.status === 'ON_HOLD').length : null,
     toShip: tabs?.['to-ship'] ?? null,
     inTransit: tabs?.shipped ?? null,
     returns: aftersale ? aftersale.filter((r) => OPEN_AFTERSALE.includes(r.status)).length : null,
@@ -48,7 +42,7 @@ export function sellerTodo(orders?: Order[], aftersale?: Aftersale[], conversati
 
 function Panel({ title, action, children, className, label }: { title: ReactNode; action?: ReactNode; children: ReactNode; className?: string; label?: string }) {
   return (
-    <section aria-label={label} className={cn('rounded-card bg-white p-5 shadow-xs ring-1 ring-line-soft', className)}>
+    <section aria-label={label} className={cn('seller-card rounded-card bg-white p-5 shadow-xs ring-1 ring-line-soft', className)}>
       <div className="mb-4 flex items-center gap-2">
         <h2 className="text-base font-bold">{title}</h2>
         {action ? <div className="ml-auto">{action}</div> : null}
@@ -82,44 +76,17 @@ function TodoTile({ label, count, to, loading }: { label: string; count: number 
   );
 }
 
-function Sparkline({ series, up }: { series: number[]; up: boolean }) {
-  const w = 120;
-  const h = 36;
-  const min = Math.min(...series);
-  const span = Math.max(...series) - min || 1;
-  const points = series.map((v, i) => `${((i / (series.length - 1)) * w).toFixed(1)},${(h - 2 - ((v - min) / span) * (h - 4)).toFixed(1)}`).join(' ');
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden className="overflow-visible">
-      <polyline points={points} fill="none" stroke={up ? 'var(--color-teal)' : 'var(--color-buyer)'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const formatMetric = (m: MockMetric) => (m.format === 'currency' ? shopPrice(m.value) : m.format === 'percent' ? `${m.value.toFixed(2)}%` : compactCount(m.value));
-
-function BusinessOverview() {
-  return (
-    <MockBadge className="p-0">
-      <Panel title="Business overview" label="Business overview" action={<span className="text-xs text-muted-foreground">Last 7 days</span>} className="shadow-none ring-0">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {mockBusinessOverview.map((m) => {
-            const up = m.changePct >= 0;
-            return (
-              <div key={m.label} className="flex flex-col gap-1 rounded-xl border border-line-soft p-3">
-                <span className="text-xs text-muted-foreground">{m.label}</span>
-                <span className="text-xl font-bold">{formatMetric(m)}</span>
-                <span className={cn('flex items-center gap-0.5 text-xs font-semibold', up ? 'text-free-ship' : 'text-buyer')}>
-                  {up ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-                  {Math.abs(m.changePct).toFixed(1)}% vs previous 7 days
-                </span>
-                <Sparkline series={m.series} up={up} />
-              </div>
-            );
-          })}
-        </div>
-      </Panel>
-    </MockBadge>
-  );
+function BusinessOverview({ orders }: { orders: AsyncResult<{ items: Order[] }> }) {
+  const rows = orders.data?.items ?? [];
+  const metrics = [
+    { label: 'Total orders', value: rows.length.toLocaleString() },
+    { label: 'Paid order value', value: shopPrice(rows.filter((o) => o.paidAt && o.status !== 'CANCELLED').reduce((sum, o) => sum + o.amounts.totalVnd, 0)) },
+    { label: 'Delivered orders', value: rows.filter((o) => o.status === 'DELIVERED').length.toLocaleString() },
+    { label: 'Completed orders', value: rows.filter((o) => o.status === 'COMPLETED').length.toLocaleString() },
+  ];
+  return <Panel title="Business overview" label="Business overview" action={<span className="seller-metric-scope">All shop orders</span>}>
+    {orders.error && !orders.data ? <LoadError result={orders} what="business metrics" /> : <div className="seller-business-metrics">{metrics.map((metric) => <div key={metric.label}><span>{metric.label}</span>{orders.loading && !orders.data ? <Skeleton className="h-8 w-20" /> : <strong>{orders.data ? metric.value : '—'}</strong>}</div>)}</div>}
+  </Panel>;
 }
 
 function ShopCard({ seller }: { seller: DemoSession }) {
@@ -213,7 +180,6 @@ function LatestOrders({ orders }: { orders: AsyncResult<{ items: Order[] }> }) {
 }
 
 function Home({ seller }: { seller: DemoSession }) {
-  const { sellerName } = useSellerContext();
   const deps = [seller.sessionToken, seller.shopId];
   const orders = useAsync(() => listOrders(seller), deps, POLL_MS);
   const aftersale = useAsync(() => listAftersale(seller), deps, POLL_MS);
@@ -221,7 +187,6 @@ function Home({ seller }: { seller: DemoSession }) {
   const todo = sellerTodo(orders.data?.items, aftersale.data?.items, chats.data?.items);
   const tiles: { label: string; count: number | null; to: string; source: AsyncResult<unknown> }[] = [
     { label: 'To pay', count: todo.toPay, to: '/seller-center/orders?tab=unpaid', source: orders },
-    { label: 'On hold', count: todo.onHold, to: '/seller-center/orders?tab=to-ship', source: orders },
     { label: 'To ship', count: todo.toShip, to: '/seller-center/orders?tab=to-ship', source: orders },
     { label: 'In transit', count: todo.inTransit, to: '/seller-center/orders?tab=shipped', source: orders },
     { label: 'Returns', count: todo.returns, to: '/seller-center/returns?status=open', source: aftersale },
@@ -230,10 +195,6 @@ function Home({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-bold">
-        {greeting(new Date())}
-        {sellerName ? `, ${sellerName}` : ''}
-      </h1>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Panel title="To-do list" label="To-do list">
@@ -243,7 +204,7 @@ function Home({ seller }: { seller: DemoSession }) {
               ))}
             </div>
           </Panel>
-          <BusinessOverview />
+          <BusinessOverview orders={orders} />
           <LatestOrders orders={orders} />
         </div>
         <div className="flex flex-col gap-5">

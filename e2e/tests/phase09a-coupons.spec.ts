@@ -75,13 +75,15 @@ test('unknown, deactivated and under-minimum coupons are refused with a visible 
   await expect(page.getByTestId('total')).toHaveText('₫258.000');
 });
 
-test('no voucher-creation operation is exposed: the router answers 404 and the UI says coupons are demo data', async ({ page, request }) => {
+// The "Vouchers are seller-created demo data." line was removed from the redesigned page on purpose (4b921cb);
+// what still matters is that vouchers are made on the Seller Center page and the UI never claims a TikTok/OpenAPI origin.
+test('no voucher-creation operation is exposed: the router answers 404 and vouchers are created on the Seller Center page', async ({ page, request }) => {
   for (const [method, path] of [['POST', '/promotion/202406/coupons'], ['POST', '/promotion/202406/coupons/create'], ['PUT', '/promotion/202406/coupons/1']] as const) {
     // the TikTok router lives on the API port (the UI proxy only forwards /demo, /test-admin, /health)
     const res = await request.fetch(`${process.env.E2E_API_URL ?? 'http://localhost:8090'}${path}`, { method, data: { title: 'x' } });
     expect(res.status(), `${method} ${path}`).toBe(404);
   }
   await signInAs(page, 'SELLER', SELLER_A, '/seller-center/vouchers');
-  await expect(page.getByText('Vouchers are seller-created demo data.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New voucher' })).toBeVisible();
   await expect(page.locator('main').getByText(/TikTok|OpenAPI/i)).toHaveCount(0);
 });

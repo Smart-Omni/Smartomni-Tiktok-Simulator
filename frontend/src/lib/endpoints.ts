@@ -13,6 +13,7 @@ import type {
   Conversation,
   Conversations,
   Coupon,
+  BuyerCoupon,
   CouponBatch,
   CouponBatchDetail,
   DemoSession,
@@ -28,6 +29,7 @@ import type {
   ShopRef,
   ShippingDocumentType,
   Shop,
+  ShopBuyer,
   SignInIdentity,
   StorefrontProduct,
   UploadedImage,
@@ -53,8 +55,12 @@ export const endSession = (s: DemoSession) => api<void>('/demo/sessions/current'
 
 // Shop (seller)
 export const getShop = (s: DemoSession) => api<Shop>(shop(s), auth(s));
+export const getShopBuyers = (s: DemoSession) => api<{ items: ShopBuyer[] }>(shop(s, '/buyers'), auth(s));
 export const getCatalog = (s: DemoSession) => api<Catalog>(shop(s, '/catalog'), auth(s));
 export const getCoupons = (s: DemoSession) => api<{ items: Coupon[] }>(shop(s, '/coupons'), auth(s));
+export const getBuyerCoupons = (s: DemoSession) => api<{ items: BuyerCoupon[] }>(shop(s, '/coupons'), auth(s));
+/** Read the simulator's business time through the existing admin proxy. No local-time fallback. */
+export const getBusinessClock = () => api<{ now: string }>('/test-admin/clock');
 export const listConversations = (s: DemoSession) => api<Conversations>(shop(s, '/chat/conversations'), auth(s));
 
 // Storefront (buyer)
@@ -67,11 +73,11 @@ export const getStorefrontProduct = (s: DemoSession, productId: string) =>
 const PAGE = 100;
 const MAX_PAGES = 20;
 /** Every on-sale product of every active shop (GET /demo/catalog, public), following the cursor. */
-export async function listMarketplaceProducts(): Promise<StorefrontProduct[]> {
+export async function listMarketplaceProducts(shopId?: string): Promise<StorefrontProduct[]> {
   const items: StorefrontProduct[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${cursor ? `&cursor=${id(cursor)}` : ''}`);
+    const r: { items: StorefrontProduct[]; nextCursor: string | null } = await api(`/demo/catalog?limit=${PAGE}${shopId ? `&shopId=${id(shopId)}` : ''}${cursor ? `&cursor=${id(cursor)}` : ''}`);
     items.push(...r.items);
     if (!r.nextCursor) break;
     cursor = r.nextCursor;
@@ -115,6 +121,12 @@ export const requestReturn = (s: DemoSession, body: ReturnRequest) =>
   api<{ request: Aftersale }>(shop(s, '/aftersale/returns'), { method: 'POST', body, ...auth(s) });
 export const requestCancellation = (s: DemoSession, orderId: string, reason?: string) =>
   api<{ request: Aftersale }>(shop(s, '/aftersale/cancellations'), { method: 'POST', body: { orderId, ...(reason ? { reason } : {}) }, ...auth(s) });
+export const cancelReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/cancel`), { method: 'POST', ...auth(s) });
+export const shipReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/ship-back`), { method: 'POST', ...auth(s) });
+export const disputeReturnRequest = (s: DemoSession, requestId: string) =>
+  api<{ changed: boolean; request: Aftersale }>(shop(s, `/aftersale/${id(requestId)}/dispute`), { method: 'POST', ...auth(s) });
 
 // Seller Center writes (same paths and bodies as the legacy SellerCatalog, aftersale/coupons/chat/inventory seller tabs)
 type Body = Record<string, unknown>;
@@ -142,8 +154,8 @@ export const uploadProductImage = (s: DemoSession, file: File) => {
 export const getInventoryHistory = (s: DemoSession) => api<InventoryHistory>(shop(s, '/inventory/history'), auth(s));
 
 export const approveAftersale = (s: DemoSession, requestId: string) => api(shop(s, `/aftersale/${id(requestId)}/approve`), { method: 'POST', body: {}, ...auth(s) });
-export const rejectAftersale = (s: DemoSession, requestId: string, reason: string) =>
-  api(shop(s, `/aftersale/${id(requestId)}/reject`), { method: 'POST', body: { reason }, ...auth(s) });
+export const rejectAftersale = (s: DemoSession, requestId: string, reason: string, comment?: string) =>
+  api(shop(s, `/aftersale/${id(requestId)}/reject`), { method: 'POST', body: { reason, ...(comment?.trim() ? { comment: comment.trim() } : {}) }, ...auth(s) });
 
 export const createCoupon = (s: DemoSession, body: Body) => api(shop(s, '/coupons'), { method: 'POST', body, ...auth(s) });
 export const patchCoupon = (s: DemoSession, couponId: string, body: Body) => api(shop(s, `/coupons/${id(couponId)}`), { method: 'PATCH', body, ...auth(s) });

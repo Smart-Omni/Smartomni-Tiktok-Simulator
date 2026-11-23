@@ -35,7 +35,6 @@ const order = (status: Order['status'], shop = 'shop-1'): Order => ({
   createdAt: future,
   updatedAt: future,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'Trần Văn An', phone: '0900000001', addressLine: '12 Lê Lợi', district: 'Quận 1', city: 'Hồ Chí Minh' },
@@ -88,8 +87,7 @@ describe('CheckoutPage', () => {
         if (url === '/demo/shops/shop-1/coupons') {
           return json({
             items: [
-              { id: 'v1', title: 'Ten off', promoCode: 'SALE10', status: 'ONGOING', discountText: '10% off', minSpendVnd: 100000 },
-              { id: 'v2', title: 'Old', promoCode: 'OLD2020', status: 'EXPIRED', discountText: '5% off', minSpendVnd: null },
+              { id: 'v1', title: 'Ten off', promoCode: 'SALE10', discountText: '10% off', minSpendVnd: 100000, endAt: '2026-12-31T00:00:00.000Z' },
             ],
           });
         }
@@ -101,8 +99,8 @@ describe('CheckoutPage', () => {
         if (url === '/demo/shops/shop-2/checkout') return json({ replayed: false, order: order('UNPAID', 'shop-2') }, 201);
         if (url === '/demo/shops/shop-1/cart/items') return json(cart);
         if (url === '/demo/shops/shop-2/cart/items') return json(cart2);
-        if (url === '/demo/shops/shop-1/orders/576000111/pay') return json({ replayed: false, order: order('ON_HOLD') }, 201);
-        if (url === '/demo/shops/shop-2/orders/576000222/pay') return json({ replayed: false, order: order('ON_HOLD', 'shop-2') }, 201);
+        if (url === '/demo/shops/shop-1/orders/576000111/pay') return json({ replayed: false, order: order('AWAITING_SHIPMENT') }, 201);
+        if (url === '/demo/shops/shop-2/orders/576000222/pay') return json({ replayed: false, order: order('AWAITING_SHIPMENT', 'shop-2') }, 201);
         return json({ message: 'nope' }, 404);
       }),
     );
@@ -187,7 +185,7 @@ describe('CheckoutPage', () => {
     expect(posts('/checkout')[0].body?.recipient).toEqual({ name: 'Trần Văn An', phone: '0911222333', addressLine: '3 Hai Bà Trưng', district: 'Hoàn Kiếm', city: 'Hà Nội', postalCode: null });
   });
 
-  it('offers the ongoing vouchers as chips and upper-cases a typed code', async () => {
+  it('shows the buyer API response without requiring status and upper-cases a typed code', async () => {
     renderCheckout();
     const chips = await screen.findByRole('group', { name: 'Available vouchers' });
     expect(within(chips).getAllByRole('button').map((b) => b.textContent)).toEqual(['SALE1010% off']);

@@ -43,15 +43,12 @@ describe('TikTok OpenAPI 202602 / 202309 / 202606 Upgrade & Dispute State Machin
     await app.get(PersistentBusinessClock).reset();
   });
 
-  const advanceClock = (ms: number) => http.put('/test-admin/clock').set(admin).send({ advanceMs: ms }).expect(200);
   const transition = (id: string, to: string) => http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to }).expect(201);
 
   const paidOrder = async (buyer: { token: string; shopId: string }, key: string, quantity = 1, sku = BAG) => {
     const c = await t.checkout(buyer, [{ skuId: sku, quantity }], key).expect(201);
     const id = c.body.order.id as string;
     await t.pay(buyer, id).expect(201);
-    await advanceClock((cfg.orders.holdMinutes + 1) * 60_000);
-    await http.post('/test-admin/orders/release-due').set(admin).expect(201);
     return id;
   };
 

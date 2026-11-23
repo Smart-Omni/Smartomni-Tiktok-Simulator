@@ -58,7 +58,6 @@ export function orderView(o: OrderRow) {
     createdAt: o.createdAt.toISOString(),
     updatedAt: o.updatedAt.toISOString(),
     paidAt: o.paidAt?.toISOString() ?? null,
-    releaseAt: o.releaseAt?.toISOString() ?? null,
     cancelReason: o.cancelReason,
     buyerRequestedCancel: o.buyerRequestedCancel,
     recipient: { name: o.recipientName, phone: o.recipientPhone, addressLine: o.addressLine, district: o.district, city: o.city },

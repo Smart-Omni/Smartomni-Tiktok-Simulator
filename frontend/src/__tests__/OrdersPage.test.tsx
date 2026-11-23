@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '@/lib/auth';
-import type { DemoSession, Order, OrderStatus } from '@/lib/types';
+import type { Aftersale, DemoSession, Order, OrderStatus } from '@/lib/types';
 import { actionsFor, hint, OrdersPage, tabOf } from '@/pages/shop/OrdersPage';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -18,7 +18,6 @@ const order = (id: string, status: OrderStatus, createdAt: string, extra: Partia
   createdAt,
   updatedAt: createdAt,
   paidAt: null,
-  releaseAt: null,
   cancelReason: null,
   buyerRequestedCancel: false,
   recipient: { name: 'An', phone: '0900000001', addressLine: '12 Lê Lợi', district: 'Quận 1', city: 'Hồ Chí Minh' },
@@ -63,28 +62,26 @@ describe('tab and action rules', () => {
   it('maps every backend status to one tab', () => {
     const expected: Record<OrderStatus, string> = {
       UNPAID: 'to-pay',
-      ON_HOLD: 'to-ship',
       AWAITING_SHIPMENT: 'to-ship',
       AWAITING_COLLECTION: 'to-ship',
       PARTIALLY_SHIPPING: 'shipping',
       IN_TRANSIT: 'shipping',
       DELIVERED: 'delivered',
-      COMPLETED: 'delivered',
+      COMPLETED: 'completed',
       CANCELLED: 'cancelled',
     };
     for (const [status, tab] of Object.entries(expected)) expect(tabOf(status as OrderStatus)).toBe(tab);
   });
 
-  it('tells the buyer when an ON_HOLD order can ship', () => {
-    const held = order('h', 'ON_HOLD', '2026-10-21T05:00:00.000Z', { releaseAt: '2026-10-21T05:30:00.000Z' });
-    expect(hint(held)).toMatch(/^Confirming payment · ready to ship after \d{2}\/\d{2}, \d{2}:\d{2}$/);
-    expect(hint({ ...held, releaseAt: null })).toBe('Payment received. The order is being confirmed.');
+  it('tells the buyer a paid order is with the seller at once (no hold)', () => {
+    const paid = order('p', 'AWAITING_SHIPMENT', '2026-10-21T05:00:00.000Z');
+    expect(hint(paid)).toBe('The seller is preparing your order.');
+    expect(hint({ ...paid, buyerRequestedCancel: true })).toBe('Cancellation requested, waiting for the seller.');
   });
 
   it('offers the buyer actions per status', () => {
     const a = (status: OrderStatus, buyerRequestedCancel = false) => actionsFor({ status, buyerRequestedCancel });
     expect(a('UNPAID')).toEqual(['cancel', 'pay']);
-    expect(a('ON_HOLD')).toEqual(['cancel']);
     expect(a('AWAITING_SHIPMENT')).toEqual(['request-cancel']);
     expect(a('AWAITING_SHIPMENT', true)).toEqual([]);
     expect(a('AWAITING_COLLECTION')).toEqual(['track']);
@@ -97,8 +94,21 @@ describe('tab and action rules', () => {
 
 describe('OrdersPage', () => {
   const calls: { url: string; method: string; body?: unknown }[] = [];
+  let returns: Aftersale[];
+  let listedOrders: Order[];
+  let returnFailure = false;
+  const returnRequest = (id: string, status: string, arbitrationStatus: Aftersale['arbitrationStatus'] = 'NO_ARBITRATION'): Aftersale => ({
+    id, orderId: 'o4', kind: 'RETURN', type: 'RETURN_AND_REFUND', status, arbitrationStatus,
+    reason: 'DAMAGED_ITEM', role: 'BUYER', rejectReason: null, returnTrackingNumber: null,
+    buyer: { id: 'buyer_1', name: 'An' }, refund: { subtotalVnd: 129000, shippingVnd: 0, totalVnd: 129000 },
+    createdAt: '2026-10-22T00:00:00Z', updatedAt: '2026-10-22T00:00:00Z',
+    items: [{ skuId: 'o4-sku', productName: 'Tee', skuName: 'M', quantity: 1 }],
+  });
   beforeEach(() => {
     calls.length = 0;
+    returns = [];
+    listedOrders = [...orders];
+    returnFailure = false;
     sessionStorage.clear();
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
     vi.stubGlobal(
@@ -107,12 +117,23 @@ describe('OrdersPage', () => {
         const method = init?.method ?? 'GET';
         const body = init?.body ? JSON.parse(String(init.body)) : undefined;
         calls.push({ url, method, body });
-        if (url === '/demo/buyer/orders') return json({ items: orders });
+        if (url === '/demo/buyer/orders') return json({ items: listedOrders });
         if ((url === '/demo/shops/shop-1/aftersale' || url === '/demo/shops/shop-2/aftersale') && method === 'GET') {
-          return json({ items: [], requestReasons: ['CHANGED_MIND', 'DAMAGED_ITEM', 'OTHER'], rejectReasons: [] });
+          return json({ items: url.includes('shop-2') ? returns : [], requestReasons: ['CHANGED_MIND', 'DAMAGED_ITEM', 'OTHER'], rejectReasons: [] });
         }
         const f = /\/orders\/(o\d)\/fulfillment$/.exec(url);
         if (f) return json(fulfillment(f[1], `SIM-${f[1]}`));
+        const returnAction = /\/aftersale\/(r\d+)\/(cancel|ship-back|dispute)$/.exec(url);
+        if (returnAction && method === 'POST') {
+          if (returnFailure) return json({ code: 'invalid_transition', message: 'The request changed. Refresh and try again.' }, 400);
+          returns = returns.map((r) => r.id !== returnAction[1] ? r : {
+            ...r,
+            status: returnAction[2] === 'cancel' ? 'RETURN_OR_REFUND_REQUEST_CANCEL' : returnAction[2] === 'ship-back' ? 'BUYER_SHIPPED_ITEM' : r.status,
+            arbitrationStatus: returnAction[2] === 'dispute' ? 'IN_ARBITRATION' : r.arbitrationStatus,
+            returnTrackingNumber: returnAction[2] === 'ship-back' ? 'SIMRET123' : r.returnTrackingNumber,
+          });
+          return json({ request: returns.find((r) => r.id === returnAction[1]), changed: true }, 201);
+        }
         if (method === 'POST') return json({}, 201);
         return json({ message: 'nope' }, 404);
       }),
@@ -136,6 +157,17 @@ describe('OrdersPage', () => {
     expect(within(card('o5')).getByText('Cancelled: Changed mind')).toBeTruthy();
   });
 
+  it('counts and filters completed orders separately from delivered orders', async () => {
+    listedOrders.push(order('o6', 'COMPLETED', '2026-10-22T00:00:00Z'));
+    renderOrders();
+    const completed = await screen.findByRole('tab', { name: 'Completed (1)' });
+    expect(screen.getByRole('tab', { name: 'Delivered (1)' })).toBeTruthy();
+    fireEvent.mouseDown(completed);
+    expect(screen.getAllByRole('article').map((item) => item.getAttribute('aria-label'))).toEqual(['Order o6']);
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Delivered (1)' }));
+    expect(screen.getAllByRole('article').map((item) => item.getAttribute('aria-label'))).toEqual(['Order o4']);
+  });
+
   it('lists the orders of every shop and names the shop on each card', async () => {
     renderOrders();
     await screen.findByRole('article', { name: 'Order o1' });
@@ -147,12 +179,28 @@ describe('OrdersPage', () => {
   it('shows the actions of each status on the cards', async () => {
     renderOrders();
     await screen.findByRole('article', { name: 'Order o1' });
-    const names = (id: string) => within(card(id)).queryAllByRole('button').map((b) => b.textContent);
+    const names = (id: string) => within(card(id)).queryAllByRole('button').filter((b) => !b.hasAttribute('aria-controls')).map((b) => b.textContent);
     expect(names('o1')).toEqual(['Cancel', 'Pay now']);
     expect(names('o2')).toEqual(['Cancel']);
     expect(names('o3')).toEqual(['Track']);
     expect(names('o4')).toEqual(['Track', 'Request return']);
     expect(names('o5')).toEqual([]);
+  });
+
+  it('collapses each order independently while keeping its summary and total visible', async () => {
+    renderOrders();
+    const unpaid = await screen.findByRole('article', { name: 'Order o1' });
+    const toggle = within(unpaid).getByRole('button', { name: 'Collapse order o1' });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(within(unpaid).queryByRole('button', { name: 'Pay now' })).toBeNull();
+    const header = unpaid.querySelector('header')!;
+    expect(within(header).getByText('Mộc Lan Shop')).toBeTruthy();
+    expect(within(header).getByText('To pay')).toBeTruthy();
+    expect(header.textContent).toContain('283.000');
+    expect(within(card('o4')).getByRole('button', { name: 'Request return' })).toBeTruthy();
+    fireEvent.click(within(unpaid).getByRole('button', { name: 'Expand order o1' }));
+    expect(within(unpaid).getByRole('button', { name: 'Pay now' })).toBeTruthy();
   });
 
   it('pays an unpaid order', async () => {
@@ -210,4 +258,38 @@ describe('OrdersPage', () => {
       }),
     );
   });
+  it('keeps every return visible and scopes confirmed actions to the order shop', async () => {
+    returns = [returnRequest('r1', 'RETURN_OR_REFUND_REQUEST_PENDING'), returnRequest('r2', 'AWAITING_BUYER_SHIP')];
+    renderOrders();
+    const shipped = await screen.findByRole('group', { name: 'Return r2' });
+    expect(screen.getByRole('group', { name: 'Return r1' })).toBeTruthy();
+    fireEvent.click(within(shipped).getByRole('button', { name: 'I shipped the return' }));
+    expect(calls.filter((c) => c.method === 'POST')).toHaveLength(0);
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Confirm return shipment?' })).getByRole('button', { name: 'Confirm shipment' }));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/demo/shops/shop-2/aftersale/r2/ship-back', method: 'POST', body: undefined }));
+    await screen.findByText('SIMRET123');
+    expect(within(screen.getByRole('group', { name: 'Return r2' })).queryByRole('button', { name: 'I shipped the return' })).toBeNull();
+    const pending = screen.getByRole('group', { name: 'Return r1' });
+    fireEvent.click(within(pending).getByRole('button', { name: 'Cancel return request' }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Cancel return request?' })).getByRole('button', { name: 'Cancel return request' }));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/demo/shops/shop-2/aftersale/r1/cancel', method: 'POST', body: undefined }));
+    await waitFor(() => expect(within(screen.getByRole('group', { name: 'Return r1' })).queryByRole('button', { name: 'Cancel return request' })).toBeNull());
+  });
+
+  it('shows API errors without changing the return, then displays arbitration progress after success', async () => {
+    returns = [returnRequest('r1', 'REFUND_OR_RETURN_REQUEST_REJECT')];
+    returnFailure = true;
+    renderOrders();
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Return r1' })).getByRole('button', { name: 'Open dispute' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Open a dispute?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Open dispute' }));
+    expect(await within(dialog).findByRole('alert')).toHaveProperty('textContent', 'The request changed. Refresh and try again.');
+    expect(screen.queryByText('Dispute under review')).toBeNull();
+    returnFailure = false;
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Open dispute' }));
+    await screen.findByText('Dispute under review');
+    expect(within(screen.getByRole('group', { name: 'Return r1' })).queryByRole('button', { name: 'Open dispute' })).toBeNull();
+    expect(calls).toContainEqual({ url: '/demo/shops/shop-2/aftersale/r1/dispute', method: 'POST', body: undefined });
+  });
+
 });

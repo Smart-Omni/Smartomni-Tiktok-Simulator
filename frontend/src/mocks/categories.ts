@@ -14,16 +14,27 @@ export interface MockCategory {
 }
 
 export const mockCategories: MockCategory[] = [
-  { slug: 'womenswear', name: 'Womenswear & Underwear', bg: '#F4EFEA' },
-  { slug: 'phones-electronics', name: 'Phones & Electronics', bg: '#EEF1F5' },
-  { slug: 'fashion-accessories', name: 'Fashion Accessories', bg: '#F5EFE6' },
-  { slug: 'menswear', name: 'Menswear & Underwear', bg: '#EFF0F2' },
-  { slug: 'home-supplies', name: 'Home Supplies', bg: '#EAF2F8' },
-  { slug: 'beauty', name: 'Beauty & Personal Care', bg: '#F7EEF0' },
+  { slug: 'mall', name: 'MALL', bg: '#eee' },
+  { slug: 'womenswear', name: "Women's Clothing", bg: '#F4EFEA' },
+  { slug: 'beauty', name: 'Beauty', bg: '#F7EEF0' },
+  { slug: 'menswear', name: "Men's Clothing", bg: '#EFF0F2' },
+  { slug: 'personal-care', name: 'Personal Care', bg: '#eee' },
+  { slug: 'phones-electronics', name: 'Electronics', bg: '#EEF1F5' },
+  { slug: 'baby', name: 'Baby', bg: '#eee' },
+  { slug: 'groceries', name: 'Groceries', bg: '#eee' },
   { slug: 'shoes', name: 'Shoes', bg: '#F1F1F2' },
-  { slug: 'sports-outdoor', name: 'Sports & Outdoor', bg: '#EAF3EE' },
-  { slug: 'luggage-bags', name: 'Luggage & Bags', bg: '#F1F0EE' },
-  { slug: 'kitchenware', name: 'Kitchenware', bg: '#F6F1E7' },
+  { slug: 'sports-outdoor', name: 'Sports', bg: '#EAF3EE' },
+  { slug: 'health', name: 'Health', bg: '#eee' },
+  { slug: 'fashion-accessories', name: 'Accessories', bg: '#F5EFE6' },
+  { slug: 'home-supplies', name: 'Household', bg: '#EAF2F8' },
+  { slug: 'vehicle', name: 'Vehicle', bg: '#eee' },
+  { slug: 'luggage-bags', name: 'Bags', bg: '#F1F0EE' },
+  { slug: 'appliances', name: 'Appliances', bg: '#eee' },
+  { slug: 'textiles', name: 'Textiles', bg: '#eee' },
+  { slug: 'kid-wears', name: 'Kid Wears', bg: '#eee' },
+  { slug: 'kitchenware', name: 'Kitchen', bg: '#F6F1E7' },
+  { slug: 'toys', name: 'Toys', bg: '#eee' },
+  { slug: 'pets-and-toys', name: 'Pets and Toys', bg: '#eee' },
 ];
 
 export const categoryBySlug = (slug: string | null | undefined) => mockCategories.find((c) => c.slug === slug);

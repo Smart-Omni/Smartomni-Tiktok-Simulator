@@ -1,3 +1,6 @@
+import { PaginatedList } from '../components/console/PaginatedList';
+import { PageActions } from '../components/console/PageActions';
+import { RefreshCw } from 'lucide-react';
 import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
@@ -11,13 +14,13 @@ export interface InventoryHistory {
 export function InventoryHistoryView({ data }: { data: InventoryHistory }) {
   return (
     <div>
-      <h3>Stock changes (before / after)</h3>
+      <h3>Stock changes</h3>
       {data.changes.length === 0 ? <div className="state state-empty">No stock changes yet.</div> : (
-        <div className="scroll">
-          <table>
+        <PaginatedList items={data.changes} label="Changes">{(visible) => <div className="scroll">
+          <table className="admin-data-table">
             <thead><tr><th>#</th><th>SKU</th><th>Warehouse</th><th className="num">Before</th><th className="num">After</th><th>Source</th><th>Request</th><th>When</th></tr></thead>
             <tbody>
-              {data.changes.map((c) => (
+              {visible.map((c) => (
                 <tr key={c.seq}>
                   <td>{c.seq}</td>
                   <td>{c.sellerSku}<div className="muted">{c.sku}</div></td>
@@ -31,14 +34,14 @@ export function InventoryHistoryView({ data }: { data: InventoryHistory }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </div>}</PaginatedList>
       )}
-      <h3>Update Inventory API calls</h3>
-      {data.attempts.length === 0 ? <div className="state state-empty">SmartOmni has not called Update Inventory yet.</div> : (
-        <table>
+      <h3>Update requests</h3>
+      {data.attempts.length === 0 ? <div className="state state-empty">No inventory update requests yet.</div> : (
+        <PaginatedList items={data.attempts} label="Attempts">{(visible) => <div className="scroll"><table className="admin-data-table">
           <thead><tr><th>#</th><th>Product</th><th>Outcome</th><th className="num">SKUs</th><th>Request</th><th>When</th></tr></thead>
           <tbody>
-            {data.attempts.map((a) => (
+            {visible.map((a) => (
               <tr key={a.seq}>
                 <td>{a.seq}</td>
                 <td>{a.product}</td>
@@ -49,7 +52,7 @@ export function InventoryHistoryView({ data }: { data: InventoryHistory }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>}</PaginatedList>
       )}
     </div>
   );
@@ -60,9 +63,7 @@ export function InventoryPanel({ shopId }: { shopId: string }) {
   const history = useAsync(() => api<InventoryHistory>(`/test-admin/inventory/history?shopId=${encodeURIComponent(shopId)}&limit=100`), [shopId], 5000);
   return (
     <div>
-      <p className="muted">
-        Create TIMEOUT_BEFORE_WRITE / TIMEOUT_AFTER_WRITE / APP_ERROR_200 rules on the Faults tab (target API, path match <code>/product/202309/products/</code>) to see how a client behaves when the answer is lost or an HTTP 200 carries an application error.
-      </p>
+      <PageActions><button className="admin-icon-action" onClick={history.reload}><RefreshCw size={13} />Refresh</button></PageActions>
       <AsyncState {...history} onRetry={history.reload}>
         {(d) => <InventoryHistoryView data={d} />}
       </AsyncState>

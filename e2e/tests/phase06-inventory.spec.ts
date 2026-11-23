@@ -10,7 +10,10 @@ test.beforeAll(async ({ baseURL }) => {
 
 test('seller sets a SKU stock to 0 in both warehouses and the Inventory tab shows before/after', async ({ page }) => {
   await signInAs(page, 'SELLER', SELLER_A, '/seller-center/products');
-  const row = page.getByRole('row', { name: 'SKU BAG-NVY' });
+  // product cards are collapsed; "Manage" opens the variants & inventory table
+  const product = page.getByRole('region', { name: /^Product / }).filter({ hasText: 'BAG-NVY' });
+  await product.getByRole('button', { name: 'Manage' }).click();
+  const row = product.getByRole('row', { name: 'SKU BAG-NVY' });
   await expect(row).toBeVisible();
   for (const [wh, before] of [['Kho Hà Nội', '20'], ['Kho TP.HCM', '10']] as const) {
     const input = row.getByLabel(`Stock of BAG-NVY in ${wh}`);
@@ -20,7 +23,7 @@ test('seller sets a SKU stock to 0 in both warehouses and the Inventory tab show
   await row.getByRole('button', { name: 'Set' }).nth(1).click(); // the second "Set" in the row is the stock one
   await expect(row.getByLabel('Stock of BAG-NVY in Kho Hà Nội')).toHaveValue('0');
 
-  await page.getByRole('tab', { name: 'Stock history' }).click();
+  await page.getByRole('button', { name: 'Stock history' }).click();
   await expect(page.getByRole('heading', { name: 'Stock changes (before / after)' })).toBeVisible();
   const hn = page.getByRole('row').filter({ hasText: 'BAG-NVY' }).filter({ hasText: 'Kho Hà Nội' });
   await expect(hn.getByRole('cell').nth(3)).toHaveText('20'); // before
@@ -45,10 +48,13 @@ test('the buyer sees the sold-out SKU disabled while another variant stays selec
 
 test('the Test Console shows the Inventory panel and the inventory fault kinds', async ({ page }) => {
   await page.goto('/console');
-  await page.getByRole('tab', { name: 'Inventory' }).click();
-  await expect(page.getByText('TIMEOUT_BEFORE_WRITE / TIMEOUT_AFTER_WRITE / APP_ERROR_200')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Update Inventory API calls' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Faults' }).click();
+  // the console sidebar uses navigation buttons; the inventory fault kinds are offered on the Fault injection screen
+  const nav = page.getByRole('navigation', { name: 'Test Console navigation' });
+  await nav.getByRole('button', { name: 'Inventory' }).click();
+  await expect(page.getByRole('heading', { name: 'Stock changes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Update requests' })).toBeVisible();
+  await nav.getByRole('button', { name: 'Fault injection' }).click();
+  await page.getByRole('button', { name: 'New fault' }).click(); // the form opens on demand
   const kind = page.getByLabel('Kind');
   for (const k of ['TIMEOUT_BEFORE_WRITE', 'TIMEOUT_AFTER_WRITE', 'APP_ERROR_200']) await expect(kind.locator(`option[value="${k}"], option:text-is("${k}")`).first()).toBeAttached();
   await shot(page, 'phase06-console-faults');

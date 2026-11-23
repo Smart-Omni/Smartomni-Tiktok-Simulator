@@ -11,20 +11,21 @@ import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getFulfillment, getOrder } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
-import type { DemoSession, Order, OrderHistoryEntry, OrderStatus } from '@/lib/types';
+import type { DemoSession, Order, OrderHistoryEntry } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
 
 const POLL_MS = 10_000;
 
-const STEPS: { label: string; reachedBy: OrderStatus[] }[] = [
+// reachedBy holds raw history statuses: ON_HOLD only appears in history written before it was removed (DECISIONS H12)
+const STEPS: { label: string; reachedBy: string[] }[] = [
   { label: 'Placed', reachedBy: ['UNPAID'] },
-  { label: 'Paid', reachedBy: ['ON_HOLD', 'AWAITING_SHIPMENT'] },
+  { label: 'Paid', reachedBy: ['AWAITING_SHIPMENT', 'ON_HOLD'] },
   { label: 'Shipment arranged', reachedBy: ['AWAITING_COLLECTION'] },
   { label: 'In transit', reachedBy: ['PARTIALLY_SHIPPING', 'IN_TRANSIT'] },
   { label: 'Delivered', reachedBy: ['DELIVERED', 'COMPLETED'] },
 ];
-const stepOf = (s: OrderStatus) => STEPS.findIndex((step) => step.reachedBy.includes(s));
+const stepOf = (s: string) => STEPS.findIndex((step) => step.reachedBy.includes(s));
 
 export interface Progress {
   /** Index of the last step reached. */
@@ -159,7 +160,7 @@ function Detail({ seller, id }: { seller: DemoSession; id: string }) {
           Order <span className="font-mono">{order.id}</span>
         </h1>
         <OrderStatusBadge status={order.status} />
-        <OrderActions seller={seller} orderId={order.id} status={order.status} releaseAt={order.releaseAt} hasTracking={Boolean(pkg?.trackingNumber)} onChanged={refresh} className="ml-auto" />
+        <OrderActions seller={seller} orderId={order.id} status={order.status} hasTracking={Boolean(pkg?.trackingNumber)} onChanged={refresh} className="ml-auto" />
       </div>
 
       <StepBar progress={orderProgress(order, history)} cancelReason={order.cancelReason} />
@@ -255,11 +256,7 @@ function Detail({ seller, id }: { seller: DemoSession; id: string }) {
               />
             ) : (
               <p className="text-sm text-muted-foreground">
-                {f.data?.blockedReason === 'order_on_hold'
-                  ? 'On hold: the shipment can be arranged when the hold ends.'
-                  : f.data?.blockedReason === 'order_unpaid'
-                    ? 'Waiting for payment.'
-                    : 'No package yet.'}
+                {f.data?.blockedReason === 'order_unpaid' ? 'Waiting for payment.' : 'No package yet.'}
               </p>
             )}
           </Card>
@@ -268,7 +265,6 @@ function Detail({ seller, id }: { seller: DemoSession; id: string }) {
               rows={[
                 ['Method', 'Simulated payment'],
                 ['Paid at', order.paidAt ? when(order.paidAt) : 'Not paid'],
-                ['Hold ends', order.releaseAt ? when(order.releaseAt) : '—'],
                 ['Total', shopPrice(a.totalVnd)],
               ]}
             />

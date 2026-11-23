@@ -57,10 +57,6 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
     if (pay) await t.pay(buyer, c.body.order.id).expect(201);
     return c.body.order.id as string;
   }
-  const releaseHold = async () => {
-    await http.put('/test-admin/clock').set(admin).send({ advanceMs: (cfg.orders.holdMinutes + 1) * 60_000 }).expect(200);
-    return (await http.post('/test-admin/orders/release-due').set(admin).expect(201)).body.released as string[];
-  };
 
   // ---------- checkout ----------
   describe('checkout (backend computed money, snapshots, validation)', () => {
@@ -150,33 +146,45 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
 
   // ---------- state machine ----------
   describe('state machine', () => {
-    it('pay -> ON_HOLD (no recipient address yet) -> release after the hold -> AWAITING_SHIPMENT (address visible)', async () => {
+    it('UNPAID hides the address; pay -> AWAITING_SHIPMENT at once (no hold), with address and a TO_FULFILL package', async () => {
       const { accessToken, seller } = await t.connect(0);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-flow-0001');
-      const held = (await t.call('GET', DETAIL, accessToken, { query: { ids: id } }).expect(200)).body.data.orders[0];
-      expect(held.status).toBe('ON_HOLD');
-      expect(held.is_on_hold_order).toBe(true);
-      expect(held.recipient_address).toBeUndefined(); // OAS: not available under UNPAID / ON_HOLD
-      expect(held.paid_time).toBeGreaterThan(0);
-      expect(await http.post('/test-admin/orders/release-due').set(admin).expect(201)).toMatchObject({ body: { released: [] } }); // hold not elapsed
-      expect(await releaseHold()).toEqual([id]);
+      const id = await placeOrder(buyer, 'key-flow-0001', undefined, false);
+      const unpaid = (await t.call('GET', DETAIL, accessToken, { query: { ids: id } }).expect(200)).body.data.orders[0];
+      expect(unpaid.status).toBe('UNPAID');
+      expect(unpaid.recipient_address).toBeUndefined(); // OAS: not available under UNPAID
+      const paid = await t.pay(buyer, id).expect(201);
+      expect(paid.body.order.status).toBe('AWAITING_SHIPMENT');
+      expect(paid.body.order).not.toHaveProperty('releaseAt');
       const open = (await t.call('GET', DETAIL, accessToken, { query: { ids: id } }).expect(200)).body.data.orders[0];
       expect(open.status).toBe('AWAITING_SHIPMENT');
+      expect(open.is_on_hold_order).toBe(false);
+      expect(open).not.toHaveProperty('release_date');
+      expect(open.paid_time).toBeGreaterThan(0);
       expect(open.recipient_address.region_code).toBe('VN');
+      const row = await prisma.order.findFirstOrThrow({ where: { externalId: id } });
+      expect(await prisma.package.findUnique({ where: { orderId: row.id } })).toMatchObject({ status: 'TO_FULFILL' });
       const detail = (await http.get(`/demo/shops/${seller.shopId}/orders/${id}`).set('x-demo-session', seller.token).expect(200)).body;
-      expect(detail.history.map((h: any) => `${h.from}>${h.to}:${h.actor}`)).toEqual(['null>UNPAID:BUYER', 'UNPAID>ON_HOLD:BUYER', 'ON_HOLD>AWAITING_SHIPMENT:SYSTEM']);
+      expect(detail.history.map((h: any) => `${h.from}>${h.to}:${h.actor}`)).toEqual(['null>UNPAID:BUYER', 'UNPAID>AWAITING_SHIPMENT:BUYER']);
     });
 
-    it('an ON_HOLD order cannot be shipped and DELIVERED is not COMPLETED', async () => {
+    it('ON_HOLD is not a simulator status: transitions to it are invalid input and release-due is gone', async () => {
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-hold-0001');
+      const id = await placeOrder(buyer, 'key-nohold-01', undefined, false);
+      await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'ON_HOLD' }).expect(400);
+      await http.post('/test-admin/orders/release-due').set(admin).send({}).expect(404);
+      expect((await prisma.order.findFirstOrThrow({ where: { externalId: id } })).status).toBe('UNPAID');
+    });
+
+    it('an UNPAID order cannot be shipped and DELIVERED is not COMPLETED', async () => {
+      const buyer = await t.buyerSession(0);
+      const id = await placeOrder(buyer, 'key-hold-0001', undefined, false);
       for (const to of ['AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED']) {
         const r = await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to });
         expect(r.status).toBe(400);
         expect(r.body.code).toBe('invalid_transition');
       }
-      await releaseHold();
+      await t.pay(buyer, id).expect(201);
       for (const to of ['AWAITING_COLLECTION', 'IN_TRANSIT', 'DELIVERED']) await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to }).expect(201);
       const row = await prisma.order.findFirstOrThrow({ where: { externalId: id } });
       expect(row.status).toBe('DELIVERED');
@@ -189,7 +197,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
     it('cancelling returns the reserved units exactly once, even when requested twice', async () => {
       const before = await stockOf(SKU_WHITE);
       const buyer = await t.buyerSession(0);
-      const id = await placeOrder(buyer, 'key-cancel-001', [{ skuId: SKU_WHITE, quantity: 3 }]);
+      const id = await placeOrder(buyer, 'key-cancel-001', [{ skuId: SKU_WHITE, quantity: 3 }], false); // UNPAID: the buyer cancel is immediate
       expect(await stockOf(SKU_WHITE)).toBe(before - 3);
       await http.post(`/demo/shops/${buyer.shopId}/orders/${id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'changed my mind' }).expect(201);
       await http.post(`/demo/shops/${buyer.shopId}/orders/${id}/cancel`).set('x-demo-session', buyer.token).send({ reason: 'again' }).expect(201);
@@ -211,7 +219,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       expect([201, 400, 409]).toContain(p.status);
       expect([201, 400, 409]).toContain(x.status);
       const row = await prisma.order.findFirstOrThrow({ where: { externalId: id2 } });
-      expect(['ON_HOLD', 'CANCELLED']).toContain(row.status);
+      expect(['AWAITING_SHIPMENT', 'CANCELLED']).toContain(row.status);
       const audits = await prisma.orderAudit.findMany({ where: { orderId: row.id }, orderBy: { createdAt: 'asc' } });
       expect(audits.length).toBeGreaterThanOrEqual(2);
       if (row.status === 'CANCELLED') await t.pay(buyer, id2).then((r) => expect(r.status).toBe(400));
@@ -238,7 +246,6 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const { accessToken } = await t.connect(0);
       const buyer = await t.buyerSession(0);
       const id = await placeOrder(buyer, 'key-schema-001', [{ skuId: SKU_WHITE, quantity: 2 }]);
-      await releaseHold();
       const search = await t.call('POST', SEARCH, accessToken, { query: { page_size: '10' }, body: {} }).expect(200);
       expect(conformErrors('ops/order.search.response.json', search.body)).toEqual([]);
       const detail = await t.call('GET', DETAIL, accessToken, { query: { ids: id } }).expect(200);
@@ -290,7 +297,10 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const s = (o: { createdAt: Date }) => Math.floor(o.createdAt.getTime() / 1000);
       const search = async (body: object) => (await t.call('POST', SEARCH, accessToken, { query: { page_size: '50', sort_order: 'ASC' }, body }).expect(200)).body.data.orders.map((o: any) => o.id);
       expect(await search({ order_status: 'UNPAID' })).toEqual([first]);
-      expect(await search({ order_status: 'ON_HOLD' })).toEqual([second]);
+      expect(await search({ order_status: 'AWAITING_SHIPMENT' })).toEqual([second]);
+      expect(await search({ order_status: 'ON_HOLD' })).toEqual([]); // documented OAS value, never produced (DECISIONS H5)
+      const bad = await t.call('POST', SEARCH, accessToken, { query: { page_size: '50' }, body: { order_status: 'ON_HOLDING' } });
+      expect(bad.status).toBe(400);
       expect(await search({ buyer_user_id: (await prisma.buyer.findUniqueOrThrow({ where: { id: b1.buyerId } })).externalId })).toEqual([second]);
       expect(await search({ create_time_ge: s(secondRow) })).toEqual([second]); // inclusive lower bound
       expect(await search({ create_time_lt: s(secondRow) })).toEqual([first]); // exclusive upper bound
@@ -408,13 +418,13 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       expect(await jobs()).toHaveLength(0);
       await subscribe(a.accessToken);
       const id = await placeOrder(buyer, 'key-hook-00002', [{ skuId: 'sim-sku-a-BAG-NAT', quantity: 1 }]);
-      await releaseHold();
       const all = await jobs();
-      expect(all.map((j) => (j.payload as any).data.order_status)).toEqual(['UNPAID', 'ON_HOLD', 'AWAITING_SHIPMENT']);
+      expect(all.map((j) => (j.payload as any).data.order_status)).toEqual(['UNPAID', 'AWAITING_SHIPMENT']);
+      expect(all.every((j) => (j.payload as any).data.is_on_hold_order === false)).toBe(true);
       const env: any = all[0].payload;
       expect(conformErrors('webhook-envelope.json', env)).toEqual([]);
       expect(env).toMatchObject({ type: 1, shop_id: '7494000000000000001', data: { order_id: id, order_status: 'UNPAID' } });
-      expect(new Set(all.map((j) => (j.payload as any).tts_notification_id)).size).toBe(3); // distinct notification ids
+      expect(new Set(all.map((j) => (j.payload as any).tts_notification_id)).size).toBe(2); // distinct notification ids
       expect(all.every((j) => j.appId && j.targetUrl === 'http://localhost:9/hook')).toBe(true);
       // the shop of the event is the shop of the order, not another shop
       const other = await t.connect(1);
@@ -444,12 +454,12 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       time.current = new Date();
       await worker.tick();
       const delivered = await prisma.webhookJob.findMany({ where: { status: 'SUCCEEDED' }, orderBy: { createdAt: 'asc' } });
-      expect(delivered.map((j) => (j.payload as any).data.order_status)).toEqual(['ON_HOLD']); // UNPAID (held) is still pending
+      expect(delivered.map((j) => (j.payload as any).data.order_status)).toEqual(['AWAITING_SHIPMENT']); // UNPAID (held back by the fault) is still pending
       time.advance(61_000);
       await worker.tick();
       const sent = transport.calls.map((c) => c.jobId);
       const byId = new Map((await jobs()).map((j) => [j.id, (j.payload as any).data.order_status]));
-      expect(sent.map((j) => byId.get(j))).toEqual(['ON_HOLD', 'UNPAID']); // reordered: the older event arrived last
+      expect(sent.map((j) => byId.get(j))).toEqual(['AWAITING_SHIPMENT', 'UNPAID']); // reordered: the older event arrived last
       const original = (await jobs())[0];
       const replay = await http.post(`/test-admin/webhooks/${original.id}/replay`).set(admin).expect(201);
       expect(replay.body.payload).toEqual(original.payload);
@@ -516,7 +526,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
         const rhttp = request(real.getHttpServer());
         const rt = new TiktokTestClient(rhttp, real.get(APP_CONFIG));
         await resetToSeed(real, rp);
-        // business clock far ahead (as when a test releases ON_HOLD orders): the signed timestamp must still be real time
+        // business clock far ahead (as when a test jumps business days ahead): the signed timestamp must still be real time
         await rhttp.put('/test-admin/clock').set(admin).send({ advanceMs: 31 * 60_000 }).expect(200);
         const a = await rt.connect(0);
         await rt.call('PUT', HOOKS, a.accessToken, { body: { event_type: 'ORDER_STATUS_CHANGE', address: `http://127.0.0.1:${port}/webhook` } }).expect(200);

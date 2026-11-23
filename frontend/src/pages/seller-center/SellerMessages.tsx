@@ -49,12 +49,7 @@ function Messages({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Messages</h1>
-      {list.data ? (
-        <p className="text-sm text-muted-foreground" role="note">
-          Supported message types: {list.data.supportedTypes.join(', ')}. Not simulated: {list.data.unsupported}.
-        </p>
-      ) : null}
+
       <SellerCard className="grid overflow-hidden md:grid-cols-[320px_minmax(0,1fr)]">
         <div className="border-b border-line-soft md:border-b-0 md:border-r">
           <label className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-sm">

@@ -1,42 +1,48 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ImageIcon, Pencil, Plus, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, ChevronLeft, ChevronRight, History, ImageIcon, Package, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { addSku, deleteProduct, getCatalog, getInventoryHistory, patchProduct, patchSku } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
 import type { Catalog, CatalogProduct, CatalogSku, DemoSession } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { cn } from '@/lib/utils';
+import { emptyVariant, MAX_SKUS, validPrice, validStock, variantBody, variantError } from '@/lib/catalogValidation';
+import { VariantExtras } from '@/components/seller/VariantExtras';
+import { EditSkuDialog } from '@/components/seller/EditSkuDialog';
 
 /** Rules from the former /seller catalog (SellerCatalog). */
 const STATUSES = ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED'];
-export const isWholeVnd = (v: string): boolean => /^\d+$/.test(v) && Number(v) >= 1;
+export const isWholeVnd = validPrice;
 const LOW_STOCK = 5;
 export const isLowStock = (p: CatalogProduct) => p.skus.some((s) => s.status === 'NORMAL' && s.totalStock <= LOW_STOCK);
 
 type Run = (fn: () => Promise<unknown>, done: string) => Promise<boolean>;
 
 const statusTone = (s: string) => (s === 'ACTIVATE' ? 'bg-teal-soft text-teal' : s === 'DELETED' ? 'bg-buyer-soft text-buyer-ink' : 'bg-[#FFF4E0] text-[#9A5B00]');
+const productStatus = (status: string) => ({ ACTIVATE: 'Active', SELLER_DEACTIVATED: 'Inactive', DRAFT: 'Draft', DELETED: 'Deleted' })[status] ?? humanize(status);
 
-function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; warehouses: Catalog['warehouses']; disabled: boolean; onPatch: (body: Record<string, unknown>, done: string) => void }) {
+function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; warehouses: Catalog['warehouses']; disabled: boolean; onPatch: (body: Record<string, unknown>, done: string) => Promise<boolean> }) {
   const [price, setPrice] = useState(String(sku.priceVnd));
   const [stock, setStock] = useState<Record<string, string>>(Object.fromEntries(sku.stock.map((s) => [s.warehouseId, String(s.quantity)])));
   const priceValid = isWholeVnd(price);
-  const stockValid = !Object.values(stock).some((v) => !/^\d+$/.test(v));
+  const stockValid = Object.values(stock).every(validStock);
+  const [editing, setEditing] = useState(false);
   const normal = sku.status === 'NORMAL';
   return (
-    <TableRow aria-label={`SKU ${sku.sellerSku}`} className="align-top">
+    <TableRow aria-label={`SKU ${sku.sellerSku}`} className="seller-sku-row">
       <TableCell className="py-3">
         <div className="flex flex-col">
           <span className="font-medium">{sku.sellerSku}</span>
           <span className="font-mono text-xs text-muted-foreground">{sku.externalId}</span>
+          <Button variant="ghost" size="sm" className="w-fit" disabled={disabled} onClick={() => setEditing(true)}><Pencil size={12} />Edit SKU</Button>
+          {editing && <EditSkuDialog sku={sku} onClose={() => setEditing(false)} onSave={(body) => onPatch(body, 'SKU updated')} />}
         </div>
       </TableCell>
       <TableCell className="py-3">
@@ -44,16 +50,17 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
         {normal ? null : <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-muted-foreground">{humanize(sku.status)}</span>}
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex items-center gap-1.5">
+        <div className="seller-sku-price">
+          <span>₫</span>
           <Input aria-label={`Price of ${sku.sellerSku}`} inputMode="numeric" value={price} disabled={disabled} onChange={(e) => setPrice(e.target.value)} className="h-8 w-28" />
-          <Button size="sm" variant="outline" disabled={disabled || !priceValid || Number(price) === sku.priceVnd} onClick={() => onPatch({ priceVnd: Number(price) }, 'Price updated')}>
-            Set
+          <Button size="icon" variant="ghost" aria-label="Set" title="Save price" disabled={disabled || !priceValid || Number(price) === sku.priceVnd} onClick={() => onPatch({ priceVnd: Number(price) }, 'Price updated')}>
+            <Check size={14} />
           </Button>
         </div>
-        <span className={cn('text-xs', priceValid ? 'text-muted-foreground' : 'text-destructive')}>{priceValid ? shopPrice(Number(price)) : 'Enter a whole VND amount'}</span>
+        {!priceValid && <span className="text-xs text-destructive">Price: 1–2,000,000,000 VND.</span>}
       </TableCell>
       <TableCell className="py-3">
-        <div className="flex flex-wrap items-end gap-1.5">
+        <div className="seller-sku-stock">
           {warehouses.map((w) => (
             <label key={w.externalId} className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
               {w.name}
@@ -68,17 +75,20 @@ function SkuRow({ sku, warehouses, disabled, onPatch }: { sku: CatalogSku; wareh
             </label>
           ))}
           <Button
-            size="sm"
+            size="icon"
             variant="outline"
+            aria-label="Set"
+            title="Save stock"
             disabled={disabled || !stockValid}
             onClick={() => onPatch({ stock: Object.fromEntries(Object.entries(stock).map(([k, v]) => [k, Number(v)])) }, 'Stock updated')}
           >
-            Set
+            <Check size={14} />
           </Button>
         </div>
+        {!stockValid && <span className="text-xs text-destructive">Stock: 0–99,999 per warehouse.</span>}
       </TableCell>
       <TableCell className="py-3 text-right">
-        <Button size="sm" variant="ghost" disabled={disabled} onClick={() => onPatch({ status: normal ? 'DEACTIVATED' : 'NORMAL' }, normal ? 'Variant deactivated' : 'Variant activated')}>
+        <Button size="sm" variant="outline" className={cn('seller-sku-toggle', normal && 'is-active')} disabled={disabled} onClick={() => onPatch({ status: normal ? 'DEACTIVATED' : 'NORMAL' }, normal ? 'Variant deactivated' : 'Variant activated')}>
           {normal ? 'Deactivate' : 'Activate'}
         </Button>
       </TableCell>
@@ -90,19 +100,26 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   const deleted = p.status === 'DELETED';
   const known = STATUSES.includes(p.status);
   const [title, setTitle] = useState(p.title);
-  const [variant, setVariant] = useState({ sellerSku: '', name: '', priceVnd: '' });
+  const [variant, setVariant] = useState(emptyVariant);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const prices = p.skus.map((s) => s.priceVnd);
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  const maxPrice = prices.length ? Math.max(...prices) : null;
 
   const addVariant = async (e: FormEvent) => {
     e.preventDefault();
-    if (await run(() => addSku(seller, p.id, { sellerSku: variant.sellerSku, name: variant.name, priceVnd: Number(variant.priceVnd) }), 'Variant added')) {
-      setVariant({ sellerSku: '', name: '', priceVnd: '' });
+    if (variantError(variant) || p.skus.length >= MAX_SKUS) return;
+    if (await run(() => addSku(seller, p.id, variantBody(variant)), 'Variant added')) {
+      setVariant(emptyVariant());
     }
   };
 
   return (
-    <SellerCard label={`Product ${p.externalId}`} className="p-5">
-      <div className="flex flex-wrap items-center gap-3">
+    <SellerCard label={`Product ${p.externalId}`} className={cn('seller-product-card', expanded && 'is-expanded')}>
+      <div className="seller-product-summary">
+        <div className="seller-product-info">
         {p.images?.[0] ? (
           <img src={p.images[0].url} alt={`Main image of ${p.title}`} className="size-12 rounded-md object-cover ring-1 ring-line-soft" />
         ) : (
@@ -110,38 +127,54 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
             <ImageIcon className="size-5" />
           </div>
         )}
-        <div className="flex flex-col">
+        <div className="seller-product-identity">
           <h2 className="text-base font-bold">{p.title}</h2>
-          {p.categoryPath?.length ? <span className="text-xs text-muted-foreground">{p.categoryPath.map((c) => c.name).join(' > ')}</span> : null}
+          {p.categoryPath?.length ? <span title={p.categoryPath.map((c) => c.name).join(' / ')}>{p.categoryPath.at(-1)?.name}</span> : null}
+          <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
         </div>
-        <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold', statusTone(p.status))}>{humanize(p.status)}</span>
-        <span className="font-mono text-xs text-muted-foreground">#{p.externalId}</span>
+        </div>
+        <div className="seller-product-numbers">
+          <strong>{minPrice === null ? 'No variants' : minPrice === maxPrice ? shopPrice(minPrice) : `${shopPrice(minPrice)} – ${shopPrice(maxPrice!)}`}</strong>
+          <span>{p.skus.length} variants</span>
+        </div>
+        <div className="seller-product-stock"><strong>{p.skus.reduce((sum, s) => sum + s.totalStock, 0).toLocaleString()}</strong><span className={cn(isLowStock(p) && 'is-low')}>{isLowStock(p) ? 'Low stock' : 'Units available'}</span></div>
+        <div><span className={cn('seller-product-status', statusTone(p.status))}><i />{productStatus(p.status)}</span>{p.isNotForSale && <span className="mt-1 block text-xs text-muted-foreground">Not for sale</span>}</div>
+        <Button variant="outline" size="sm" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Collapse' : 'Manage'} <ChevronDown className={cn('size-3.5 transition-transform', expanded && 'rotate-180')} />
+        </Button>
       </div>
+      <div id={detailsId} hidden={!expanded} className="seller-product-editor">
       {!deleted ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Input aria-label={`Title of ${p.externalId}`} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
-          <Button size="sm" variant="outline" disabled={!title.trim() || title === p.title} onClick={() => run(() => patchProduct(seller, p.id, { title }), 'Product renamed')}>
+        <div className="seller-product-settings">
+          <label className="seller-product-title-field"><span>Name</span><div>
+          <Input aria-label={`Title of ${p.externalId}`} maxLength={500} value={title} onChange={(e) => setTitle(e.target.value)} className="h-8 w-64" />
+          <Button size="sm" variant="outline" disabled={!title.trim() || title.trim().length > 500 || title === p.title} onClick={() => run(() => patchProduct(seller, p.id, { title: title.trim() }), 'Product renamed')}>
             Rename
           </Button>
+          </div></label>
+          <label className="seller-product-status-field"><span>Status</span>
           <NativeSelect aria-label={`Status of ${p.externalId}`} value={known ? p.status : ''} onChange={(e) => run(() => patchProduct(seller, p.id, { status: e.target.value }), 'Status updated')}>
             {known ? null : <option value="">{humanize(p.status)}</option>}
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {humanize(s)}
+                {productStatus(s)}
               </option>
             ))}
           </NativeSelect>
-          <Button asChild size="sm" variant="outline" className="ml-auto">
+          </label>
+          <div className="seller-product-settings-actions"><Button asChild size="sm" variant="outline">
             <Link to={`/seller-center/products/${encodeURIComponent(p.id)}/edit`}>
               <Pencil /> Edit details
             </Link>
           </Button>
           <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-            Delete
+            <Trash2 size={14} /> Delete
           </Button>
+          </div>
         </div>
       ) : null}
-      <div className="mt-3">
+      <div className="seller-product-editor-heading"><Package size={15} /><strong>Variants & inventory</strong><span className="seller-sku-count">{p.skus.length}</span></div>
+      <div className="seller-sku-table">
         <Table>
           <TableHeader>
             <TableRow>
@@ -149,7 +182,7 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
               <TableHead>Variant</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Stock per warehouse</TableHead>
-              <TableHead />
+              <TableHead className="text-right">Availability</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -161,16 +194,21 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
         </Table>
       </div>
       {!deleted ? (
-        <form onSubmit={addVariant} className="mt-3 flex flex-wrap items-center gap-2 border-t border-line-soft pt-3" aria-label={`Add variant to ${p.externalId}`}>
-          <Input aria-label="New seller SKU" placeholder="Seller SKU" required value={variant.sellerSku} onChange={(e) => setVariant({ ...variant, sellerSku: e.target.value })} className="h-8 w-36" />
-          <Input aria-label="New variant name" placeholder="Variant" required value={variant.name} onChange={(e) => setVariant({ ...variant, name: e.target.value })} className="h-8 w-36" />
-          <Input aria-label="New variant price" placeholder="Price VND" inputMode="numeric" required value={variant.priceVnd} onChange={(e) => setVariant({ ...variant, priceVnd: e.target.value })} className="h-8 w-32" />
-          <Button type="submit" size="sm" variant="outline" disabled={!isWholeVnd(variant.priceVnd)}>
+        <form onSubmit={addVariant} className="seller-add-variant" aria-label={`Add variant to ${p.externalId}`}>
+          <label><span>Seller SKU</span>
+          <Input aria-label="New seller SKU" placeholder="Seller SKU" required maxLength={100} value={variant.sellerSku} onChange={(e) => setVariant({ ...variant, sellerSku: e.target.value })} className="h-8 w-36" />
+          </label><label><span>Variant</span>
+          <Input aria-label="New variant name" placeholder="Variant" required maxLength={200} value={variant.name} onChange={(e) => setVariant({ ...variant, name: e.target.value })} className="h-8 w-36" />
+          </label><label><span>Price (VND)</span>
+          <Input aria-label="New variant price" placeholder="Price VND" inputMode="numeric" required value={variant.price} onChange={(e) => setVariant({ ...variant, price: e.target.value })} className="h-8 w-32" />
+          </label><Button type="submit" size="sm" disabled={!!variantError(variant) || p.skus.length >= MAX_SKUS}>
             <Plus /> Add variant
           </Button>
+          <VariantExtras value={variant} onChange={setVariant} warehouses={warehouses} label={`for ${p.externalId}`} />
+          {p.skus.length >= MAX_SKUS ? <span className="text-xs text-muted-foreground">Maximum 100 variants reached.</span> : variant.price && variantError(variant) ? <span className="text-xs text-destructive">{variantError(variant)}</span> : null}
         </form>
       ) : null}
-
+      </div>
       {confirmDelete ? (
         <Dialog open onOpenChange={(o) => !o && setConfirmDelete(false)}>
           <DialogContent className="theme-seller font-sans sm:max-w-md">
@@ -199,10 +237,56 @@ function ProductCard({ seller, product: p, warehouses, run }: { seller: DemoSess
   );
 }
 
-function StockHistory({ seller }: { seller: DemoSession }) {
+const PRODUCTS_PER_PAGE = 10;
+
+function ProductList({ seller, catalog, lowOnly, run, onHistory }: { seller: DemoSession; catalog: Catalog; lowOnly: boolean; run: Run; onHistory: () => void }) {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('ALL');
+  const [sort, setSort] = useState('default');
+  const source = lowOnly ? catalog.items.filter(isLowStock) : catalog.items;
+  const term = query.trim().toLocaleLowerCase();
+  const items = source.filter((p) => (status === 'ALL' || p.status === status) && (!term || [p.title, p.externalId, ...p.skus.map((s) => s.sellerSku)].some((v) => v.toLocaleLowerCase().includes(term))));
+  if (sort === 'name') items.sort((a, b) => a.title.localeCompare(b.title));
+  if (sort === 'stock') items.sort((a, b) => a.skus.reduce((sum, s) => sum + s.totalStock, 0) - b.skus.reduce((sum, s) => sum + s.totalStock, 0));
+  const pages = Math.max(1, Math.ceil(items.length / PRODUCTS_PER_PAGE));
+  const currentPage = Math.min(page, pages);
+  const offset = (currentPage - 1) * PRODUCTS_PER_PAGE;
+  return (
+    <div className="seller-catalog">
+      <div className="seller-catalog-statuses" aria-label="Product status filters">
+        {[{ value: 'ALL', label: 'All' }, ...STATUSES.map((value) => ({ value, label: productStatus(value) })), { value: 'DELETED', label: 'Deleted' }].map((option) => <button key={option.value} type="button" aria-pressed={status === option.value} onClick={() => { setStatus(option.value); setPage(1); }}>
+          {option.label}<span>{source.filter((p) => option.value === 'ALL' || p.status === option.value).length}</span>
+        </button>)}
+      </div>
+      <div className="seller-catalog-toolbar">
+        <label className="seller-catalog-search"><Search size={16} /><Input aria-label="Search products" placeholder="Search product name, ID or SKU…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} />{query && <button type="button" aria-label="Clear product search" onClick={() => { setQuery(''); setPage(1); }}><X size={14} /></button>}</label>
+        <label className="seller-catalog-sort"><ArrowUpDown size={14} /><NativeSelect aria-label="Sort products" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="default">Default order</option><option value="name">Name: A to Z</option><option value="stock">Stock: low to high</option></NativeSelect></label>
+        <div className="seller-catalog-actions"><Button variant="outline" size="icon" className="seller-catalog-history" aria-label="Stock history" title="Stock history" onClick={onHistory}><History size={14} /></Button><Button asChild><Link to="/seller-center/products/new"><Plus size={14} /> New product</Link></Button></div>
+      </div>
+      <div className="seller-catalog-columns" aria-hidden="true"><span>Product information</span><span>Price / Variants</span><span>Inventory</span><span>Status</span><span>Actions</span></div>
+      <div className="seller-product-list">
+        {items.slice(offset, offset + PRODUCTS_PER_PAGE).map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={catalog.warehouses} run={run} />)}
+        {!items.length && <div className="seller-catalog-empty"><Package size={30} /><h2>{query || status !== 'ALL' ? 'No matching products' : 'No products to display'}</h2>{(query || status !== 'ALL') && <Button variant="outline" onClick={() => { setQuery(''); setStatus('ALL'); setPage(1); }}>Clear filters</Button>}</div>}
+      </div>
+      <nav aria-label="Product pagination" className="seller-product-pagination">
+        <span>Showing {items.length ? offset + 1 : 0}–{Math.min(offset + PRODUCTS_PER_PAGE, items.length)} of {items.length} products</span>
+        <div>
+          <Button variant="outline" size="sm" aria-label="Previous product page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="size-3.5" /></Button>
+          <span>Page {currentPage} of {pages}</span>
+          <Button variant="outline" size="sm" aria-label="Next product page" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}><ChevronRight className="size-3.5" /></Button>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+function StockHistory({ seller, onBack }: { seller: DemoSession; onBack: () => void }) {
   const history = useAsync(() => getInventoryHistory(seller), [seller.sessionToken, seller.shopId], 5000);
   const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' });
   return (
+    <>
+    <nav className="seller-stock-breadcrumb" aria-label="Stock history navigation"><button type="button" aria-label="Back to products" onClick={onBack}>Products</button><ChevronRight size={12} aria-hidden="true" /><span aria-current="page">Stock history</span></nav>
     <Loaded result={history} what="stock history">
       {(d) => (
         <div className="flex flex-col gap-4">
@@ -296,6 +380,7 @@ function StockHistory({ seller }: { seller: DemoSession }) {
         </div>
       )}
     </Loaded>
+    </>
   );
 }
 
@@ -318,51 +403,21 @@ function Products({ seller }: { seller: DemoSession }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Products</h1>
-        <Button asChild className="ml-auto">
-          <Link to="/seller-center/products/new">
-            <Plus /> New product
-          </Link>
-        </Button>
-      </div>
-      <Tabs value={tab} onValueChange={setTab} className="gap-4">
-        <TabsList variant="line" className="h-10 max-w-full justify-start gap-2 overflow-x-auto overflow-y-hidden border-b border-line-soft [scrollbar-width:none]">
-          <TabsTrigger value="products" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Products
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex-none px-3 after:bg-teal data-[state=active]:font-semibold data-[state=active]:text-teal">
-            Stock history
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="products" className="flex flex-col gap-4">
+    <div className="seller-products-page flex flex-col gap-4">
+      <div className={cn('flex-col gap-4', tab === 'products' ? 'flex' : 'hidden')}>
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">
-              Low stock (≤{LOW_STOCK}) only
+              <SlidersHorizontal size={13} /> Low stock (≤{LOW_STOCK}) only
               <button type="button" aria-label="Show all products" className="cursor-pointer" onClick={() => setParams({}, { replace: true })}>
                 <X className="size-4" />
               </button>
             </div>
           ) : null}
           <Loaded result={catalog} what="products">
-            {(d) => {
-              const items = lowOnly ? d.items.filter(isLowStock) : d.items;
-              if (!items.length) {
-                return (
-                  <SellerCard className="py-12 text-center text-sm text-muted-foreground">
-                    {lowOnly ? 'No product is low on stock.' : 'No products yet. Create one with New product.'}
-                  </SellerCard>
-                );
-              }
-              return items.map((p) => <ProductCard key={`${p.id}:${p.title}`} seller={seller} product={p} warehouses={d.warehouses} run={run} />);
-            }}
+            {(d) => <ProductList key={String(lowOnly)} seller={seller} catalog={d} lowOnly={lowOnly} run={run} onHistory={() => setTab('history')} />}
           </Loaded>
-        </TabsContent>
-        <TabsContent value="history">
-          <StockHistory seller={seller} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      {tab === 'history' && <StockHistory seller={seller} onBack={() => setTab('products')} />}
 
     </div>
   );

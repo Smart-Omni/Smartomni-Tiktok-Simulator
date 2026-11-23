@@ -1,3 +1,4 @@
+import { ShopFooter } from '@/components/shop/ShopFooter';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle2, MapPin, ShieldCheck, Store, Ticket, Truck } from 'lucide-react';
@@ -14,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import type { CheckoutState } from '@/lib/checkout';
-import { checkout, getCoupons, getMarketplaceCart, getMe, inShop, listMarketplaceProducts, payOrder, setCartItem } from '@/lib/endpoints';
+import { checkout, getBuyerCoupons, getMarketplaceCart, getMe, inShop, listMarketplaceProducts, payOrder, setCartItem } from '@/lib/endpoints';
 import { shopPrice } from '@/lib/format';
 import type { CartItem, DemoSession, Order, OrderAmounts, Recipient, ShopRef } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
@@ -142,7 +143,7 @@ function PaymentDetails({ productTotal, amounts }: { productTotal: number; amoun
       ))}
       <div className="mt-1 flex items-baseline justify-between border-t border-line-soft pt-3">
         <dt className="font-semibold">{amounts ? 'Total' : 'Estimated total'}</dt>
-        <dd className="text-xl font-bold text-buyer" data-testid="total">
+        <dd className="text-xl font-semibold text-ink" data-testid="total">
           {shopPrice(amounts?.totalVnd ?? productTotal)}
         </dd>
       </div>
@@ -182,8 +183,8 @@ export function sumAmounts(list: OrderAmounts[]): OrderAmounts {
 
 /** Vouchers the buyer can type for one shop (the former /buyer/coupons list). */
 function VoucherPicker({ buyer, shopId, value, disabled, error, onChange }: { buyer: DemoSession; shopId: string; value: string; disabled: boolean; error?: string; onChange: (v: string) => void }) {
-  const vouchers = useAsync(() => getCoupons(inShop(buyer, shopId)).catch(() => null), [buyer.sessionToken, shopId]);
-  const usable = vouchers.data?.items.filter((v) => v.status === 'ONGOING' && v.promoCode) ?? [];
+  const vouchers = useAsync(() => getBuyerCoupons(inShop(buyer, shopId)).catch(() => null), [buyer.sessionToken, shopId]);
+  const usable = vouchers.data?.items ?? [];
   const inputId = `coupon-${shopId}`;
   return (
     <div className="mt-4 flex flex-col gap-1.5">
@@ -332,7 +333,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
 
   if (data.loading && !data.data) {
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]" role="status" aria-label="Loading checkout">
+      <div className="transaction-grid" role="status" aria-label="Loading checkout">
         <div className="flex flex-col gap-4">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-card" />)}
         </div>
@@ -420,6 +421,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
         else failed[g.shop.id] = { general: text };
       }
     }
+    window.dispatchEvent(new Event('shop-cart-updated'));
     setErrors({ shops: failed });
     setPlacing(false);
   };
@@ -464,7 +466,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="transaction-grid">
         <div className="flex min-w-0 flex-col gap-4">
           <Card
             title="Shipping address"
@@ -528,7 +530,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
             ) : null}
             {placedAll ? (
               <>
-                <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={paying} onClick={pay}>
+                <Button size="lg" className="h-12 !bg-[#171717] text-sm text-white hover:!bg-[#333333] !rounded-lg" disabled={paying} onClick={pay}>
                   {paying ? 'Paying...' : 'Pay now (simulated)'}
                 </Button>
                 <Button asChild variant="ghost" className="text-muted-foreground">
@@ -536,7 +538,7 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
                 </Button>
               </>
             ) : (
-              <Button size="lg" className="h-12 bg-buyer text-base text-white hover:bg-buyer/90" disabled={placing} onClick={place}>
+              <Button size="lg" className="h-12 !bg-[#171717] text-sm text-white hover:!bg-[#333333] !rounded-lg" disabled={placing} onClick={place}>
                 {placing ? 'Placing order...' : anyPlaced ? 'Place remaining orders' : 'Place order'}
               </Button>
             )}
@@ -563,5 +565,5 @@ function Checkout({ buyer }: { buyer: DemoSession }) {
 export function CheckoutPage() {
   const { buyer } = useAuth();
   // the route is guarded by RequireRole BUYER
-  return buyer ? <Checkout key={buyer.sessionToken} buyer={buyer} /> : null;
+  return buyer ? <div className="buyer-transaction-page"><nav className="transaction-breadcrumb" aria-label="Breadcrumb"><Link to="/">Home</Link><span>/</span><Link to="/cart">Cart</Link><span>/</span><span aria-current="page">Checkout</span></nav><div className="transaction-content"><Checkout key={buyer.sessionToken} buyer={buyer} /></div><ShopFooter /></div> : null;
 }

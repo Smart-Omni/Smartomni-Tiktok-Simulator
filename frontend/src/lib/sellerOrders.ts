@@ -24,7 +24,6 @@ export function sellerTabOf(status: OrderStatus): Exclude<SellerOrderTab, 'all'>
   switch (status) {
     case 'UNPAID':
       return 'unpaid';
-    case 'ON_HOLD':
     case 'AWAITING_SHIPMENT':
     case 'AWAITING_COLLECTION':
       return 'to-ship';
@@ -53,7 +52,7 @@ export function sellerActionsFor(status: OrderStatus, hasTracking: boolean): Sel
   if (status === 'AWAITING_SHIPMENT') actions.push('arrange');
   if (hasTracking && status !== 'CANCELLED') actions.push('label');
   if (status === 'AWAITING_COLLECTION' || status === 'IN_TRANSIT') actions.push('advance');
-  if (status === 'UNPAID' || status === 'ON_HOLD' || status === 'AWAITING_SHIPMENT') actions.push('cancel');
+  if (status === 'UNPAID' || status === 'AWAITING_SHIPMENT') actions.push('cancel');
   return actions;
 }
 
