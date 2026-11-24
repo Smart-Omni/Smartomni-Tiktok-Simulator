@@ -614,7 +614,7 @@ export class AftersaleService implements OnModuleInit {
     }
     // Buyer cancels of UNPAID orders are immediate and are NOT aftersale records; later cancels by seller/system are.
     if (ctx.actor === 'BUYER') return;
-    if (!ctx.forceRecord && !['AWAITING_SHIPMENT', 'PARTIALLY_SHIPPING', 'AWAITING_COLLECTION'].includes(ctx.before.status)) return;
+    if (!ctx.forceRecord && ctx.before.status !== 'AWAITING_SHIPMENT') return;
     const lines = await tx.orderLine.findMany({ where: { orderId: ctx.after.id, aftersaleLines: { none: { active: true } } } });
     if (lines.length === 0) return;
     const unpaid = ctx.before.status === 'UNPAID'; // nothing was paid, so nothing is refunded

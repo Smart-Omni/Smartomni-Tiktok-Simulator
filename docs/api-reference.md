@@ -293,8 +293,8 @@ Bảng chuyển trạng thái là mô hình của simulator (OAS chỉ liệt k�
 |---|---|
 | `UNPAID` | `AWAITING_SHIPMENT`, `CANCELLED` |
 | `AWAITING_SHIPMENT` | `PARTIALLY_SHIPPING`, `AWAITING_COLLECTION`, `CANCELLED` |
-| `PARTIALLY_SHIPPING` | `AWAITING_COLLECTION`, `CANCELLED` |
-| `AWAITING_COLLECTION` | `IN_TRANSIT`, `CANCELLED` |
+| `PARTIALLY_SHIPPING` | `AWAITING_COLLECTION` |
+| `AWAITING_COLLECTION` | `IN_TRANSIT` |
 | `IN_TRANSIT` | `DELIVERED` |
 | `DELIVERED` | `COMPLETED` |
 | `COMPLETED`, `CANCELLED` | (trạng thái cuối) |
@@ -5012,7 +5012,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION or CANCELLED; AWAITING_COLLECTION to IN_TRANSIT or CANCELLED; IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.
+Runs the same state machine the apps use (actor `TEST_CONSOLE`). Allowed: UNPAID to AWAITING_SHIPMENT or CANCELLED; AWAITING_SHIPMENT to PARTIALLY_SHIPPING, AWAITING_COLLECTION or CANCELLED; PARTIALLY_SHIPPING to AWAITING_COLLECTION; AWAITING_COLLECTION to IN_TRANSIT (an order can no longer be cancelled once shipment is arranged); IN_TRANSIT to DELIVERED; DELIVERED to COMPLETED; COMPLETED and CANCELLED are terminal. Cancelling releases reserved stock; other side effects (events) happen inside the order service.
 
 </details>
 

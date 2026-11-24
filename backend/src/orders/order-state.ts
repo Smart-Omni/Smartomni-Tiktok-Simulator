@@ -20,13 +20,15 @@ export const OAS_ORDER_STATUSES = ['UNPAID', 'ON_HOLD', ...ORDER_STATUSES.filter
 /**
  * Allowed transitions. The OAS lists the statuses but not the transition rules, so this table is the SIMULATOR'S model (unverified):
  * - UNPAID becomes AWAITING_SHIPMENT on payment (no hold period, DECISIONS H1);
+ * - CANCELLED is only reachable from UNPAID and AWAITING_SHIPMENT: once shipment is arranged (AWAITING_COLLECTION) or partly shipped
+ *   an order can no longer be cancelled, it goes through returns/refunds instead (DECISIONS H14);
  * - DELIVERED is not COMPLETED; COMPLETED is terminal here (Phase 07 models returns as separate aftersale records).
  */
 export const TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   UNPAID: ['AWAITING_SHIPMENT', 'CANCELLED'],
   AWAITING_SHIPMENT: ['PARTIALLY_SHIPPING', 'AWAITING_COLLECTION', 'CANCELLED'],
-  PARTIALLY_SHIPPING: ['AWAITING_COLLECTION', 'CANCELLED'],
-  AWAITING_COLLECTION: ['IN_TRANSIT', 'CANCELLED'],
+  PARTIALLY_SHIPPING: ['AWAITING_COLLECTION'],
+  AWAITING_COLLECTION: ['IN_TRANSIT'],
   IN_TRANSIT: ['DELIVERED'],
   DELIVERED: ['COMPLETED'],
   COMPLETED: [],

@@ -96,16 +96,26 @@ describe('Phase 07a: packages, tracking, shipping documents', () => {
       expect((await prisma.orderAudit.findMany({ where: { order: { externalId: id }, toStatus: 'AWAITING_COLLECTION' } })).length).toBe(1);
     });
 
-    it('cancelling after arrange cancels the package and records a tracking event', async () => {
+    it('cancelling after arrange is refused (DECISIONS H14): order, package and tracking stay untouched', async () => {
       const seller = await t.sellerSession(0);
       const buyer = await t.buyerSession(0);
       const id = await placeOrder(buyer, 'key-ful-canc-01', SKU);
       await arrange(seller, id).expect(201);
-      await http.post(`/demo/shops/${seller.shopId}/orders/${id}/cancel`).set('x-demo-session', seller.token).send({ reason: 'out of packaging' }).expect(201);
+      await http.post(`/demo/shops/${seller.shopId}/orders/${id}/cancel`).set('x-demo-session', seller.token).send({ reason: 'out of packaging' }).expect(400);
+      await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'CANCELLED' }).expect(400);
+      expect((await prisma.order.findFirstOrThrow({ where: { externalId: id } })).status).toBe('AWAITING_COLLECTION');
       const pkg = await prisma.package.findFirstOrThrow({ where: { order: { externalId: id } } });
-      expect(pkg.status).toBe('CANCELLED');
+      expect(pkg.status).toBe('PROCESSING');
       const events = await prisma.trackingEvent.findMany({ where: { order: { externalId: id } }, orderBy: { seq: 'asc' } });
-      expect(events.map((e) => e.status)).toEqual(['PROCESSING', 'CANCELLED']);
+      expect(events.map((e) => e.status)).toEqual(['PROCESSING']);
+    });
+
+    it('PARTIALLY_SHIPPING cannot be cancelled either', async () => {
+      const buyer = await t.buyerSession(0);
+      const id = await placeOrder(buyer, 'key-ful-canc-02', SKU);
+      await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'PARTIALLY_SHIPPING' }).expect(201);
+      await http.post(`/test-admin/orders/${id}/transition`).set(admin).send({ to: 'CANCELLED' }).expect(400);
+      expect((await prisma.order.findFirstOrThrow({ where: { externalId: id } })).status).toBe('PARTIALLY_SHIPPING');
     });
 
     it('the Test Console jump to IN_TRANSIT also keeps package and tracking consistent', async () => {
