@@ -340,6 +340,9 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-media-picker small { display:block; font-size:11px; color:var(--muted); margin-top:5px; font-weight:400; }
 .app .admin-media-picker input { width:100%; min-width:0; }
 .admin-media-selection { font-size:11px; overflow-wrap:anywhere; margin:12px 0; }
+.app .admin-media-option { display:flex; flex-direction:column; align-items:stretch; gap:8px; margin:16px 0; font-size:11px; }
+.admin-media-option input { width:100%; min-width:0; }
+.admin-media-option small { color:var(--muted); }
 .admin-media-actions { display:flex; justify-content:flex-end; margin-top:14px; }
 .admin-media-result { padding:18px; margin-top:18px; border:1px solid #e7e7e7; border-radius:10px; }
 .admin-media-result > [role=status] { font-size:12px; font-weight:500; margin-bottom:16px; }
