@@ -15,6 +15,18 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
   const [topic, setTopic] = useState('SIMULATOR_TEST');
   const [targetUrl, setTargetUrl] = useState('http://host.docker.internal:9999/webhook');
   const [showComposer, setShowComposer] = useState(false);
+  const [payloadText, setPayloadText] = useState('{ "note": "foundation test event" }');
+  const [maxAttempts, setMaxAttempts] = useState('5');
+  const [queuing, setQueuing] = useState(false);
+  let payload: Record<string, unknown> | undefined;
+  let payloadError = '';
+  try {
+    const value: unknown = JSON.parse(payloadText);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) payloadError = 'Payload must be a JSON object.';
+    else payload = value as Record<string, unknown>;
+  } catch { payloadError = 'Enter valid JSON for the payload.'; }
+  const attemptsValid = /^\d+$/.test(maxAttempts) && Number(maxAttempts) >= 1 && Number(maxAttempts) <= 20;
+  const canQueue = !!shopId && !!topic.trim() && topic.trim().length <= 100 && !!payload && attemptsValid && !queuing;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const statusLabels: Record<string, string> = { PENDING: 'Pending', IN_PROGRESS: 'In progress', SUCCEEDED: 'Succeeded', DEAD: 'Failed' };
   const qs = new URLSearchParams();
@@ -32,12 +44,16 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
     }
   };
   const enqueue = async () => {
+    if (!canQueue) return;
+    setQueuing(true);
     try {
-      await api('/test-admin/webhooks', { method: 'POST', body: { shopId, topic, targetUrl, payload: { note: 'foundation test event' } } });
-      setMsg('Test webhook queued (not a TikTok-format event; real events arrive in Phase 05).');
+      await api('/test-admin/webhooks', { method: 'POST', body: { shopId, topic: topic.trim(), targetUrl, payload, maxAttempts: Number(maxAttempts) } });
+      setMsg('Test webhook queued. Manually queued events are unsigned; use a subscribed business event to test signed deliveries.');
       jobs.reload();
     } catch (e) {
       setMsg((e as Error).message);
+    } finally {
+      setQueuing(false);
     }
   };
 
@@ -45,11 +61,15 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
     <div>
       {showComposer && <section className="card admin-webhook-composer" id="webhook-composer" aria-label="Queue a test webhook">
         <div className="admin-webhook-composer-heading"><h3>Queue a test webhook</h3><button aria-label="Close webhook form" onClick={() => setShowComposer(false)}><X size={14} /></button></div>
-        <div className="admin-webhook-form">
-          <label>Topic<input value={topic} onChange={(e) => setTopic(e.target.value)} /></label>
-          <label>Target URL<input value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} /></label>
-          <button className="admin-primary admin-icon-action" disabled={!shopId} onClick={enqueue}><Plus size={14} />Queue</button>
-        </div>
+        <form className="admin-webhook-form" onSubmit={(e) => { e.preventDefault(); void enqueue(); }}>
+          <label>Topic<input required maxLength={100} disabled={queuing} value={topic} onChange={(e) => setTopic(e.target.value)} /></label>
+          <label>Target URL<input required type="url" pattern="https?://.*" disabled={queuing} value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} /></label>
+          <label>Maximum attempts<input type="number" min={1} max={20} step={1} required disabled={queuing} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></label>
+          <label>Payload (JSON object)<textarea rows={5} disabled={queuing} value={payloadText} aria-invalid={!!payloadError} aria-describedby={payloadError ? 'webhook-payload-error' : undefined} onChange={(e) => setPayloadText(e.target.value)} /></label>
+          {payloadError && <p id="webhook-payload-error" role="alert">{payloadError}</p>}
+          {!attemptsValid && <p role="alert">Maximum attempts must be a whole number from 1 to 20.</p>}
+          <button className="admin-primary admin-icon-action" disabled={!canQueue}><Plus size={14} />{queuing ? 'Queuing…' : 'Queue'}</button>
+        </form>
       </section>}
       <div className="admin-log-filters admin-webhook-filters">
         <label>Request ID <input value={requestId} onChange={(e) => setRequestId(e.target.value)} aria-label="Request ID filter" /></label>

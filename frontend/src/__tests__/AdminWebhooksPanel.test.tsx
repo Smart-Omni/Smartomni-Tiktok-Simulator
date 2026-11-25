@@ -34,5 +34,28 @@ it('preserves replay and queue request contracts', async () => {
   fireEvent.click(screen.getByRole('button', { name: /^Queue$/ }));
   await waitFor(() => expect(fetcher.mock.calls.some(([url, options]) => url === '/test-admin/webhooks' && options?.method === 'POST')).toBe(true));
   const request = fetcher.mock.calls.find(([url]) => url === '/test-admin/webhooks')!;
-  expect(JSON.parse(request[1]!.body as string)).toEqual({ shopId: 'shop-1', topic: 'CUSTOM_TOPIC', targetUrl: 'http://host.docker.internal:9999/webhook', payload: { note: 'foundation test event' } });
+  expect(JSON.parse(request[1]!.body as string)).toEqual({ shopId: 'shop-1', topic: 'CUSTOM_TOPIC', targetUrl: 'http://host.docker.internal:9999/webhook', payload: { note: 'foundation test event' }, maxAttempts: 5 });
+});
+
+it('blocks invalid payloads and retry limits, then submits the custom event unchanged', async () => {
+  render(<WebhooksPanel shopId="shop-2" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Queue webhook' }));
+  const queue = screen.getByRole('button', { name: /^Queue$/ });
+  const payload = screen.getByRole('textbox', { name: 'Payload (JSON object)' });
+  for (const invalid of ['{', 'null', '[]', '"text"']) {
+    fireEvent.change(payload, { target: { value: invalid } });
+    expect(queue.hasAttribute('disabled')).toBe(true);
+  }
+  fireEvent.change(payload, { target: { value: '{"order_id":"123","nested":{"count":2}}' } });
+  const attempts = screen.getByRole('spinbutton', { name: 'Maximum attempts' });
+  for (const invalid of ['0', '21', '1.5', '']) {
+    fireEvent.change(attempts, { target: { value: invalid } });
+    expect(queue.hasAttribute('disabled')).toBe(true);
+  }
+  expect(fetcher.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(0);
+  fireEvent.change(attempts, { target: { value: '20' } });
+  fireEvent.click(queue);
+  await waitFor(() => expect(fetcher.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(true));
+  const [, options] = fetcher.mock.calls.find(([, options]) => options?.method === 'POST')!;
+  expect(JSON.parse(options!.body as string)).toMatchObject({ shopId: 'shop-2', payload: { order_id: '123', nested: { count: 2 } }, maxAttempts: 20 });
 });
