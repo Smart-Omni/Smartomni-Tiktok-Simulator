@@ -21,6 +21,8 @@ const real = (id: string, title: string): StorefrontProduct => ({
   maxPriceVnd: 100000,
   skus: [{ id: `${id}-s`, name: 'M', attributeName: 'Size', priceVnd: 100000, available: true, stock: 5 }],
 });
+// The same ten products as the mock catalog, as the API returns them (enrichProduct matches them by id).
+const fromMock = mockCatalog.map((m) => real(m.id, m.title));
 const storefront = [real('750001', 'Bình giữ nhiệt 500ml'), ...Array.from({ length: 11 }, (_, i) => real(`7501${i}`, `Real item ${i + 1}`))];
 
 function Location() {
@@ -43,14 +45,16 @@ const renderHome = (path = '/') =>
 
 describe('HomePage', () => {
   const urls: { url: string; headers: Record<string, string> }[] = [];
+  let served: StorefrontProduct[] = fromMock;
   beforeEach(() => {
     urls.length = 0;
+    served = fromMock;
     sessionStorage.clear();
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         urls.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
-        return json({ currency: 'VND', items: storefront, nextCursor: null });
+        return json({ currency: 'VND', items: served, nextCursor: null });
       }),
     );
   });
@@ -59,20 +63,21 @@ describe('HomePage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows guests one catalog with unique product links without calling the API', async () => {
+  it('shows guests the real catalog with unique product links from the public endpoint', async () => {
     renderHome();
     await screen.findByText('1–10 of 10 products');
     const catalog = screen.getByRole('region', { name: 'Products' });
     expect(within(catalog).getAllByRole('link')).toHaveLength(mockCatalog.length);
     expect(new Set(within(catalog).getAllByRole('link').map((el) => el.getAttribute('href'))).size).toBe(mockCatalog.length);
-    expect(urls).toEqual([]);
+    expect(urls.map((u) => u.url)).toEqual(['/demo/catalog?limit=100']);
+    expect(urls[0].headers['x-demo-session']).toBeUndefined();
     fireEvent.click(screen.getByRole('button', { name: '6 products per row' }));
     expect(screen.getByRole('button', { name: '6 products per row' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(catalog).getAllByRole('link')).toHaveLength(mockCatalog.length);
-    expect(urls).toEqual([]);
   });
   it('loads buyer products through the existing catalog endpoint and sorts prices', async () => {
     sessionStorage.setItem('sim.demo-session.BUYER', JSON.stringify(buyer));
+    served = storefront;
     renderHome();
     await screen.findByText('1–12 of 12 products');
     const catalog = screen.getByRole('region', { name: 'Products' });
@@ -83,6 +88,7 @@ describe('HomePage', () => {
   });
   it('filters categories and clears the selected category', async () => {
     renderHome();
+    await screen.findByText('1–10 of 10 products');
     const row = screen.getByRole('region', { name: 'Categories' });
     expect(within(row).getAllByRole('link')).toHaveLength(mockCategories.length + 1);
     fireEvent.click(within(row).getByRole('link', { name: 'Electronics' }));
