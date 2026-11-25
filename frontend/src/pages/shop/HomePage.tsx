@@ -56,14 +56,18 @@ function Catalog({ items, q, category }: { items: EnrichedProduct[]; q: string; 
 }
 
 const actions = [
-  { label: 'Order', icon: Package, to: '/account/orders' },
-  { label: 'Messages', icon: MessageCircle, to: '/account/messages' },
-  { label: 'Returns', icon: RotateCcw, to: '/account/orders' },
-  { label: 'Start selling', icon: Store, to: '/seller-center' },
+  { label: 'Orders', description: 'Track your orders', icon: Package, to: '/account/orders' },
+  { label: 'Messages', description: 'Chat with shops', icon: MessageCircle, to: '/account/messages' },
+  { label: 'Returns', description: 'Requests & refunds', icon: RotateCcw, to: '/account/orders' },
+  { label: 'Seller Center', description: 'Manage your shop', icon: Store, to: '/seller-center' },
 ];
 function HomeNavigation() {
   return <section className="buyer-home-section" aria-label="Quick actions">
-    <div className="buyer-actions-row">{actions.map(({ label, icon: Icon, to }) => <Link key={label} to={to} className="buyer-action-tile"><span className="buyer-tile-circle"><Icon size={19} /></span><span className="buyer-tile-label">{label}</span></Link>)}</div>
+    <div className="buyer-actions-row">{actions.map(({ label, description, icon: Icon, to }) => <Link key={label} to={to} className="buyer-action-tile" aria-label={label}>
+      <span className="buyer-action-icon"><Icon size={21} strokeWidth={1.7} aria-hidden="true" /></span>
+      <span className="buyer-action-copy"><span className="buyer-tile-label">{label}</span><span className="buyer-action-description">{description}</span></span>
+      <ArrowRight className="buyer-action-arrow" size={16} aria-hidden="true" />
+    </Link>)}</div>
   </section>;
 }
 function FlashSaleBanner({ items }: { items: EnrichedProduct[] }) {
