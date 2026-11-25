@@ -24,6 +24,21 @@ it('paginates locally and expands delivery history only on demand', async () => 
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
+it('combines shop, status, request and load-limit filters and follows the selected shop', async () => {
+  const { rerender } = render(<WebhooksPanel shopId="shop/1" />);
+  await screen.findByText('TOPIC_1');
+  expect(fetcher.mock.calls[0][0]).toBe('/test-admin/webhooks?limit=50');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'selected shop only' }));
+  fireEvent.change(screen.getByRole('combobox', { name: 'Latest jobs to load' }), { target: { value: '200' } });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'DEAD' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Request ID filter' }), { target: { value: 'request-2' } });
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url === '/test-admin/webhooks?requestId=request-2&status=DEAD&shopId=shop%2F1&limit=200')).toBe(true));
+  rerender(<WebhooksPanel shopId="shop-2" />);
+  await waitFor(() => expect(fetcher.mock.calls.some(([url]) => url.includes('shopId=shop-2&limit=200'))).toBe(true));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'selected shop only' }));
+  await waitFor(() => expect(fetcher.mock.calls.at(-1)![0]).toBe('/test-admin/webhooks?requestId=request-2&status=DEAD&limit=200'));
+});
+
 it('preserves replay and queue request contracts', async () => {
   render(<WebhooksPanel shopId="shop-1" />);
   await screen.findByText('TOPIC_1');

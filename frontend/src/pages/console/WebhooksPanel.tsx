@@ -11,6 +11,8 @@ import type { WebhookJob } from './types';
 export function WebhooksPanel({ shopId }: { shopId: string }) {
   const [requestId, setRequestId] = useState('');
   const [status, setStatus] = useState('');
+  const [onlyShop, setOnlyShop] = useState(false);
+  const [limit, setLimit] = useState('50');
   const [msg, setMsg] = useState<string>();
   const [topic, setTopic] = useState('SIMULATOR_TEST');
   const [targetUrl, setTargetUrl] = useState('http://host.docker.internal:9999/webhook');
@@ -32,6 +34,8 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
   const qs = new URLSearchParams();
   if (requestId.trim()) qs.set('requestId', requestId.trim());
   if (status) qs.set('status', status);
+  if (onlyShop && shopId) qs.set('shopId', shopId);
+  qs.set('limit', limit);
   const jobs = useAsync(() => api<{ items: WebhookJob[] }>(`/test-admin/webhooks?${qs.toString()}`), [qs.toString()], 3000);
 
   const replay = async (id: string) => {
@@ -78,12 +82,15 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
             <option value="">All statuses</option>{['PENDING', 'IN_PROGRESS', 'SUCCEEDED', 'DEAD'].map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
           </select>
         </label>
+        <label className="admin-check"><input type="checkbox" checked={onlyShop} onChange={(e) => setOnlyShop(e.target.checked)} /> selected shop only</label>
+        <label>Latest jobs to load<select value={limit} onChange={(e) => setLimit(e.target.value)}>{['25', '50', '100', '200'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         <button className="admin-icon-action" onClick={jobs.reload}><RefreshCw size={13} />Refresh</button>
       <PageActions>
         <button className="admin-primary admin-icon-action" onClick={() => setShowComposer((open) => !open)} aria-expanded={showComposer} aria-controls="webhook-composer"><Plus size={14} />Queue webhook</button>
       </PageActions>
       </div>
       {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
+      <p className="muted">Showing up to {limit} newest matching jobs. Pages divide the loaded jobs; older jobs are outside this view.</p>
       <AsyncState {...jobs} onRetry={jobs.reload} isEmpty={(d) => d.items.length === 0} emptyText="No webhook jobs for this filter.">
         {(d) => (
           <PaginatedList key={qs.toString()} items={d.items} label="Webhooks">
