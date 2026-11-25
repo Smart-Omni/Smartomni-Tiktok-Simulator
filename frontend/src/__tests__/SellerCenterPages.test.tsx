@@ -394,10 +394,20 @@ describe('Seller Center vouchers', () => {
     expect(batchCsv(batchCodes)).toBe('promo_code,coupon_id,redeemed_count,status\nK7M2QX9PRT,7700000000000001,1,ONGOING\nHV4N8WZ3EA,7700000000000002,0,DEACTIVATED\nABCDEFGH23,7700000000000003,0,ONGOING\n');
   });
 
+  it('calculates scheduled batch expiry from its start, and rejects invalid start dates', () => {
+    const f = { ...emptyBatch, title: 'Scheduled batch', value: '30', startAt: '2040-02-01T08:30:00', days: '7' };
+    expect(batchValid(f)).toBe(true);
+    expect(batchBody(f, Date.parse('2040-01-01T00:00:00Z'))).toMatchObject({ startAt: new Date(f.startAt).toISOString(), endAt: new Date(Date.parse(f.startAt) + 7 * 86400000).toISOString() });
+    expect(batchValid({ ...f, startAt: 'invalid' })).toBe(false);
+    expect(() => batchBody({ ...f, startAt: 'invalid' }, Date.now())).toThrow('valid start time');
+  });
+
   it('shows code batches with Used counts, deactivates a batch and lists its codes', async () => {
     renderAt('/seller-center/vouchers?tab=batches');
     expect(screen.getByRole('tab', { name: 'Code batches' }).getAttribute('data-state')).toBe('active');
     const row = await screen.findByRole('row', { name: 'Batch Loyalty Diamond 30%' });
+    expect(screen.getByRole('columnheader', { name: 'Valid from' })).toBeTruthy();
+    expect(within(row).getAllByRole('cell')).toHaveLength(screen.getAllByRole('columnheader').length);
     expect(within(row).getByText('1 / 3')).toBeTruthy();
     expect(within(row).getByText('30% off')).toBeTruthy();
     fireEvent.click(within(row).getByRole('button', { name: 'Deactivate' }));
@@ -429,7 +439,7 @@ describe('Seller Center vouchers', () => {
     click.mockRestore();
   });
 
-  it('creates a code batch with the right body and opens its codes', async () => {
+  it('creates a scheduled code batch with the right body and opens its codes', async () => {
     renderAt('/seller-center/vouchers?tab=batches');
     await screen.findByRole('row', { name: 'Batch Loyalty Diamond 30%' });
     fireEvent.click(screen.getByRole('button', { name: 'New code batch' }));
@@ -438,10 +448,11 @@ describe('Seller Center vouchers', () => {
     fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'New batch' } });
     fireEvent.change(within(dialog).getByLabelText('Percent off (1-100)'), { target: { value: '30' } });
     fireEvent.change(within(dialog).getByLabelText('Quantity (1-500)'), { target: { value: '2' } });
+    fireEvent.change(within(dialog).getByLabelText('Starts at (optional)'), { target: { value: '2040-02-01T08:30:00' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Create batch' }));
     await waitFor(() => expect(writes()).toHaveLength(1));
     const [w] = writes();
-    expect(w).toMatchObject({ url: `${base}/coupon-batches`, method: 'POST', body: { title: 'New batch', discount: { type: 'PERCENT_OFF', percentage: 30 }, quantity: 2, audience: 'ALL', endAt: '2040-01-31T00:00:00.000Z' } });
+    expect(w).toMatchObject({ url: `${base}/coupon-batches`, method: 'POST', body: { title: 'New batch', discount: { type: 'PERCENT_OFF', percentage: 30 }, quantity: 2, audience: 'ALL', startAt: new Date('2040-02-01T08:30:00').toISOString(), endAt: new Date(Date.parse('2040-02-01T08:30:00') + 30 * 86400000).toISOString() } });
     expect(w.body).not.toHaveProperty('promoCode');
     expect(w.body).not.toHaveProperty('redemptionLimit');
     expect(await screen.findByRole('dialog', { name: /^Codes of / })).toBeTruthy();
