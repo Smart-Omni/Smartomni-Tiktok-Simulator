@@ -78,7 +78,7 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
         <button className="admin-primary admin-icon-action" disabled={!shopId || creatingLoyalty} aria-expanded={showLoyalty} onClick={() => setShowLoyalty((value) => !value)}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
       </PageActions>
       </div>
-      {showLoyalty && <form className="card" aria-label="Loyalty order scenario" onSubmit={(e) => { e.preventDefault(); void loyalty(); }}>
+      {showLoyalty && <form className="card admin-scenario-form" aria-label="Loyalty order scenario" onSubmit={(e) => { e.preventDefault(); void loyalty(); }}>
         <h3>Create loyalty test orders</h3>
         <p>Creates five test orders: three around the completion threshold, one delivered and one awaiting shipment. Each submission creates new orders.</p>
         <fieldset className="admin-fields-grid" disabled={creatingLoyalty}>

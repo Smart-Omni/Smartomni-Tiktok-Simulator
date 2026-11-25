@@ -33,7 +33,7 @@ export function LoyaltyVouchersForm({ shopId, onCreated, onClose }: { shopId: st
     } finally { setBusy(false); }
   }
 
-  return <form className="card" aria-label="Loyalty voucher scenario" onSubmit={(e) => { e.preventDefault(); void create(); }}>
+  return <form className="card admin-scenario-form" aria-label="Loyalty voucher scenario" onSubmit={(e) => { e.preventDefault(); void create(); }}>
     <h3>Create loyalty voucher batches</h3>
     <p>Each submission creates new single-use codes for every tier, valid from the current business time. These percentages are test data.</p>
     <fieldset disabled={busy}>

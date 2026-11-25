@@ -65,7 +65,7 @@ export function WebhooksPanel({ shopId }: { shopId: string }) {
           <label>Topic<input required maxLength={100} disabled={queuing} value={topic} onChange={(e) => setTopic(e.target.value)} /></label>
           <label>Target URL<input required type="url" pattern="https?://.*" disabled={queuing} value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} /></label>
           <label>Maximum attempts<input type="number" min={1} max={20} step={1} required disabled={queuing} value={maxAttempts} onChange={(e) => setMaxAttempts(e.target.value)} /></label>
-          <label>Payload (JSON object)<textarea rows={5} disabled={queuing} value={payloadText} aria-invalid={!!payloadError} aria-describedby={payloadError ? 'webhook-payload-error' : undefined} onChange={(e) => setPayloadText(e.target.value)} /></label>
+          <label className="admin-webhook-payload">Payload (JSON object)<textarea rows={5} disabled={queuing} value={payloadText} aria-invalid={!!payloadError} aria-describedby={payloadError ? 'webhook-payload-error' : undefined} onChange={(e) => setPayloadText(e.target.value)} /></label>
           {payloadError && <p id="webhook-payload-error" role="alert">{payloadError}</p>}
           {!attemptsValid && <p role="alert">Maximum attempts must be a whole number from 1 to 20.</p>}
           <button className="admin-primary admin-icon-action" disabled={!canQueue}><Plus size={14} />{queuing ? 'Queuing…' : 'Queue'}</button>

@@ -226,9 +226,16 @@ body:has(.admin-console) { background:#dedfdf; overflow:hidden; }
 .admin-webhook-filters { margin-bottom:20px; }
 .admin-webhook-composer-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
 .app .admin-webhook-composer-heading h3 { margin:0; }
-.admin-webhook-form { display:grid; grid-template-columns:minmax(180px,1fr) minmax(280px,2fr) auto; align-items:end; gap:16px; }
+.admin-webhook-form { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); align-items:end; gap:16px; }
 .app .admin-webhook-form label { display:flex; flex-direction:column; align-items:stretch; gap:8px; font-size:10px; text-align:left; }
-.admin-webhook-form input { width:100%; min-width:0; }
+.admin-webhook-form :is(input,textarea) { width:100%; min-width:0; }
+.admin-webhook-form .admin-webhook-payload,.admin-webhook-form > :is(p,button) { grid-column:1 / -1; }
+.admin-webhook-form textarea { resize:vertical; font-family:monospace; }
+.admin-webhook-form > button { justify-self:end; }
+.admin-scenario-form .admin-fields-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+.admin-scenario-form fieldset { min-width:0; margin:16px 0; }
+.admin-scenario-form legend { padding:0; font-size:12px; font-weight:500; }
+.admin-scenario-form .admin-table-actions { flex-wrap:wrap; justify-content:flex-end; }
 .admin-webhooks-table { min-width:1030px; }
 .admin-webhooks-table th:first-child { min-width:110px; }
 .admin-webhooks-table th:nth-child(2) { min-width:150px; }
