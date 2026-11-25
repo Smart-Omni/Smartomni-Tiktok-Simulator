@@ -12,7 +12,7 @@ import { shopPrice } from '@/lib/format';
 import { listMarketplaceProducts } from '@/lib/endpoints';
 import { useAsync, type AsyncResult } from '@/lib/useAsync';
 import { useHorizontalScroll } from '@/lib/useHorizontalScroll';
-import { categoryBySlug, enrichProduct, mockCatalog, normalizeTitle, type EnrichedProduct } from '@/mocks';
+import { categoryBySlug, enrichProduct, normalizeTitle, type EnrichedProduct } from '@/mocks';
 
 const GRID = 'grid grid-cols-2 gap-x-3 gap-y-5 md:grid-cols-3 lg:grid-cols-5';
 
@@ -100,10 +100,8 @@ export function HomePage() {
   const [params] = useSearchParams();
   const q = params.get('q')?.trim() ?? '';
   const category = categoryBySlug(params.get('category')) ? params.get('category') : null;
-  const products = useAsync<EnrichedProduct[]>(
-    () => (buyer ? listMarketplaceProducts().then((items) => items.map(enrichProduct)) : Promise.resolve(mockCatalog)),
-    [buyer?.sessionToken],
-  );
+  // GET /demo/catalog is public, so guests and buyers see the same real catalog.
+  const products = useAsync<EnrichedProduct[]>(() => listMarketplaceProducts().then((items) => items.map(enrichProduct)), []);
 
   return (
     <>
