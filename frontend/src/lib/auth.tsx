@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createSession, endSession } from './endpoints';
-import { load, SESSION_CHANGED, sessionKey } from './session';
+import { load, saveSession, SESSION_CHANGED } from './session';
 import type { DemoSession, Role, SignInIdentity } from './types';
 
 /**
- * Demo sign-in state for the new pages. One session per role, stored under the same sessionStorage keys
- * as the legacy pages (`sim.demo-session.{ROLE}`), so both see the same sign-in. Not a TikTok or SmartOmni login.
+ * Demo sign-in state. One session per role and tab, stored under `sim.demo-session.{ROLE}` (see `session.ts`).
+ * Not a TikTok or SmartOmni login.
  */
 export interface AuthValue {
   buyer: DemoSession | null;
@@ -19,19 +19,10 @@ const AuthContext = createContext<AuthValue | null>(null);
 
 const isExpired = (s: DemoSession) => new Date(s.expiresAt).getTime() <= Date.now();
 
-function store(role: Role, s: DemoSession | null) {
-  try {
-    if (s) sessionStorage.setItem(sessionKey(role), JSON.stringify(s));
-    else sessionStorage.removeItem(sessionKey(role));
-  } catch {
-    /* storage unavailable: keep in memory only */
-  }
-}
-
 function loadValid(role: Role): DemoSession | null {
   const s = load(role);
   if (s && isExpired(s)) {
-    store(role, null);
+    saveSession(role, null);
     return null;
   }
   return s;
@@ -50,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const put = useCallback((role: Role, s: DemoSession | null) => {
-    store(role, s);
+    saveSession(role, s);
     setSessions((prev) => ({ ...prev, [role]: s }));
   }, []);
 

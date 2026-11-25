@@ -156,5 +156,6 @@ describe('sign-in redirects', () => {
     expect(destination('BUYER', null)).toBe('/');
     expect(destination('SELLER', '/cart')).toBe('/seller-center');
     expect(destination('SELLER', '/seller-center/orders')).toBe('/seller-center/orders');
+    expect(destination('SELLER', '/seller/authorize?app_key=k&state=s')).toBe('/seller/authorize?app_key=k&state=s');
   });
 });

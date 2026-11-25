@@ -27,10 +27,10 @@ export function safeNext(next: string | null): string | null {
   return next;
 }
 
-/** Where to go after signing in: buyers back to `next`, sellers to Seller Center (or `next` inside it). */
+/** Where to go after signing in: buyers back to `next`, sellers to Seller Center (or `next` inside it, or app consent). */
 export function destination(role: Role, next: string | null): string {
   const inSellerCenter = next?.startsWith('/seller-center') ?? false;
-  if (role === 'SELLER') return next && inSellerCenter ? next : '/seller-center';
+  if (role === 'SELLER') return next && (inSellerCenter || next.startsWith('/seller/authorize?')) ? next : '/seller-center';
   return next && !inSellerCenter && !next.startsWith('/login') ? next : '/';
 }
 
@@ -41,6 +41,7 @@ function nextLabel(next: string): string {
   if (next.startsWith('/checkout')) return 'checkout';
   if (next.startsWith('/account')) return 'your orders';
   if (next.startsWith('/seller-center')) return 'Seller Center';
+  if (next.startsWith('/seller/authorize')) return 'app authorization';
   return 'the page you were on';
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
-import { SESSION_CHANGED, SESSION_EXPIRED, sessionKey } from '@/lib/session';
+import { saveSession, SESSION_CHANGED, SESSION_EXPIRED } from '@/lib/session';
 import type { Role } from '@/lib/types';
 import { loginUrl } from './RequireRole';
 
@@ -26,11 +26,7 @@ export function SessionExpiryWatcher() {
       const role: Role | undefined = auth.buyer?.sessionToken === token ? 'BUYER' : auth.seller?.sessionToken === token ? 'SELLER' : undefined;
       if (!role || handled.current.has(token)) return;
       handled.current.add(token);
-      try {
-        sessionStorage.removeItem(sessionKey(role));
-      } catch {
-        /* storage unavailable */
-      }
+      saveSession(role, null);
       window.dispatchEvent(new Event(SESSION_CHANGED));
       toast.error('Your session has expired. Please sign in again.');
       navigate(loginUrl(location.pathname + location.search, role), { replace: true });

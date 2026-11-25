@@ -159,3 +159,9 @@ Deliberate deviation from TikTok: the simulator never holds a paid order. Supers
 | # | Issue | Choice | Reason |
 |---|---|---|---|
 | T1 | Scope list in token responses. | `/api/v2/token/get` and `/api/v2/token/refresh` return `data.granted_scopes` (string array): the token's GRANTED scopes, i.e. exactly what the API guard enforces (refresh echoes the token's current scopes, so an admin-revoked scope stays absent). Values are `sim.` placeholders. | SmartOmni reads `data.granted_scopes` (spec/03-shop-connection.md); without it it stores `null` ("unknown"). Provisional like the rest of the token shape. |
+
+## Consent follows the signed-in seller
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| CS1 | Which shop `/seller/authorize` offers. | Only the shop of the seller signed in last in this browser (`localStorage` `sim.demo-session.SELLER`, cleared on sign-out, expiry or 401). No account picker on the page; a guest goes to `/login` and returns. Sign-in itself stays password-less. | A real marketplace authorizes the account that is logged in. `sessionStorage` is per tab, and SmartOmni may open consent in another tab. |

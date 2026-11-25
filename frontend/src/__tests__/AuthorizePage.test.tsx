@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthorizePage } from '../pages/AuthorizePage';
 
@@ -11,11 +11,16 @@ const consent = {
   state: 'st',
 };
 
+function Location() {
+  const l = useLocation();
+  return <output data-testid="location">{l.pathname + l.search}</output>;
+}
+
 describe('AuthorizePage', () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   beforeEach(() => {
     calls.length = 0;
-    sessionStorage.setItem('sim.demo-session.SELLER', JSON.stringify({ sessionToken: 'tok', role: 'SELLER', shopId: 's1', buyerId: null, expiresAt: '2999-01-01T00:00:00Z' }));
+    localStorage.setItem('sim.demo-session.SELLER', JSON.stringify({ sessionToken: 'tok', role: 'SELLER', shopId: 's1', buyerId: null, expiresAt: '2999-01-01T00:00:00Z' }));
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
@@ -27,6 +32,7 @@ describe('AuthorizePage', () => {
   });
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     sessionStorage.clear();
     vi.unstubAllGlobals();
   });
@@ -40,6 +46,30 @@ describe('AuthorizePage', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('http://localhost:8080/cb?code=C&state=st'));
     const post = calls.find((c) => c.init?.method === 'POST')!;
     expect(JSON.parse(post.init!.body as string)).toMatchObject({ app_key: 'k', state: 'st', decision: 'accept' });
+  });
+
+  const renderWithLocation = (path: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <AuthorizePage navigate={vi.fn()} />
+        <Location />
+      </MemoryRouter>,
+    );
+
+  it('sends the user to sign in, with this page as next, when no seller is signed in', () => {
+    localStorage.clear();
+    // A session left in the tab does not count: only the current browser-wide sign-in does.
+    sessionStorage.setItem('sim.demo-session.SELLER', JSON.stringify({ sessionToken: 'old', role: 'SELLER', shopId: 's2', buyerId: null, expiresAt: '2999-01-01T00:00:00Z' }));
+    renderWithLocation('/seller/authorize?app_key=k&state=st');
+    expect(screen.getByTestId('location').textContent).toBe('/login?next=%2Fseller%2Fauthorize%3Fapp_key%3Dk%26state%3Dst&role=seller');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('drops a rejected seller session and asks to sign in again', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Session expired' }), { status: 401 })));
+    renderWithLocation('/seller/authorize?app_key=k');
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toMatch(/^\/login\?next=/));
+    expect(localStorage.getItem('sim.demo-session.SELLER')).toBeNull();
   });
 
   it('sends deny and reports a missing app_key', async () => {
