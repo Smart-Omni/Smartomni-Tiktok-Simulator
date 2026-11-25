@@ -39,6 +39,11 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [auditRef, setAuditRef] = useState<string>();
+  const [showLoyalty, setShowLoyalty] = useState(false);
+  const [buyerId, setBuyerId] = useState('');
+  const [thresholdDays, setThresholdDays] = useState('15');
+  const [creatingLoyalty, setCreatingLoyalty] = useState(false);
+  const thresholdValid = /^\d+$/.test(thresholdDays) && Number(thresholdDays) >= 1 && Number(thresholdDays) <= 365;
   async function go(id: string, to: string) {
     try {
       await api(`/test-admin/orders/${id}/transition`, { method: 'POST', body: { to, shopId } });
@@ -49,12 +54,17 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
     }
   }
   async function loyalty() {
+    if (!shopId || !thresholdValid || creatingLoyalty) return;
+    setCreatingLoyalty(true);
     try {
-      const r = await api<{ orders: { label: string; orderId: string; status: string }[] }>('/test-admin/scenarios/loyalty-orders', { method: 'POST', body: { shopId } });
+      const r = await api<{ orders: { label: string; orderId: string; status: string }[] }>('/test-admin/scenarios/loyalty-orders', { method: 'POST', body: { shopId, thresholdDays: Number(thresholdDays), ...(buyerId.trim() ? { buyerId: buyerId.trim() } : {}) } });
       setMsg(`Created ${r.orders.length} loyalty test orders: ${r.orders.map((o) => `${o.orderId} (${o.status})`).join(', ')}`);
+      setShowLoyalty(false);
       list.reload();
     } catch (e) {
-      setMsg((e as Error).message);
+      setMsg(`${(e as Error).message}. Check Orders before submitting again: some test orders may already have been created.`);
+    } finally {
+      setCreatingLoyalty(false);
     }
   }
   return (
@@ -65,9 +75,19 @@ export function OrdersPanel({ shopId }: { shopId: string }) {
         <label>Status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">All statuses</option>{Object.keys(NEXT).map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
         <button className="admin-icon-action" type="button" onClick={list.reload}><RefreshCw size={13} aria-hidden="true" />Refresh</button>
       <PageActions>
-        <button className="admin-primary admin-icon-action" title="Create loyalty test orders before and after the 15-day boundary" disabled={!shopId} onClick={() => void loyalty()}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
+        <button className="admin-primary admin-icon-action" disabled={!shopId || creatingLoyalty} aria-expanded={showLoyalty} onClick={() => setShowLoyalty((value) => !value)}><Plus size={14} aria-hidden="true" />Create loyalty orders</button>
       </PageActions>
       </div>
+      {showLoyalty && <form className="card" aria-label="Loyalty order scenario" onSubmit={(e) => { e.preventDefault(); void loyalty(); }}>
+        <h3>Create loyalty test orders</h3>
+        <p>Creates five test orders: three around the completion threshold, one delivered and one awaiting shipment. Each submission creates new orders.</p>
+        <fieldset className="admin-fields-grid" disabled={creatingLoyalty}>
+          <label>Buyer ID (optional)<input value={buyerId} onChange={(e) => setBuyerId(e.target.value)} placeholder="First buyer in this shop" /></label>
+          <label>Completion threshold (days)<input type="number" min={1} max={365} step={1} required value={thresholdDays} onChange={(e) => setThresholdDays(e.target.value)} aria-invalid={!thresholdValid} /></label>
+          {!thresholdValid && <p role="alert">Choose a whole number from 1 to 365 days.</p>}
+          <button className="admin-primary" disabled={!shopId || !thresholdValid}>{creatingLoyalty ? 'Creating orders…' : 'Generate loyalty orders'}</button>
+        </fieldset>
+      </form>}
       <AsyncState {...list} onRetry={list.reload} isEmpty={(d) => d.items.length === 0} emptyText="No orders for this shop.">
         {(d) => (
           <PaginatedList key={`${query}:${statusFilter}`} items={d.items.filter((o) => (!statusFilter || o.status === statusFilter) && `${o.id} ${o.buyerName}`.toLowerCase().includes(query.toLowerCase()))} label="Orders">{(visible) => <div className="scroll"><table className="admin-orders-table">
