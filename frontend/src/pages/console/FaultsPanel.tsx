@@ -23,12 +23,18 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
   const [pathMatch, setPathMatch] = useState('');
   const [status, setStatus] = useState('500');
   const [delayMs, setDelayMs] = useState('1000');
+  const [holdMs, setHoldMs] = useState('5000');
   const [remaining, setRemaining] = useState('1');
   const [global, setGlobal] = useState(false);
   const [msg, setMsg] = useState<string>();
   const [showForm, setShowForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const holdValid = /^\d+$/.test(holdMs) && Number(holdMs) <= 600000;
+  const canCreate = !creating && (global || !!shopId) && (kind !== 'REORDER' || (target === 'WEBHOOK' && holdValid));
 
   const create = async () => {
+    if (!canCreate) return;
+    setCreating(true);
     try {
       await api('/test-admin/faults', {
         method: 'POST',
@@ -37,7 +43,7 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
           target,
           kind,
           pathMatch: pathMatch || null,
-          params: kind === 'HTTP_ERROR' ? { status: Number(status) } : kind === 'DELAY' ? { delayMs: Number(delayMs) } : {},
+          params: kind === 'HTTP_ERROR' ? { status: Number(status) } : kind === 'DELAY' ? { delayMs: Number(delayMs) } : kind === 'REORDER' ? { holdMs: Number(holdMs) } : {},
           remaining: remaining ? Number(remaining) : null,
         },
       });
@@ -45,6 +51,8 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
       faults.reload();
     } catch (e) {
       setMsg((e as Error).message);
+    } finally {
+      setCreating(false);
     }
   };
   const remove = async (id: string) => {
@@ -58,14 +66,16 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
       {showForm && <div className="card">
         <h3>Inject a fault</h3>
         <div className="admin-fields-grid">
-          <label>Target <select value={target} onChange={(e) => setTarget(e.target.value as 'WEBHOOK' | 'API')}><option>WEBHOOK</option><option>API</option></select></label>
-          <label>Kind <select value={kind} onChange={(e) => setKind(e.target.value)}><option>HTTP_ERROR</option><option>DELAY</option><option>DROP</option><option>DUPLICATE</option><option>REORDER</option><option>TIMEOUT_BEFORE_WRITE</option><option>TIMEOUT_AFTER_WRITE</option><option>APP_ERROR_200</option></select></label>
+          <label>Target <select value={target} onChange={(e) => { setTarget(e.target.value as 'WEBHOOK' | 'API'); if (kind === 'REORDER' && e.target.value === 'API') setKind('HTTP_ERROR'); }}><option>WEBHOOK</option><option>API</option></select></label>
+          <label>Kind <select value={kind} onChange={(e) => setKind(e.target.value)}><option>HTTP_ERROR</option><option>DELAY</option><option>DROP</option><option>DUPLICATE</option><option disabled={target !== 'WEBHOOK'}>REORDER</option><option>TIMEOUT_BEFORE_WRITE</option><option>TIMEOUT_AFTER_WRITE</option><option>APP_ERROR_200</option></select></label>
           <label>{target === 'WEBHOOK' ? 'Topic' : 'Path prefix'} <input value={pathMatch} onChange={(e) => setPathMatch(e.target.value)} placeholder="(any)" /></label>
           {kind === 'HTTP_ERROR' ? <label>Status <input size={4} value={status} onChange={(e) => setStatus(e.target.value)} /></label> : null}
           {kind === 'DELAY' ? <label>Delay ms <input size={6} value={delayMs} onChange={(e) => setDelayMs(e.target.value)} /></label> : null}
+          {kind === 'REORDER' ? <label>Hold ms <input type="number" min={0} max={600000} step={1} value={holdMs} aria-invalid={!holdValid} onChange={(e) => setHoldMs(e.target.value)} /></label> : null}
+          {kind === 'REORDER' && !holdValid && <p role="alert">Hold time must be a whole number from 0 to 600000 ms.</p>}
           <label>Uses <input size={4} value={remaining} onChange={(e) => setRemaining(e.target.value)} placeholder="unlimited" /></label>
           <label className="admin-check"><input type="checkbox" checked={global} onChange={(e) => setGlobal(e.target.checked)} /> all shops</label>
-          <button className="admin-primary" onClick={create} disabled={!global && !shopId}>Add fault</button>
+          <button className="admin-primary" onClick={create} disabled={!canCreate}>{creating ? 'Adding…' : 'Add fault'}</button>
         </div>
         {msg ? <div className="state state-error" role="alert">{msg}</div> : null}
       </div>}
