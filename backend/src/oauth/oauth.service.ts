@@ -13,6 +13,8 @@ export interface IssuedTokens {
   accessExpiresAt: Date;
   refreshExpiresAt: Date;
   openId: string;
+  /** The token's GRANTED scopes (what the API guard enforces), echoed as `data.granted_scopes`. */
+  scopes: string[];
 }
 
 export interface ConsentContext {
@@ -165,7 +167,7 @@ export class OAuthService {
     });
     return {
       shopId: row.shopId,
-      issued: { accessToken: pair.access, refreshToken: pair.refresh, accessExpiresAt: pair.accessExpiresAt, refreshExpiresAt: pair.refreshExpiresAt, openId: shop.seller.openId },
+      issued: { accessToken: pair.access, refreshToken: pair.refresh, accessExpiresAt: pair.accessExpiresAt, refreshExpiresAt: pair.refreshExpiresAt, openId: shop.seller.openId, scopes: row.scopes },
     };
   }
 
@@ -190,7 +192,7 @@ export class OAuthService {
     if (updated.count !== 1) throw new TiktokFault(400, 'refresh_token_invalid', 'refresh_token was already used or is no longer valid');
     return {
       shopId: row.shopId,
-      issued: { accessToken: pair.access, refreshToken: pair.refresh, accessExpiresAt: pair.accessExpiresAt, refreshExpiresAt: pair.refreshExpiresAt, openId: row.shop.seller.openId },
+      issued: { accessToken: pair.access, refreshToken: pair.refresh, accessExpiresAt: pair.accessExpiresAt, refreshExpiresAt: pair.refreshExpiresAt, openId: row.shop.seller.openId, scopes: row.scopes },
     };
   }
 

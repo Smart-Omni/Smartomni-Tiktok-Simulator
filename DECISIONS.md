@@ -152,3 +152,9 @@ Deliberate deviation from TikTok: the simulator never holds a paid order. Supers
 | H11 | Migrated orders: no package, no notification. | SQL cannot mint package ids and emits no events, so `FulfillmentService.repairMissingPackages()` runs once at API startup. For each AWAITING_SHIPMENT order without a package (only the migration can produce one) it bumps `updatedAt`, writes an ON_HOLD -> AWAITING_SHIPMENT audit row (actor SYSTEM, note `hold removed by migration`), emits ORDER_STATUS_CHANGE, then creates the TO_FULFILL package and emits PACKAGE_UPDATE. Idempotent (row lock + unique Package.orderId). | SmartOmni learns about the move by webhook or update_time polling; avoids a transition from a status the state machine no longer knows. |
 | H12 | History. | `OrderAudit` rows and stored webhook payloads that mention ON_HOLD are kept as they are; the UI shows unknown statuses as their raw value. | History is not rewritten. |
 | H13 | Loyalty and sandbox scenarios. | The loyalty case "paid and still on hold" becomes "paid, awaiting shipment" (never completes). Sandbox `pay: true` returns AWAITING_SHIPMENT; the happy-path step list no longer has ON_HOLD. | Same number of boundary cases, same meaning. |
+
+## Token response scopes
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| T1 | Scope list in token responses. | `/api/v2/token/get` and `/api/v2/token/refresh` return `data.granted_scopes` (string array): the token's GRANTED scopes, i.e. exactly what the API guard enforces (refresh echoes the token's current scopes, so an admin-revoked scope stays absent). Values are `sim.` placeholders. | SmartOmni reads `data.granted_scopes` (spec/03-shop-connection.md); without it it stores `null` ("unknown"). Provisional like the rest of the token shape. |
