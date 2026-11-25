@@ -10,7 +10,6 @@ import { WebhooksPanel } from './console/WebhooksPanel';
 import { FaultsPanel } from './console/FaultsPanel';
 import { TokensPanel } from './console/TokensPanel';
 import { SandboxPanel } from './console/SandboxPanel';
-import { ArbitrationPanel } from './console/ArbitrationPanel';
 import { DisputesPanel } from './console/DisputesPanel';
 import { MediaPanel } from './console/MediaPanel';
 import { consoleTabs } from '../features/registry';
@@ -28,8 +27,7 @@ const GROUPS: { label: string; screens: Screen[] }[] = [
     { label: 'Orders', title: 'Orders', description: 'Inspect orders and exercise the simulator order lifecycle.', icon: ListOrdered },
     { label: 'Sandbox', title: 'Create test orders', description: 'Choose SKUs and create a batch of sandbox orders for the selected shop.', icon: FlaskConical },
     { label: 'Fulfillment', title: 'Fulfillment', description: 'Control shipment progress and test delivery states.', icon: Truck },
-    { label: 'Aftersale', title: 'Returns & refunds', description: 'Review aftersale requests, their history and refund completion.', icon: ReceiptText },
-    { label: 'Arbitration', title: 'Dispute arbitration', description: 'Open or adjudicate a return dispute using the Admin API.', icon: Scale },
+    { label: 'Aftersale', title: 'Returns & refunds', description: 'Review aftersale requests, their history, dispute arbitration and refund completion.', icon: ReceiptText },
     { label: 'Inventory', title: 'Inventory', description: 'Inspect stock changes and inventory update requests.', icon: Boxes },
     { label: 'Coupons', title: 'Coupons', description: 'Inspect vouchers available in the selected shop.', icon: Tag },
     { label: 'Chat', title: 'Chat testing', description: 'Simulate buyer messages, agent activity and delivery faults.', icon: MessageSquare },
@@ -142,7 +140,6 @@ export function ConsolePage() {
             {tab === 'Webhooks' && <WebhooksPanel shopId={selected} />}
             {tab === 'Faults' && <FaultsPanel shopId={selected} />}
             {tab === 'Sandbox' && (selected ? <SandboxPanel shopId={selected} /> : <div className="state state-empty">Select a shop to create test orders.</div>)}
-            {tab === 'Arbitration' && (selected ? <ArbitrationPanel shopId={selected} /> : <div className="state state-empty">Select a shop to inspect disputes.</div>)}
             {tab === 'Authorization' && <TokensPanel shopId={selected} />}
             {extra.filter((e) => e.label === tab).map((e) => <div key={e.path}>{e.render({ shopId: selected })}</div>)}
           </div>

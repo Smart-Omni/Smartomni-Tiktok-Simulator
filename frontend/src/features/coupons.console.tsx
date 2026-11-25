@@ -7,6 +7,7 @@ import { AsyncState } from '../components/AsyncState';
 import { api } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
+import { LoyaltyVouchersForm } from '../pages/console/LoyaltyVouchersForm';
 
 export interface AdminCoupon {
   id: string;
@@ -41,7 +42,7 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
   const [loaded, setLoaded] = useState<{ key: string; items: AdminCoupon[]; next: string } | null>(null);
   const [msg, setMsg] = useState('');
   const [failed, setFailed] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [showLoyalty, setShowLoyalty] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
@@ -65,22 +66,6 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
       setLoadingMore(false);
     }
   }
-  async function loyaltyVouchers() {
-    if (creating || !shopId) return;
-    setCreating(true);
-    setMsg('');
-    setFailed(false);
-    try {
-      const r = await api<{ batches: { title: string; codes: unknown[] }[] }>('/test-admin/scenarios/loyalty-vouchers', { method: 'POST', body: { shopId } });
-      setMsg(`Created ${r.batches.map((b) => `${b.title} (${b.codes.length} codes)`).join(', ')}`);
-      first.reload();
-    } catch (e) {
-      setFailed(true);
-      setMsg((e as Error).message);
-    } finally {
-      setCreating(false);
-    }
-  }
 
   return (
     <div className="admin-coupons">
@@ -95,8 +80,9 @@ export function CouponsPanel({ shopId }: { shopId: string }) {
       <section className="admin-coupon-register" aria-label="Coupon register">
         <div className="admin-coupon-register-heading"><PageActions>
         <button className="admin-icon-action" onClick={first.reload} disabled={first.loading}><RefreshCw size={14} />Refresh</button>
-        <button className="admin-primary admin-icon-action" disabled={creating || !shopId} onClick={() => void loyaltyVouchers()}><Plus size={14} />{creating ? 'Creating batches…' : 'Create loyalty voucher batches'}</button>
+        <button className="admin-primary admin-icon-action" disabled={showLoyalty || !shopId} onClick={() => setShowLoyalty(true)}><Plus size={14} />Create loyalty voucher batches</button>
       </PageActions><span className="admin-coupon-live"><span />Auto refresh · 5s</span></div>
+        {showLoyalty && <LoyaltyVouchersForm shopId={shopId} onClose={() => setShowLoyalty(false)} onCreated={(message) => { setMsg(message); setFailed(false); setShowLoyalty(false); setLoaded(null); first.reload(); }} />}
         <div className="admin-coupon-filters">
           <label className="admin-coupon-search"><Search size={15} aria-hidden="true" /><input aria-label="Search coupons" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code or voucher name" /></label>
           <label>Status<select aria-label="Coupon status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All statuses</option><option value="ONGOING">Ongoing</option><option value="NOT_START">Not started</option><option value="EXPIRED">Expired</option><option value="DEACTIVATED">Deactivated</option></select></label>

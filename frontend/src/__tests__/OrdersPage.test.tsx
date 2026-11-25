@@ -146,6 +146,14 @@ describe('OrdersPage', () => {
 
   const card = (id: string) => screen.getByRole('article', { name: `Order ${id}` });
 
+  it('shows the seller proposal returned with an aftersale request without changing its type', async () => {
+    returns = [{ ...returnRequest('proposal', 'RETURN_OR_REFUND_REQUEST_PENDING'), sellerProposedReturnType: 'REFUND' }];
+    renderOrders();
+    expect(await screen.findByText('Seller proposal: Refund only')).toBeTruthy();
+    expect(within(screen.getByRole('group', { name: 'Return proposal' })).getByText('Return and refund')).toBeTruthy();
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
+  });
+
   it('counts orders per tab and filters by tab', async () => {
     renderOrders();
     expect(await screen.findByRole('tab', { name: 'All (5)' })).toBeTruthy();

@@ -12,16 +12,25 @@ it('uploads the selected file as multipart and displays only returned media valu
   render(<MediaPanel />);
   const file = new File(['real file bytes'], 'evidence.png', { type: 'image/png' });
   fireEvent.change(screen.getByLabelText('Media file'), { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText('Custom media ID (optional)'), { target: { value: ' custom-media-1 ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Upload media' }));
   expect((await screen.findByRole('textbox', { name: 'Media ID' }) as HTMLInputElement).value).toBe('from-backend-42');
   const options = (fetcher.mock.calls as unknown as [string, RequestInit][])[0];
   expect(options[0]).toBe('/api/v2/media/upload');
   expect(options[1].method).toBe('POST');
   expect((options[1].body as FormData).get('file')).toBe(file);
+  expect((options[1].body as FormData).get('media_id')).toBe('custom-media-1');
   expect(options[1].headers).toEqual({});
   expect((screen.getByRole('button', { name: 'Upload media' }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.change(screen.getByLabelText('Media file'), { target: { files: [new File(['next'], 'next.pdf')] } });
   expect(screen.queryByRole('textbox', { name: 'Media ID' })).toBeNull();
+});
+
+it('omits an empty custom media ID so the API can generate one', async () => {
+  const fetcher = vi.fn<(url: string, options?: RequestInit) => Promise<Response>>(async () => response({ media_id: 'generated', media_url: 'https://simulator.smartomni.local/uploads/file.txt' }));
+  vi.stubGlobal('fetch', fetcher);
+  await uploadSimulatorMedia(new File(['x'], 'file.txt'), '   ');
+  expect((fetcher.mock.calls[0][1]!.body as FormData).has('media_id')).toBe(false);
 });
 
 it('blocks empty, oversized and path-bearing filenames before the API call', async () => {
