@@ -22,7 +22,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
   let redirect: string;
 
   beforeAll(async () => {
-    app = await createApp({ env: { SEED_APP_REDIRECT_URIS: 'http://localhost:8080/api/v1/integrations/tiktok/callback,smartomni://oauth/tiktok' } });
+    app = await createApp({ env: { SEED_APP_REDIRECT_URIS: 'http://localhost:5174/merchant/channels/tiktok-shop/callback,smartomni://oauth/tiktok' } });
     prisma = app.get(PrismaService);
     cfg = app.get(APP_CONFIG);
     http = request(app.getHttpServer());

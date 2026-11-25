@@ -244,7 +244,7 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 | `TIKTOK_OPEN_API_BASE_URL`, `TIKTOK_TOKEN_BASE_URL` | `http://localhost:8090` |
 | `TIKTOK_AUTHORIZATION_URL` | `http://localhost:3090/seller/authorize` |
 | `TIKTOK_APP_KEY` / `TIKTOK_APP_SECRET` | `SEED_APP_KEY` / `SEED_APP_SECRET` from your `.env` |
-| `TIKTOK_REDIRECT_URI` | must equal one entry of `SEED_APP_REDIRECT_URIS` |
+| `TIKTOK_REDIRECT_URI` | `http://localhost:5174/merchant/channels/tiktok-shop/callback` (the SmartOmni FE callback page); must equal one entry of `SEED_APP_REDIRECT_URIS`. If SmartOmni sends no `redirect_uri`, the simulator uses the first registered entry. |
 | Webhook address (PUT `/event/202309/webhooks`) | the SmartOmni receiver, for example `http://localhost:8080/...` (localhost is rewritten to the host inside Docker) |
 | Scopes | placeholders `sim.*` (see `backend/src/oauth/scopes.ts`); tokens issued before a phase added a scope must re-authorize |
 
