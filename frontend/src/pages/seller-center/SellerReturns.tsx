@@ -89,6 +89,11 @@ function Returns({ seller }: { seller: DemoSession }) {
                       <TableCell className="py-3 text-xs">{humanize(r.reason)}</TableCell>
                       <TableCell className="py-3">
                         <span className="seller-status" data-seller-status={r.status}>{humanize(r.status)}</span>
+                        {r.arbitrationStatus && r.arbitrationStatus !== 'NO_ARBITRATION' ? (
+                          <div className="mt-1 text-xs" aria-label={`Arbitration for ${r.id}`}>
+                            {r.arbitrationStatus === 'IN_ARBITRATION' ? 'Dispute under review' : `Dispute result: ${humanize(r.arbitrationStatus)}`}
+                          </div>
+                        ) : null}
                         {r.rejectReason ? <div className="mt-1 text-xs text-muted-foreground">Rejected: {humanize(r.rejectReason)}</div> : null}
                         {r.returnTrackingNumber ? <div className="mt-1 font-mono text-xs text-muted-foreground">Return {r.returnTrackingNumber}</div> : null}
                       </TableCell>

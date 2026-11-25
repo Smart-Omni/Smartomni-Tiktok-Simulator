@@ -155,6 +155,20 @@ const writes = () => calls.filter((c) => c.method !== 'GET');
 const requestRows = () => screen.getAllByRole('row').map((r) => r.getAttribute('aria-label')).filter(Boolean);
 
 describe('Seller Center returns', () => {
+  it('shows arbitration progress and results without giving the seller adjudication controls', async () => {
+    const fetchExisting = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/aftersale`
+      ? Promise.resolve(json({ items: ['NO_ARBITRATION', 'IN_ARBITRATION', 'ARBITRATION_WIN', 'ARBITRATION_LOSS'].map((arbitrationStatus, i) => ({ ...request(`r${i}`, 'REFUND_OR_RETURN_REQUEST_REJECT'), arbitrationStatus })), requestReasons: [], rejectReasons: [] }))
+      : fetchExisting(url, init)));
+    renderAt('/seller-center/returns?status=all');
+    expect(await screen.findByText('Dispute under review')).toBeTruthy();
+    expect(screen.getByText('Dispute result: Arbitration win')).toBeTruthy();
+    expect(screen.getByText('Dispute result: Arbitration loss')).toBeTruthy();
+    expect(within(screen.getByRole('row', { name: 'Request r0' })).queryByLabelText('Arbitration for r0')).toBeNull();
+    expect(screen.queryByRole('button', { name: /arbitrat/i })).toBeNull();
+    expect(writes()).toHaveLength(0);
+  });
+
   it('lists open requests and approves or rejects them with the legacy calls', async () => {
     renderAt('/seller-center/returns?status=open');
     expect(await screen.findByRole('tab', { name: 'Open (2)' })).toBeTruthy();
