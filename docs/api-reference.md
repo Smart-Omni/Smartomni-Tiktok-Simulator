@@ -182,7 +182,8 @@ Phản hồi của `/api/v2/token/get` và `/api/v2/token/refresh`:
     "access_token_expire_in": 1763640000,
     "refresh_token": "…",
     "refresh_token_expire_in": 1766228400,
-    "open_id": "…"
+    "open_id": "…",
+    "granted_scopes": ["sim.order.read", "…"]
   }
 }
 ```
@@ -414,7 +415,7 @@ Với `target: API`, shop của request được xác định từ header `x-tts
 | `TEST_ADMIN_TOKEN` | (bắt buộc, tối thiểu 8 ký tự) | Token cho `/test-admin` |
 | `PUBLIC_API_BASE_URL` | `http://localhost:<PORT>` | Gốc của các URL tuyệt đối trả về (ảnh, PDF) |
 | `SEED_APP_KEY` / `SEED_APP_SECRET` | `smartomni-dev-app-key` / `smartomni-dev-app-secret-fake` | App seed |
-| `SEED_APP_REDIRECT_URIS` | callback SmartOmni local, `smartomni://oauth/tiktok` | Redirect URI hợp lệ (phân tách bằng dấu phẩy) |
+| `SEED_APP_REDIRECT_URIS` | `http://localhost:5174/merchant/channels/tiktok-shop/callback`, `smartomni://oauth/tiktok` | Redirect URI hợp lệ (phân tách bằng dấu phẩy) |
 | `SEED_APP_SCOPES` | tất cả scope `sim.*` | Scope cấp cho app seed |
 | `OAUTH_*_TTL_MS`, `OAUTH_SIGNATURE_WINDOW_MS` | xem mục 4.1 | Thời hạn token và cửa sổ ký |
 | `ORDER_SHIPPING_FEE_VND` | `25000` | Phí vận chuyển |

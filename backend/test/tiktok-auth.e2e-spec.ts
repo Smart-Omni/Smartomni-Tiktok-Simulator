@@ -4,7 +4,7 @@ import { join } from 'path';
 import request from 'supertest';
 import { APP_CONFIG, AppConfig } from '../src/config/config';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { SCOPE_AUTHORIZED_SHOPS } from '../src/oauth/scopes';
+import { DEFAULT_APP_SCOPES, SCOPE_AUTHORIZED_SHOPS } from '../src/oauth/scopes';
 import { apiStringToSign, computeApiSignature } from '../src/tiktok/signature';
 import { ADMIN_TOKEN, createApp, resetToSeed } from './helpers';
 
@@ -22,7 +22,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
   let redirect: string;
 
   beforeAll(async () => {
-    app = await createApp({ env: { SEED_APP_REDIRECT_URIS: 'http://localhost:8080/api/v1/integrations/tiktok/callback,smartomni://oauth/tiktok' } });
+    app = await createApp({ env: { SEED_APP_REDIRECT_URIS: 'http://localhost:5174/merchant/channels/tiktok-shop/callback,smartomni://oauth/tiktok' } });
     prisma = app.get(PrismaService);
     cfg = app.get(APP_CONFIG);
     http = request(app.getHttpServer());
@@ -60,7 +60,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
     const session = await sellerSession(index);
     const { code } = await accept(session);
     const res = await exchange(code).expect(200);
-    return { session, code, tokens: res.body.data as { access_token: string; refresh_token: string; open_id: string } };
+    return { session, code, tokens: res.body.data as { access_token: string; refresh_token: string; open_id: string; granted_scopes: string[] } };
   }
 
   function signed(accessToken: string, opts: { timestamp?: number; extra?: Record<string, string>; secret?: string; tamper?: boolean; appKeyOverride?: string } = {}) {
@@ -178,7 +178,9 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
       const res = await exchange(code).expect(200);
       expect(res.body).toMatchObject({ code: 0, message: 'success', request_id: expect.any(String) });
       const d = res.body.data;
-      expect(Object.keys(d).sort()).toEqual(['access_token', 'access_token_expire_in', 'open_id', 'refresh_token', 'refresh_token_expire_in']);
+      expect(Object.keys(d).sort()).toEqual(['access_token', 'access_token_expire_in', 'granted_scopes', 'open_id', 'refresh_token', 'refresh_token_expire_in']);
+      expect(d.granted_scopes.length).toBeGreaterThan(0);
+      expect([...d.granted_scopes].sort()).toEqual([...DEFAULT_APP_SCOPES].sort());
       expect(d.access_token).toMatch(/^sim_at_/);
       expect(d.refresh_token).toMatch(/^sim_rt_/);
       expect(d.open_id).toBe('sim-seller-open-id-a');
@@ -251,6 +253,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
       expect(res.body.data.refresh_token).not.toBe(tokens.refresh_token);
       expect(res.body.data.access_token).not.toBe(tokens.access_token);
       expect(res.body.data.open_id).toBe(tokens.open_id);
+      expect(res.body.data.granted_scopes).toEqual((tokens as { granted_scopes?: string[] }).granted_scopes);
       expectFault(await refresh(tokens.refresh_token), 400, 'refresh_token_invalid');
       expectFault(await signed(tokens.access_token), 401, 'token_invalid');
       await signed(res.body.data.access_token).expect(200);

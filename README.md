@@ -197,7 +197,7 @@ Everything below is simulator behaviour built on **unverified** contract materia
 |---|---|---|
 | Consent page | UI `http://localhost:3090/seller/authorize?app_key=<key>&state=<state>[&redirect_uri=<registered uri>]` | Demo seller signs in, sees shop + scopes, authorizes or denies. API: `GET/POST /demo/authorization/consent` (`x-demo-session`). |
 | Callback | registered redirect URI only (exact match) | `?code=<auth code>&state=<echo>` or `?error=access_denied&state=<echo>`. Codes are single use, TTL `OAUTH_AUTH_CODE_TTL_MS`. |
-| Token exchange | `GET /api/v2/token/get?app_key&app_secret&auth_code[&grant_type]` | Envelope `{code:0,message,request_id,data:{access_token,access_token_expire_in,refresh_token,refresh_token_expire_in,open_id}}`. `*_expire_in` are absolute Unix seconds (unconfirmed). |
+| Token exchange | `GET /api/v2/token/get?app_key&app_secret&auth_code[&grant_type]` | Envelope `{code:0,message,request_id,data:{access_token,access_token_expire_in,refresh_token,refresh_token_expire_in,open_id,granted_scopes[]}}`. `granted_scopes` = the token's granted scopes (what the guard enforces; `sim.` placeholders). `*_expire_in` are absolute Unix seconds (unconfirmed). |
 | Refresh | `GET /api/v2/token/refresh?app_key&app_secret&refresh_token[&grant_type]` | Rotates both tokens; the old refresh token is dead; concurrent use of one refresh token has exactly one winner. |
 | Authorized shops | `GET /authorization/202309/shops?app_key&timestamp&sign[&shop_cipher]` + header `x-tts-access-token` | `sign` per `contracts/signing`; timestamp in Unix seconds within `OAUTH_SIGNATURE_WINDOW_MS`. Returns only the token's shop. |
 | Test faults | `/test-admin/tokens`, `.../tokens/:id/{expire-access,expire-refresh,revoke,remove-scope}`, `/test-admin/authorization-codes/expire` | Also in the Test Console "Authorization" tab. Metadata only; token values and hashes are never listed. |
@@ -244,7 +244,7 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 | `TIKTOK_OPEN_API_BASE_URL`, `TIKTOK_TOKEN_BASE_URL` | `http://localhost:8090` |
 | `TIKTOK_AUTHORIZATION_URL` | `http://localhost:3090/seller/authorize` |
 | `TIKTOK_APP_KEY` / `TIKTOK_APP_SECRET` | `SEED_APP_KEY` / `SEED_APP_SECRET` from your `.env` |
-| `TIKTOK_REDIRECT_URI` | must equal one entry of `SEED_APP_REDIRECT_URIS` |
+| `TIKTOK_REDIRECT_URI` | `http://localhost:5174/merchant/channels/tiktok-shop/callback` (the SmartOmni FE callback page); must equal one entry of `SEED_APP_REDIRECT_URIS`. If SmartOmni sends no `redirect_uri`, the simulator uses the first registered entry. |
 | Webhook address (PUT `/event/202309/webhooks`) | the SmartOmni receiver, for example `http://localhost:8080/...` (localhost is rewritten to the host inside Docker) |
 | Scopes | placeholders `sim.*` (see `backend/src/oauth/scopes.ts`); tokens issued before a phase added a scope must re-authorize |
 

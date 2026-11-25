@@ -153,3 +153,9 @@ Deliberate deviation from TikTok: the simulator never holds a paid order. Supers
 | H12 | History. | `OrderAudit` rows and stored webhook payloads that mention ON_HOLD are kept as they are; the UI shows unknown statuses as their raw value. | History is not rewritten. |
 | H14 | Cancelling once shipment is arranged. | `CANCELLED` is reachable only from UNPAID and AWAITING_SHIPMENT. `PARTIALLY_SHIPPING` and `AWAITING_COLLECTION` no longer move to CANCELLED, for every actor (Seller Center cancel, Test Console transition, `/test-admin/orders/:id/transition`): the call fails with 400 `invalid_transition`. The aftersale cancel listener only records AWAITING_SHIPMENT (and the seller `forceRecord` path). After arrange, the buyer goes through a return/refund. | OAS gives no transition rules; seller sources agree a seller cannot cancel once the order reaches the shipped/awaiting-collection stage (sources differ on the exact status; PARTIALLY_SHIPPING has no documented rule, so it follows AWAITING_COLLECTION). Keeps the simulator consistent with SmartOmni, which blocks cancel after SHIPPED. |
 | H13 | Loyalty and sandbox scenarios. | The loyalty case "paid and still on hold" becomes "paid, awaiting shipment" (never completes). Sandbox `pay: true` returns AWAITING_SHIPMENT; the happy-path step list no longer has ON_HOLD. | Same number of boundary cases, same meaning. |
+
+## Token response scopes
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| T1 | Scope list in token responses. | `/api/v2/token/get` and `/api/v2/token/refresh` return `data.granted_scopes` (string array): the token's GRANTED scopes, i.e. exactly what the API guard enforces (refresh echoes the token's current scopes, so an admin-revoked scope stays absent). Values are `sim.` placeholders. | SmartOmni reads `data.granted_scopes` (spec/03-shop-connection.md); without it it stores `null` ("unknown"). Provisional like the rest of the token shape. |

@@ -163,6 +163,12 @@
                         },
                         "open_id": {
                           "type": "string"
+                        },
+                        "granted_scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         }
                       },
                       "required": [
@@ -188,7 +194,10 @@
                     "access_token_expire_in": 1700086400,
                     "refresh_token": "test_refresh_token_not_real",
                     "refresh_token_expire_in": 1707776000,
-                    "open_id": "test_open_id"
+                    "open_id": "test_open_id",
+                    "granted_scopes": [
+                      "sim.order.read"
+                    ]
                   }
                 }
               }
@@ -307,6 +316,12 @@
                         },
                         "open_id": {
                           "type": "string"
+                        },
+                        "granted_scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         }
                       },
                       "required": [
@@ -332,7 +347,10 @@
                     "access_token_expire_in": 1700086400,
                     "refresh_token": "test_refresh_token_not_real",
                     "refresh_token_expire_in": 1707776000,
-                    "open_id": "test_open_id"
+                    "open_id": "test_open_id",
+                    "granted_scopes": [
+                      "sim.order.read"
+                    ]
                   }
                 }
               }
