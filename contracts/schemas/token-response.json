@@ -44,6 +44,12 @@
         },
         "open_id": {
           "type": "string"
+        },
+        "granted_scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

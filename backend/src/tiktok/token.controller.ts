@@ -28,6 +28,7 @@ export class TokenController {
         refresh_token: issued.refreshToken,
         refresh_token_expire_in: Math.floor(issued.refreshExpiresAt.getTime() / 1000),
         open_id: issued.openId,
+        granted_scopes: issued.scopes,
       },
     };
   }

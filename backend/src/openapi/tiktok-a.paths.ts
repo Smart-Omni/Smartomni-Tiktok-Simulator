@@ -24,6 +24,7 @@ const tokenData = obj(
     refresh_token: str(),
     refresh_token_expire_in: int('ABSOLUTE Unix seconds of refresh token expiry.'),
     open_id: str(),
+    granted_scopes: arr(str()), // Scopes granted to this token (what the API guard enforces); simulator-defined `sim.` placeholders.
   },
   ['access_token', 'access_token_expire_in', 'refresh_token', 'refresh_token_expire_in'],
 );
@@ -31,7 +32,7 @@ const tokenExample = {
   code: 0,
   message: 'success',
   request_id: 'TEST-REQ-0101',
-  data: { access_token: 'test_access_token_not_real', access_token_expire_in: 1700086400, refresh_token: 'test_refresh_token_not_real', refresh_token_expire_in: 1707776000, open_id: 'test_open_id' },
+  data: { access_token: 'test_access_token_not_real', access_token_expire_in: 1700086400, refresh_token: 'test_refresh_token_not_real', refresh_token_expire_in: 1707776000, open_id: 'test_open_id', granted_scopes: ['sim.order.read'] },
 };
 const appCreds: Param[] = [
   { name: 'app_key', required: true, example: 'sim_app_key' },

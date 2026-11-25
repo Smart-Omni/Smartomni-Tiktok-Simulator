@@ -182,7 +182,8 @@ Phản hồi của `/api/v2/token/get` và `/api/v2/token/refresh`:
     "access_token_expire_in": 1763640000,
     "refresh_token": "…",
     "refresh_token_expire_in": 1766228400,
-    "open_id": "…"
+    "open_id": "…",
+    "granted_scopes": ["sim.order.read", "…"]
   }
 }
 ```
