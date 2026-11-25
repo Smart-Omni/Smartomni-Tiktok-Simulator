@@ -84,7 +84,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                         </div>
                       </TableCell>
                       <TableCell className="py-3">{r.buyer.name}</TableCell>
-                      <TableCell className="py-3">{kindLabel(r)}</TableCell>
+                      <TableCell className="py-3">{kindLabel(r)}{r.sellerProposedReturnType ? <div className="mt-1 text-xs text-muted-foreground">Seller proposal: {r.sellerProposedReturnType === 'REFUND' ? 'Refund only' : humanize(r.sellerProposedReturnType)}</div> : null}</TableCell>
                       <TableCell className="max-w-[220px] whitespace-normal py-3 text-xs">{r.items.map((i) => `${i.quantity}× ${i.productName} (${i.skuName})`).join(', ')}</TableCell>
                       <TableCell className="py-3 text-xs">{humanize(r.reason)}</TableCell>
                       <TableCell className="py-3">

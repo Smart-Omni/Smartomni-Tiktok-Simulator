@@ -155,6 +155,16 @@ const writes = () => calls.filter((c) => c.method !== 'GET');
 const requestRows = () => screen.getAllByRole('row').map((r) => r.getAttribute('aria-label')).filter(Boolean);
 
 describe('Seller Center returns', () => {
+  it('shows the seller-proposed return type only when supplied by the API', async () => {
+    const fetchExisting = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/aftersale`
+      ? Promise.resolve(json({ items: [{ ...request('proposal', 'RETURN_OR_REFUND_REQUEST_PENDING'), sellerProposedReturnType: 'RETURN_AND_REFUND' }, { ...request('none', 'RETURN_OR_REFUND_REQUEST_PENDING'), sellerProposedReturnType: null }], requestReasons: [], rejectReasons: [] }))
+      : fetchExisting(url, init)));
+    renderAt('/seller-center/returns');
+    expect(await screen.findByText('Seller proposal: Return and refund')).toBeTruthy();
+    expect(within(screen.getByRole('row', { name: 'Request none' })).queryByText(/Seller proposal:/)).toBeNull();
+    expect(writes()).toHaveLength(0);
+  });
   it('shows arbitration progress and results without giving the seller adjudication controls', async () => {
     const fetchExisting = globalThis.fetch;
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === `${base}/aftersale`
