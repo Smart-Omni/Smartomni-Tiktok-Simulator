@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AsyncState } from '../components/AsyncState';
-import { DemoLogin } from '../components/DemoLogin';
-import { api } from '../lib/api';
-import { useDemoSession } from '../lib/session';
+import { loginUrl } from '../components/RequireRole';
+import { api, ApiError } from '../lib/api';
+import { forgetSharedSeller, sharedSeller } from '../lib/session';
 import { useAsync } from '../lib/useAsync';
 
 interface Consent {
@@ -16,41 +16,44 @@ interface Consent {
 
 /**
  * Seller consent page (simulator-defined URL: /seller/authorize?app_key=&state=[&redirect_uri=]). The real TikTok
- * authorization URL is unsupported in the contract. The browser never builds the redirect: the API returns the URL
+ * authorization URL is unsupported in the contract. Only the shop of the signed-in seller can be authorized. The browser never builds the redirect: the API returns the URL
  * (registered redirect URI only, code/error plus the echoed state) and this page just navigates to it.
  */
 export function AuthorizePage({ navigate = (url: string) => window.location.assign(url) }: { navigate?: (url: string) => void }) {
   const [params] = useSearchParams();
-  const [session, setSession] = useDemoSession('SELLER');
+  const location = useLocation();
+  const [session] = useState(sharedSeller);
   const appKey = params.get('app_key') ?? '';
   if (!appKey) return <div className="state state-error" role="alert">Missing app_key. Start the connection from SmartOmni.</div>;
-  if (!session) {
-    return (
-      <div>
-        <h1>Authorize app</h1>
-        <p className="muted">Sign in as the demo seller who owns the shop. This is a simulator identity, not a SmartOmni login.</p>
-        <DemoLogin role="SELLER" onSession={setSession} />
-      </div>
-    );
-  }
+  const signInUrl = loginUrl(location.pathname + location.search, 'SELLER');
+  if (!session) return <Navigate to={signInUrl} replace />;
   return (
     <Consent
       sessionToken={session.sessionToken}
+      signInUrl={signInUrl}
       appKey={appKey}
       state={params.get('state') ?? undefined}
       redirectUri={params.get('redirect_uri') ?? undefined}
-      onSignOut={() => setSession(null)}
       navigate={navigate}
     />
   );
 }
 
-function Consent(props: { sessionToken: string; appKey: string; state?: string; redirectUri?: string; onSignOut: () => void; navigate: (url: string) => void }) {
+function Consent(props: { sessionToken: string; signInUrl: string; appKey: string; state?: string; redirectUri?: string; navigate: (url: string) => void }) {
   const { sessionToken, appKey, state, redirectUri, navigate } = props;
   const query = new URLSearchParams({ app_key: appKey });
   if (state) query.set('state', state);
   if (redirectUri) query.set('redirect_uri', redirectUri);
-  const ctx = useAsync(() => api<Consent>(`/demo/authorization/consent?${query.toString()}`, { demoSession: sessionToken }), [sessionToken, appKey, state, redirectUri]);
+  const [expired, setExpired] = useState(false);
+  /** A rejected session means nobody is signed in any more. */
+  const onError = (e: unknown): never => {
+    if (e instanceof ApiError && e.status === 401) {
+      forgetSharedSeller(sessionToken);
+      setExpired(true);
+    }
+    throw e;
+  };
+  const ctx = useAsync(() => api<Consent>(`/demo/authorization/consent?${query.toString()}`, { demoSession: sessionToken }).catch(onError), [sessionToken, appKey, state, redirectUri]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string>();
 
@@ -62,7 +65,7 @@ function Consent(props: { sessionToken: string; appKey: string; state?: string; 
         method: 'POST',
         demoSession: sessionToken,
         body: { app_key: appKey, state, redirect_uri: redirectUri, decision },
-      });
+      }).catch(onError);
       navigate(res.redirectUrl);
     } catch (e) {
       setErr((e as Error).message);
@@ -70,11 +73,13 @@ function Consent(props: { sessionToken: string; appKey: string; state?: string; 
     }
   };
 
+  if (expired) return <Navigate to={props.signInUrl} replace />;
+
   return (
     <div>
       <div className="row">
         <h1>Authorize app</h1>
-        <button onClick={props.onSignOut}>Switch seller</button>
+        <Link to={props.signInUrl}>Sign in as another seller</Link>
       </div>
       {err ? <div className="state state-error" role="alert">{err}</div> : null}
       <AsyncState {...ctx} onRetry={ctx.reload}>

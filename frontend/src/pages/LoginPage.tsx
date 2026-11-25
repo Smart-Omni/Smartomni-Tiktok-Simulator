@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import '@/signin.css';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Loader2, MessageCircle, ShieldCheck, ShoppingBag, Store } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { getIdentities } from '@/lib/endpoints';
-import type { Identities, Role, SignInIdentity } from '@/lib/types';
+import type { Identities, Role } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { defaultBuyerName, defaultMockShop, identityCity, mockCatalog, normalizeTitle } from '@/mocks';
 
@@ -18,7 +19,7 @@ interface Account {
   key: string;
   name: string;
   detail: string;
-  identity: SignInIdentity;
+  email: string;
 }
 
 /** Only same-origin paths are accepted as ?next (no "//host" or absolute URLs). */
@@ -27,10 +28,10 @@ export function safeNext(next: string | null): string | null {
   return next;
 }
 
-/** Where to go after signing in: buyers back to `next`, sellers to Seller Center (or `next` inside it). */
+/** Where to go after signing in: buyers back to `next`, sellers to Seller Center (or `next` inside it, or app consent). */
 export function destination(role: Role, next: string | null): string {
   const inSellerCenter = next?.startsWith('/seller-center') ?? false;
-  if (role === 'SELLER') return next && inSellerCenter ? next : '/seller-center';
+  if (role === 'SELLER') return next && (inSellerCenter || next.startsWith('/seller/authorize?')) ? next : '/seller-center';
   return next && !inSellerCenter && !next.startsWith('/login') ? next : '/';
 }
 
@@ -41,6 +42,7 @@ function nextLabel(next: string): string {
   if (next.startsWith('/checkout')) return 'checkout';
   if (next.startsWith('/account')) return 'your orders';
   if (next.startsWith('/seller-center')) return 'Seller Center';
+  if (next.startsWith('/seller/authorize')) return 'app authorization';
   return 'the page you were on';
 }
 
@@ -67,13 +69,13 @@ function toAccounts(ids: Identities): Record<Role, Account[]> {
       key: `buyer:${b.id}`,
       name: b.name,
       detail: detail('', b.name),
-      identity: { role: 'BUYER', buyerId: b.id },
+      email: b.email ?? '',
     })),
     SELLER: ids.sellers.map((s) => ({
       key: `seller:${s.id}`,
       name: s.name,
       detail: detail(s.shops.map((x) => x.name).join(', '), s.name),
-      identity: { role: 'SELLER', sellerId: s.id },
+      email: s.email ?? '',
     })),
   };
 }
@@ -148,6 +150,9 @@ export function LoginPage() {
   const next = safeNext(params.get('next'));
   const [tab, setTab] = useState<Role>(params.get('role') === 'seller' ? 'SELLER' : 'BUYER');
   const [picked, setPicked] = useState<Partial<Record<Role, string>>>({});
+  /** What was typed in the email field; without it the field shows the selected account's email. */
+  const [typed, setTyped] = useState<Partial<Record<Role, string>>>({});
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const ids = useAsync(getIdentities, []);
@@ -158,14 +163,18 @@ export function LoginPage() {
   const preferred = ids.data ? preferredBuyerId(ids.data, next) : undefined;
   const fallback = tab === 'BUYER' && preferred ? `buyer:${preferred}` : accounts[tab][0]?.key;
   const selectedKey = picked[tab] ?? fallback;
-  const selected = accounts[tab].find((a) => a.key === selectedKey);
+  const picking = accounts[tab].find((a) => a.key === selectedKey);
+  const email = typed[tab] ?? picking?.email ?? '';
+  const selected = typed[tab] === undefined ? picking : accounts[tab].find((a) => a.email === email.trim().toLowerCase());
+  const ready = email.trim() !== '' && password !== '' && !busy;
 
-  const submit = async () => {
-    if (!selected) return;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ready) return;
     setBusy(true);
     setError(undefined);
     try {
-      const s = await signIn(selected.identity);
+      const s = await signIn({ role: tab, email: email.trim(), password });
       navigate(destination(s.role, next), { replace: true });
     } catch (e) {
       setError((e as Error).message);
@@ -206,18 +215,24 @@ export function LoginPage() {
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <AccountList role={role} accounts={accounts[role]} value={selectedKey} onChange={(k) => setPicked((p) => ({ ...p, [role]: k }))} />
+                    <AccountList role={role} accounts={accounts[role]} value={selected?.key ?? ''} onChange={(k) => { setPicked((p) => ({ ...p, [role]: k })); setTyped((t) => ({ ...t, [role]: undefined })); setError(undefined); }} />
                   )}
                 </TabsContent>
               ))}
             </Tabs>
-            {error ? <Alert variant="destructive" className="mt-3"><AlertDescription>{error}</AlertDescription></Alert> : null}
-            <Button className="signin-submit" disabled={!selected || busy} onClick={submit}>
-              <span>{busy ? 'Signing in...' : selected ? `Sign in as ${selected.name}` : 'Sign in'}</span>{busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-            </Button>
+            <form onSubmit={submit}>
+              <div className="signin-fields">
+                <label>Email<Input type="email" autoComplete="username" value={email} onChange={(e) => setTyped((t) => ({ ...t, [tab]: e.target.value }))} /></label>
+                <label>Password<Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+              </div>
+              {error ? <Alert variant="destructive" className="mt-3"><AlertDescription>{error}</AlertDescription></Alert> : null}
+              <Button type="submit" className="signin-submit" disabled={!ready}>
+                <span>{busy ? 'Signing in...' : selected ? `Sign in as ${selected.name}` : 'Sign in'}</span>{busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+              </Button>
+            </form>
             <Link to="/" className="signin-guest">Continue browsing as guest<ArrowRight size={13} /></Link>
           </div>
-          <div className="signin-form-footer"><ShieldCheck size={13} /><span>Demo accounts · No password required</span></div>
+          <div className="signin-form-footer"><ShieldCheck size={13} /><span>Demo accounts · Password: 123</span></div>
         </section>
       </main>
     </div>

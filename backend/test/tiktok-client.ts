@@ -14,7 +14,7 @@ export class TiktokTestClient {
   async sellerSession(index: 0 | 1) {
     const ids = (await this.http.get('/demo/identities')).body;
     const seller = index === 0 ? ids.sellers.find(this.isShopA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
-    const sess = (await this.http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
+    const sess = (await this.http.post('/demo/sessions').send({ role: 'SELLER', email: seller.email, password: '123' }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }
 
@@ -22,7 +22,7 @@ export class TiktokTestClient {
     const ids = (await this.http.get('/demo/identities')).body;
     const seller = await this.sellerSession(index);
     const buyers = ids.buyers.filter((b: any) => b.shopId === seller.shopId);
-    const sess = (await this.http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyers[buyerIndex].id }).expect(201)).body;
+    const sess = (await this.http.post('/demo/sessions').send({ role: 'BUYER', email: buyers[buyerIndex].email, password: '123' }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string, buyerId: buyers[buyerIndex].id as string };
   }
 

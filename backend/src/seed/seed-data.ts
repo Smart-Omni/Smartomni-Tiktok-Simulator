@@ -59,6 +59,15 @@ export interface SeedShop {
   products: SeedProduct[];
 }
 
+/** Password of every demo sign-in account. */
+export const DEMO_PASSWORD = '123';
+
+/** Gmail-style login of a demo account, from the person's name: "Đặng Minh Quân" -> dangminhquan.ttsim@gmail.com. */
+export function demoLoginEmail(name: string): string {
+  const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+  return `${ascii.toLowerCase().replace(/[^a-z0-9]/g, '')}.ttsim@gmail.com`;
+}
+
 // All data below is fake. Ids look TikTok-like but are not real shop identifiers.
 export const SEED_SHOPS: SeedShop[] = [
   {

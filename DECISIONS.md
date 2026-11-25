@@ -159,3 +159,16 @@ Deliberate deviation from TikTok: the simulator never holds a paid order. Supers
 | # | Issue | Choice | Reason |
 |---|---|---|---|
 | T1 | Scope list in token responses. | `/api/v2/token/get` and `/api/v2/token/refresh` return `data.granted_scopes` (string array): the token's GRANTED scopes, i.e. exactly what the API guard enforces (refresh echoes the token's current scopes, so an admin-revoked scope stays absent). Values are `sim.` placeholders. | SmartOmni reads `data.granted_scopes` (spec/03-shop-connection.md); without it it stores `null` ("unknown"). Provisional like the rest of the token shape. |
+
+## Consent follows the signed-in seller
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| CS1 | Which shop `/seller/authorize` offers. | Only the shop of the seller signed in last in this browser (`localStorage` `sim.demo-session.SELLER`, cleared on sign-out, expiry or 401). No account picker on the page; a guest goes to `/login` and returns. Sign-in needs the demo account password (DL1). | A real marketplace authorizes the account that is logged in. `sessionStorage` is per tab, and SmartOmni may open consent in another tab. |
+
+## Demo sign-in accounts
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| DL1 | Demo sign-in. | `POST /demo/sessions` takes `email` + `password` (was `sellerId`/`buyerId`; breaking). Every seeded account has `<name>.ttsim@gmail.com` and password `123`, stored as a scrypt hash in new `loginEmail`/`passwordHash` columns. `/demo/identities` still lists the accounts with their login email. A seller switches shops with `POST /demo/sessions/current/shop`. | Requested sign-in step. Contact `email` is untouched, so data sent to SmartOmni does not point at real mail domains. With one shared, published password this is a demo step, not a security control. |
+

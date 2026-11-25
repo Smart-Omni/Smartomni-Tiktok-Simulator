@@ -63,7 +63,7 @@ function SideMenu() {
 type SellerIdentity = Identities['sellers'][number];
 
 function ShopPicker({ owner }: { owner: SellerIdentity | undefined }) {
-  const { seller, signIn } = useAuth();
+  const { seller, switchShop } = useAuth();
   const [switching, setSwitching] = useState(false);
   const navigate = useNavigate();
   const shops = owner?.shops ?? [];
@@ -75,7 +75,7 @@ function ShopPicker({ owner }: { owner: SellerIdentity | undefined }) {
   const change = async (shopId: string) => {
     setSwitching(true);
     try {
-      await signIn({ role: 'SELLER', sellerId: owner.id, shopId });
+      await switchShop(shopId);
       navigate(base);
     } catch (e) {
       toast.error((e as Error).message);

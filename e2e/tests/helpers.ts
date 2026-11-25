@@ -1,5 +1,7 @@
 import { APIRequestContext, Page, request as pwRequest } from '@playwright/test';
 
+const DEMO_PASSWORD = '123';
+
 /** Wipes and re-seeds the simulator (through the UI proxy, which injects the admin token server-side). */
 export async function resetAll(baseURL: string | undefined): Promise<void> {
   const api = await pwRequest.newContext({ baseURL });
@@ -20,6 +22,7 @@ export async function signInAs(page: Page, role: 'BUYER' | 'SELLER', name: strin
   await page.getByRole('tab', { name: role === 'BUYER' ? 'Buyer' : 'Seller' }).click();
   // the radio's accessible name is "<name> <shop · city>"; a string name matches as a substring
   await page.getByRole('radio', { name }).click();
+  await page.getByLabel('Password').fill(DEMO_PASSWORD);
   await page.getByRole('button', { name: `Sign in as ${name}` }).click();
   await page.waitForURL((url) => url.pathname + url.search === next);
 }
@@ -33,7 +36,8 @@ export interface DemoSession {
 /** Demo session created over HTTP (setup shortcut; the flows under test are still driven through the UI). */
 export async function demoSession(api: APIRequestContext, role: 'BUYER' | 'SELLER', name: string): Promise<DemoSession> {
   const ids = await (await api.get('/demo/identities')).json();
-  const body = role === 'BUYER' ? { role, buyerId: ids.buyers.find((b: { name: string }) => b.name === name).id } : { role, sellerId: ids.sellers.find((s: { name: string }) => s.name === name).id };
+  const account = (role === 'BUYER' ? ids.buyers : ids.sellers).find((a: { name: string }) => a.name === name);
+  const body = { role, email: account.email, password: DEMO_PASSWORD };
   const s = await (await api.post('/demo/sessions', { data: body })).json();
   return { token: s.sessionToken, shopId: s.shopId, buyerId: s.buyerId };
 }
