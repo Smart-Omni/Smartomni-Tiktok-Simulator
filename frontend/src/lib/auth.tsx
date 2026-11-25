@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createSession, endSession } from './endpoints';
+import { createSession, endSession, switchSessionShop } from './endpoints';
 import { load, saveSession, SESSION_CHANGED } from './session';
 import type { DemoSession, Role, SignInIdentity } from './types';
 
@@ -13,6 +13,8 @@ export interface AuthValue {
   session: (role: Role) => DemoSession | null;
   signIn: (identity: SignInIdentity) => Promise<DemoSession>;
   signOut: (role: Role) => Promise<void>;
+  /** Moves the signed-in seller to another of their shops. */
+  switchShop: (shopId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -69,6 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [put, sessions],
   );
 
+  const switchShop = useCallback(
+    async (shopId: string) => {
+      const s = sessions.SELLER;
+      if (s) put('SELLER', await switchSessionShop(s, shopId));
+    },
+    [put, sessions],
+  );
+
   const value = useMemo<AuthValue>(
     () => ({
       buyer: sessions.BUYER,
@@ -76,8 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session: (role) => sessions[role],
       signIn,
       signOut,
+      switchShop,
     }),
-    [sessions, signIn, signOut],
+    [sessions, signIn, signOut, switchShop],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

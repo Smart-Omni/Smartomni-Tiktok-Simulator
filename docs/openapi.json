@@ -11513,7 +11513,7 @@
           "Demo Session"
         ],
         "summary": "List sellers and buyers available for sign-in",
-        "description": "Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names and ids only, no tokens or contact data. Feeds the \"sign in as\" picker of the demo UIs.\n\nHandler: `DemoController.identities`.",
+        "description": "Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names, ids and the fake demo login emails; no passwords, tokens or contact data. Feeds the account list of the sign-in page.\n\nHandler: `DemoController.identities`.",
         "operationId": "DemoController_identities",
         "security": [],
         "responses": {
@@ -11534,6 +11534,11 @@
                           },
                           "name": {
                             "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "demo login email",
+                            "nullable": true
                           },
                           "shops": {
                             "type": "array",
@@ -11565,6 +11570,11 @@
                           },
                           "shopId": {
                             "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "demo login email",
+                            "nullable": true
                           }
                         }
                       }
@@ -11580,6 +11590,7 @@
                     {
                       "id": "seller_1",
                       "name": "Seller One",
+                      "email": "sellerone.ttsim@gmail.com",
                       "shops": [
                         {
                           "id": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
@@ -11592,7 +11603,8 @@
                     {
                       "id": "buyer_1",
                       "name": "Nguyen Van A",
-                      "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+                      "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
+                      "email": "nguyenvana.ttsim@gmail.com"
                     }
                   ]
                 }
@@ -11608,7 +11620,7 @@
           "Demo Session"
         ],
         "summary": "Create a demo session (sign in as seller or buyer)",
-        "description": "Public. Body is a zod union on `role`. SELLER: looks up the seller (404 if unknown) and picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: looks up the buyer (404) and uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).\n\nHandler: `DemoController.createSession`.",
+        "description": "Public. Body is a zod union on `role`, with the demo login `email` and `password` (401 if either is wrong). SELLER: picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).\n\nHandler: `DemoController.createSession`.",
         "operationId": "DemoController_createSession",
         "security": [],
         "responses": {
@@ -11669,8 +11681,8 @@
               }
             }
           },
-          "404": {
-            "description": "Unknown seller (`Unknown seller`) or buyer (`Unknown buyer`).",
+          "401": {
+            "description": "Unknown email or wrong password (`Wrong email or password`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -11695,7 +11707,11 @@
                           "SELLER"
                         ]
                       },
-                      "sellerId": {
+                      "email": {
+                        "type": "string",
+                        "description": "demo login email"
+                      },
+                      "password": {
                         "type": "string",
                         "description": "min 1 char"
                       },
@@ -11706,7 +11722,8 @@
                     },
                     "required": [
                       "role",
-                      "sellerId"
+                      "email",
+                      "password"
                     ]
                   },
                   {
@@ -11718,21 +11735,142 @@
                           "BUYER"
                         ]
                       },
-                      "buyerId": {
+                      "email": {
+                        "type": "string",
+                        "description": "demo login email"
+                      },
+                      "password": {
                         "type": "string",
                         "description": "min 1 char"
                       }
                     },
                     "required": [
                       "role",
-                      "buyerId"
+                      "email",
+                      "password"
                     ]
                   }
                 ]
               },
               "example": {
                 "role": "SELLER",
-                "sellerId": "seller_1"
+                "email": "nguyenthilan.ttsim@gmail.com",
+                "password": "123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/sessions/current/shop": {
+      "post": {
+        "tags": [
+          "Demo Session"
+        ],
+        "summary": "Switch the seller session to another own shop",
+        "description": "Seller session only. Issues a new session for a shop of the same seller and deletes the calling one.\n\nHandler: `DemoController.switchShop`.",
+        "operationId": "DemoController_switchShop",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "New session. The old token no longer works.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionToken": {
+                      "type": "string",
+                      "description": "64 hex chars, shown once"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "SELLER"
+                      ]
+                    },
+                    "shopId": {
+                      "type": "string"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "sessionToken",
+                    "role",
+                    "shopId",
+                    "expiresAt"
+                  ]
+                },
+                "example": {
+                  "sessionToken": "9f2c4e7a1b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b",
+                  "role": "SELLER",
+                  "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
+                  "buyerId": null,
+                  "expiresAt": "2026-10-15T16:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: the seller has no such shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a seller session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shopId": {
+                    "type": "string",
+                    "description": "must belong to the same seller"
+                  }
+                },
+                "required": [
+                  "shopId"
+                ]
+              },
+              "example": {
+                "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
               }
             }
           }

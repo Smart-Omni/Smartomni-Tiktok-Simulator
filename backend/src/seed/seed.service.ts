@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { APP_CONFIG, AppConfig } from '../config/config';
+import { hashPassword } from '../common/password';
 import { PrismaService } from '../prisma/prisma.service';
 import { seedConversations } from '../chat/conversation-seed';
 import { Prisma } from '@prisma/client';
-import { SEED_SCENARIOS, SEED_SHOPS, SeedProduct, SeedShop, detId, numericId } from './seed-data';
+import { DEMO_PASSWORD, SEED_SCENARIOS, SEED_SHOPS, SeedProduct, SeedShop, demoLoginEmail, detId, numericId } from './seed-data';
 
 /** Simulator-generated shop code (the `code` field of Get Authorized Shops); same rule as the Phase 03 migration backfill. */
 export const shopCode = (tiktokShopId: string): string => `SIMVN${tiktokShopId.slice(-4)}`;
@@ -37,6 +38,11 @@ function listingData(p: SeedProduct): Partial<Prisma.ProductUncheckedCreateInput
     externalProductId: l.externalProductId,
   };
 }
+
+const demoAccount = (name: string) => {
+  const loginEmail = demoLoginEmail(name);
+  return { loginEmail, passwordHash: hashPassword(DEMO_PASSWORD, loginEmail) };
+};
 
 /**
  * Deterministic, idempotent seed. Every row has a stable id derived from a name and is written with
@@ -85,10 +91,11 @@ export class SeedService {
     const sellerId = detId(`seller:${def.key}`);
     const shopId = detId(`shop:${def.key}`);
     await this.prisma.$transaction(async (tx) => {
+      const sellerLogin = demoAccount(def.seller.name);
       await tx.seller.upsert({
         where: { openId: def.seller.openId },
-        create: { id: sellerId, ...def.seller },
-        update: { name: def.seller.name, email: def.seller.email },
+        create: { id: sellerId, ...def.seller, ...sellerLogin },
+        update: { name: def.seller.name, email: def.seller.email, ...sellerLogin },
       });
       await tx.shop.upsert({
         where: { tiktokShopId: def.tiktokShopId },
@@ -113,6 +120,7 @@ export class SeedService {
         });
       }
       for (const b of def.buyers) {
+        const login = demoAccount(b.name);
         await tx.buyer.upsert({
           where: { externalId: `sim-buyer-${b.code}` },
           create: {
@@ -125,8 +133,9 @@ export class SeedService {
             addressLine: b.addressLine,
             district: b.district,
             city: b.city,
+            ...login,
           },
-          update: { name: b.name, phone: b.phone, addressLine: b.addressLine, district: b.district, city: b.city },
+          update: { name: b.name, phone: b.phone, addressLine: b.addressLine, district: b.district, city: b.city, ...login },
         });
       }
       for (const p of def.products) {

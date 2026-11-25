@@ -14,12 +14,12 @@ export interface DemoSession {
 }
 
 export interface Identities {
-  sellers: { id: string; name: string; shops: { id: string; name: string }[] }[];
-  buyers: { id: string; name: string; shopId: string }[];
+  sellers: { id: string; name: string; email?: string | null; shops: { id: string; name: string }[] }[];
+  buyers: { id: string; name: string; email?: string | null; shopId: string }[];
 }
 
 /** Body of POST /demo/sessions. */
-export type SignInIdentity = { role: 'SELLER'; sellerId: string; shopId?: string } | { role: 'BUYER'; buyerId: string };
+export type SignInIdentity = { role: 'SELLER' | 'BUYER'; email: string; password: string };
 
 /** GET /demo/me. `buyer` is null for SELLER sessions. */
 export interface Me {

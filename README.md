@@ -86,7 +86,7 @@ Xem [quy trình GitHub](docs/github-workflow.md) để tạo nhánh, kiểm tra,
 
 ## Frontend (Tiptop Shop UI)
 
-React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` (no password); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time. The last seller sign-in is also kept in `localStorage`; the consent page uses only that one.
+React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` with a fake account (see [Demo accounts](#demo-accounts)); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time. The last seller sign-in is also kept in `localStorage`; the consent page uses only that one.
 
 | Route | Page | Who |
 |---|---|---|
@@ -146,6 +146,29 @@ Notes:
 * The Render URL is written in `vercel.json` (rewrites cannot read env variables). If the API moves, change both `vercel.json` and `API_ORIGIN`.
 * Anyone who can open the Vercel site can call `/test-admin/*` through the function (reset, clock, faults), exactly like port 3090 in Docker. Keep the deployment for demos, or protect it with Vercel Deployment Protection.
 * The free Render plan sleeps when idle: the first request after a pause can take about a minute.
+
+## Demo accounts
+
+Created by the seed; every password is `123`. They are fake sign-ins for this simulator only: nothing is sent to these addresses, and the contact `email` of sellers and buyers is unchanged (`@simulator.local`). A database seeded earlier needs `npx prisma migrate deploy` and then one more seed run (API restart with `SEED_ON_START=true`, Test Console, or `npm run seed`).
+
+| Role | Name | Shop | Email |
+|---|---|---|---|
+| Seller | Nguyễn Thị Lan | Cửa hàng Mộc Lan | `nguyenthilan.ttsim@gmail.com` |
+| Seller | Đặng Minh Quân | Tiệm Gốm Bát Tràng | `dangminhquan.ttsim@gmail.com` |
+| Seller | Phạm Gia Huy | SmartOmni Official Flagship | `phamgiahuy.ttsim@gmail.com` |
+| Seller | Ngô Thanh Tùng | Hanoi Streetwear Co. | `ngothanhtung.ttsim@gmail.com` |
+| Seller | Bùi Ngọc Anh | Saigon Modern Living | `buingocanh.ttsim@gmail.com` |
+| Buyer | Trần Văn An | Cửa hàng Mộc Lan | `tranvanan.ttsim@gmail.com` |
+| Buyer | Lê Thu Hà | Cửa hàng Mộc Lan | `lethuha.ttsim@gmail.com` |
+| Buyer | Phạm Quốc Bảo | Cửa hàng Mộc Lan | `phamquocbao.ttsim@gmail.com` |
+| Buyer | Võ Thị Mai | Tiệm Gốm Bát Tràng | `vothimai.ttsim@gmail.com` |
+| Buyer | Hoàng Đức Long | Tiệm Gốm Bát Tràng | `hoangduclong.ttsim@gmail.com` |
+| Buyer | Nguyễn Minh Khôi | SmartOmni Official Flagship | `nguyenminhkhoi.ttsim@gmail.com` |
+| Buyer | Trịnh Bảo Ngọc | SmartOmni Official Flagship | `trinhbaongoc.ttsim@gmail.com` |
+| Buyer | Phan Gia Huy | Hanoi Streetwear Co. | `phangiahuy.ttsim@gmail.com` |
+| Buyer | Đỗ Thanh Hương | Hanoi Streetwear Co. | `dothanhhuong.ttsim@gmail.com` |
+| Buyer | Bùi Quang Vinh | Saigon Modern Living | `buiquangvinh.ttsim@gmail.com` |
+| Buyer | Lý Ngọc Trâm | Saigon Modern Living | `lyngoctram.ttsim@gmail.com` |
 
 ## API documentation (Swagger / OpenAPI)
 

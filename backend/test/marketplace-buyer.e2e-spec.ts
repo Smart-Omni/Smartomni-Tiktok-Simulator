@@ -27,7 +27,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
       const ids = (await http.get('/demo/identities')).body;
       const buyer = ids.buyers[0];
 
-      const res = await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyer.id }).expect(201);
+      const res = await http.post('/demo/sessions').send({ role: 'BUYER', email: buyer.email, password: '123' }).expect(201);
       expect(res.body.role).toBe('BUYER');
       expect(res.body.scope).toBe('MARKETPLACE');
       expect(res.body.shopId).toBe(buyer.shopId);
@@ -43,7 +43,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
       const ids = (await http.get('/demo/identities')).body;
       const seller = ids.sellers[0];
 
-      const res = await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201);
+      const res = await http.post('/demo/sessions').send({ role: 'SELLER', email: seller.email, password: '123' }).expect(201);
       expect(res.body.role).toBe('SELLER');
       expect(res.body.scope).toBe('SHOP');
       expect(res.body.shopId).toBe(seller.shops[0].id);
@@ -106,7 +106,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
     it('buyer can add items from multiple shops to cart and view them grouped by shop', async () => {
       const ids = (await http.get('/demo/identities')).body;
       const buyer = ids.buyers[0];
-      const buyerSess = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyer.id }).expect(201)).body;
+      const buyerSess = (await http.post('/demo/sessions').send({ role: 'BUYER', email: buyer.email, password: '123' }).expect(201)).body;
 
       const shops = await prisma.shop.findMany({ where: { status: 'ACTIVE' }, include: { products: { include: { skus: true } } } });
       const shopA = shops[0];
@@ -190,7 +190,7 @@ describe('Marketplace Buyer (Buyer mua mọi shop trên sàn)', () => {
     it('places one order per shop, pays, chats and lists coupons/aftersale in a shop other than the default one', async () => {
       const ids = (await http.get('/demo/identities')).body;
       const buyer = ids.buyers[0];
-      const sess = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyer.id }).expect(201)).body;
+      const sess = (await http.post('/demo/sessions').send({ role: 'BUYER', email: buyer.email, password: '123' }).expect(201)).body;
       const auth = { 'x-demo-session': sess.sessionToken };
 
       // two shops, neither of them has to be the buyer's own one

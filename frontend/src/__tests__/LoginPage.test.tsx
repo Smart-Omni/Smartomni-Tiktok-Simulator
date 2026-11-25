@@ -10,16 +10,19 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const future = new Date(Date.now() + 3600_000).toISOString();
 const identities: Identities = {
   sellers: [
-    { id: 'seller_1', name: 'Seller One', shops: [{ id: 'shop-1', name: 'Demo Shop VN' }] },
-    { id: 'seller_2', name: 'Seller Two', shops: [{ id: 'shop-2', name: 'Pottery Shop' }] },
+    { id: 'seller_1', name: 'Seller One', email: 'sellerone.ttsim@gmail.com', shops: [{ id: 'shop-1', name: 'Demo Shop VN' }] },
+    { id: 'seller_2', name: 'Seller Two', email: 'sellertwo.ttsim@gmail.com', shops: [{ id: 'shop-2', name: 'Pottery Shop' }] },
   ],
-  buyers: [{ id: 'buyer_1', name: 'Trần Văn An', shopId: 'shop-1' }],
+  buyers: [{ id: 'buyer_1', name: 'Trần Văn An', shopId: 'shop-1', email: 'tranvanan.ttsim@gmail.com' }],
 };
 
 function Location() {
   const l = useLocation();
   return <output data-testid="location">{l.pathname + l.search}</output>;
 }
+
+const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+const typePassword = (value = '123') => fireEvent.change(field('Password'), { target: { value } });
 
 const renderLogin = (path = '/login') =>
   render(
@@ -49,7 +52,7 @@ describe('LoginPage', () => {
         if (url === '/demo/identities') return json(ids);
         if (url === '/demo/sessions') {
           const role = body.role as 'BUYER' | 'SELLER';
-          return json({ sessionToken: 't', role, shopId: 'shop-1', buyerId: role === 'BUYER' ? body.buyerId : null, expiresAt: future }, 201);
+          return json({ sessionToken: 't', role, shopId: 'shop-1', buyerId: role === 'BUYER' ? 'buyer_1' : null, expiresAt: future }, 201);
         }
         return json({}, 404);
       }),
@@ -78,18 +81,37 @@ describe('LoginPage', () => {
 
   it('signs a seller in through POST /demo/sessions and opens Seller Center', async () => {
     renderLogin('/login?role=seller');
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign in as Seller One' }));
+    const button = (await screen.findByRole('button', { name: 'Sign in as Seller One' })) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    typePassword();
+    fireEvent.click(button);
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/seller-center'));
-    expect(calls).toContainEqual({ url: '/demo/sessions', method: 'POST', body: { role: 'SELLER', sellerId: 'seller_1' } });
+    expect(calls).toContainEqual({ url: '/demo/sessions', method: 'POST', body: { role: 'SELLER', email: 'sellerone.ttsim@gmail.com', password: '123' } });
     expect(sessionStorage.getItem('sim.demo-session.SELLER')).not.toBeNull();
   });
 
   it('returns a buyer to ?next after signing in, with a banner naming where they go back to', async () => {
     renderLogin('/login?next=%2Fcart');
     expect(screen.getByText(/You will return to/).textContent).toBe('Sign in to continue. You will return to your cart after signing in.');
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign in as Trần Văn An' }));
+    const button = await screen.findByRole('button', { name: 'Sign in as Trần Văn An' });
+    typePassword();
+    fireEvent.click(button);
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/cart'));
-    expect(calls).toContainEqual({ url: '/demo/sessions', method: 'POST', body: { role: 'BUYER', buyerId: 'buyer_1' } });
+    expect(calls).toContainEqual({ url: '/demo/sessions', method: 'POST', body: { role: 'BUYER', email: 'tranvanan.ttsim@gmail.com', password: '123' } });
+  });
+
+  it('follows the picked account in the email field and shows the API error for a wrong password', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url === '/demo/identities' ? json(ids) : json({ message: 'Wrong email or password' }, 401))));
+    renderLogin('/login?role=seller');
+    await screen.findByRole('button', { name: 'Sign in as Seller One' });
+    fireEvent.change(field('Email'), { target: { value: 'someone@gmail.com' } });
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /Seller Two/ }));
+    expect(field('Email').value).toBe('sellertwo.ttsim@gmail.com');
+    typePassword('nope');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in as Seller Two' }));
+    expect(await screen.findByText('Wrong email or password')).toBeTruthy();
+    expect(screen.getByTestId('location').textContent).toBe('/login?role=seller');
   });
 
   it('points to the Test Console when there are no accounts', async () => {

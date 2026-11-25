@@ -68,12 +68,29 @@ describe('router separation, demo isolation, clocks, request log', () => {
   });
 
   describe('demo sessions: two shops cannot read or modify each other', () => {
+    it('signs in only with the right email and password, and switches only between own shops', async () => {
+      const ids = (await http.get('/demo/identities')).body;
+      const [sa, sb] = ids.sellers;
+      const lan = ids.sellers.find((x: any) => x.name === 'Nguyễn Thị Lan');
+      expect(lan.email).toBe('nguyenthilan.ttsim@gmail.com');
+      await http.post('/demo/sessions').send({ role: 'SELLER', email: sa.email, password: 'wrong' }).expect(401);
+      await http.post('/demo/sessions').send({ role: 'SELLER', email: 'nobody@gmail.com', password: '123' }).expect(401);
+      await http.post('/demo/sessions').send({ role: 'BUYER', email: sa.email, password: '123' }).expect(401);
+      await http.post('/demo/sessions').send({ role: 'SELLER', email: sa.email }).expect(400);
+      await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sa.id }).expect(400);
+      const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', email: sa.email.toUpperCase(), password: '123' }).expect(201)).body;
+      await http.post('/demo/sessions/current/shop').set('x-demo-session', sess.sessionToken).send({ shopId: sb.shops[0].id }).expect(400);
+      const next = (await http.post('/demo/sessions/current/shop').set('x-demo-session', sess.sessionToken).send({ shopId: sa.shops[0].id }).expect(201)).body;
+      await http.get('/demo/me').set('x-demo-session', sess.sessionToken).expect(401);
+      await http.get('/demo/me').set('x-demo-session', next.sessionToken).expect(200);
+    });
+
     it('a seller or buyer session only reaches its own shop', async () => {
       const ids = (await http.get('/demo/identities')).body;
       expect(ids.sellers).toHaveLength(5);
       const [sa, sb] = ids.sellers;
-      const sessA = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sa.id }).expect(201)).body;
-      const sessB = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sb.id }).expect(201)).body;
+      const sessA = (await http.post('/demo/sessions').send({ role: 'SELLER', email: sa.email, password: '123' }).expect(201)).body;
+      const sessB = (await http.post('/demo/sessions').send({ role: 'SELLER', email: sb.email, password: '123' }).expect(201)).body;
       const shopA = sessA.shopId;
       const shopB = sessB.shopId;
       expect(shopA).not.toBe(shopB);
@@ -85,7 +102,7 @@ describe('router separation, demo isolation, clocks, request log', () => {
       await http.get(`/demo/shops/${shopB}/buyers`).set('x-demo-session', sessA.sessionToken).expect(403);
 
       const buyerOfB = ids.buyers.find((b: any) => b.shopId === shopB);
-      const buyerSess = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyerOfB.id }).expect(201)).body;
+      const buyerSess = (await http.post('/demo/sessions').send({ role: 'BUYER', email: buyerOfB.email, password: '123' }).expect(201)).body;
       expect(buyerSess.shopId).toBe(shopB);
       await http.get(`/demo/shops/${shopA}/products`).set('x-demo-session', buyerSess.sessionToken).expect(403);
       await http.get(`/demo/shops/${shopB}/buyers`).set('x-demo-session', buyerSess.sessionToken).expect(403); // buyers cannot list buyers
@@ -93,7 +110,7 @@ describe('router separation, demo isolation, clocks, request log', () => {
       expect(me.shop.id).toBe(shopB);
 
       // seller A cannot open a session for shop B
-      await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: sa.id, shopId: shopB }).expect(400);
+      await http.post('/demo/sessions').send({ role: 'SELLER', email: sa.email, password: '123', shopId: shopB }).expect(400);
 
       // only the hash of the session token is stored
       const stored = await prisma.demoSession.findMany();
@@ -160,7 +177,7 @@ describe('router separation, demo isolation, clocks, request log', () => {
 
     it('demo session creation response is stored without the raw session token', async () => {
       const ids = (await http.get('/demo/identities')).body;
-      const sess = (await http.post('/demo/sessions').set('x-request-id', 'req-demo-sess').send({ role: 'BUYER', buyerId: ids.buyers[0].id }).expect(201)).body;
+      const sess = (await http.post('/demo/sessions').set('x-request-id', 'req-demo-sess').send({ role: 'BUYER', email: ids.buyers[0].email, password: '123' }).expect(201)).body;
       await new Promise((r) => setTimeout(r, 300));
       const raw = JSON.stringify(await prisma.$queryRawUnsafe(`SELECT * FROM "HttpRequestLog" WHERE "requestId" = 'req-demo-sess'`));
       expect(raw).toContain('req-demo-sess');

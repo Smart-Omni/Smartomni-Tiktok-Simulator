@@ -33,14 +33,14 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
     const ids = (await http.get('/demo/identities')).body;
     const isA = (x: any) => x.shops.some((sh: any) => sh.name.includes('Mộc Lan'));
     const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
-    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
+    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', email: seller.email, password: '123' }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }
   async function buyerSession(index: 0 | 1) {
     const ids = (await http.get('/demo/identities')).body;
     const sellerSess = await sellerSession(index);
     const buyer = ids.buyers.find((b: any) => b.shopId === sellerSess.shopId);
-    const sess = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: buyer.id }).expect(201)).body;
+    const sess = (await http.post('/demo/sessions').send({ role: 'BUYER', email: buyer.email, password: '123' }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }
   async function connect(index: 0 | 1) {

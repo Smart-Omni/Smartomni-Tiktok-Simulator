@@ -50,6 +50,7 @@ export const inShop = (s: DemoSession, shopId: string): DemoSession => ({ ...s, 
 // Sessions
 export const getIdentities = () => api<Identities>('/demo/identities');
 export const createSession = (identity: SignInIdentity) => api<DemoSession>('/demo/sessions', { method: 'POST', body: identity });
+export const switchSessionShop = (s: DemoSession, shopId: string) => api<DemoSession>('/demo/sessions/current/shop', { method: 'POST', body: { shopId }, ...auth(s) });
 export const getMe = (s: DemoSession) => api<Me>('/demo/me', auth(s));
 export const endSession = (s: DemoSession) => api<void>('/demo/sessions/current', { method: 'DELETE', ...auth(s) });
 
