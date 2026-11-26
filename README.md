@@ -186,7 +186,7 @@ Seller, Shop, Buyer (belongs to one shop), App (fake app key/secret, redirect UR
 
 ### Seed
 
-Deterministic and idempotent: two Vietnamese shops (VND), one seller and separate buyers per shop, products/SKUs, two warehouses each, scenarios. Ids are derived from stable names, so reset + reseed restores the same ids. Inventory is created but never overwritten by a re-run. Triggers: automatically on API start (`SEED_ON_START`), `POST /test-admin/seed`, the Test Console, or `npm run seed` (backend).
+Deterministic and idempotent: two Vietnamese shops (VND), one seller and separate buyers per shop, products/SKUs, one warehouse each (DECISIONS SW-1), scenarios. Ids are derived from stable names, so reset + reseed restores the same ids. Inventory is created but never overwritten by a re-run. Triggers: automatically on API start (`SEED_ON_START`), `POST /test-admin/seed`, the Test Console, or `npm run seed` (backend).
 
 ### Reset (explicit scope and confirmation)
 

@@ -126,7 +126,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
       expect(white.price).toEqual({ currency: 'VND', sale_price: '129000' });
       const black = tee.skus.find((s: any) => s.seller_sku === 'TEE-BLK-M');
       expect(black.price.sale_price).toBe('135000');
-      expect(white.inventory).toHaveLength(2);
+      expect(white.inventory).toHaveLength(1);
       expect(white.inventory.every((i: any) => typeof i.warehouse_id === 'string' && /^\d+$/.test(i.warehouse_id) && Number.isInteger(i.quantity))).toBe(true);
       expect(Number.isInteger(tee.create_time)).toBe(true);
     });
@@ -227,7 +227,7 @@ describe('Phase 04: catalog (Search Products, Get Product, Get Warehouse List) a
       const a = await connect(0);
       const res = await call('GET', WAREHOUSES, a.accessToken).expect(200);
       const ws = res.body.data.warehouses;
-      expect(ws).toHaveLength(2);
+      expect(ws).toHaveLength(1);
       expect(ws.filter((w: any) => w.is_default)).toHaveLength(1);
       expect(ws[0]).toMatchObject({ id: expect.stringMatching(/^\d+$/), name: expect.any(String), effect_status: 'ENABLED', type: 'SALES_WAREHOUSE', sub_type: 'DOMESTIC_WAREHOUSE' });
       const ids = new Set(ws.map((w: any) => w.id));

@@ -109,16 +109,13 @@ export class SeedService {
         },
         update: { name: def.name, shopCipher: def.shopCipher, code: shopCode(def.tiktokShopId) },
       });
-      const warehouseIds: string[] = [];
-      for (const wh of def.warehouses) {
-        const id = detId(`warehouse:${def.key}:${wh.code}`);
-        warehouseIds.push(id);
-        await tx.warehouse.upsert({
-          where: { shopId_code: { shopId, code: wh.code } },
-          create: { id, shopId, externalId: numericId('7600', `warehouse:${def.key}:${wh.code}`), ...wh },
-          update: { name: wh.name, city: wh.city, isDefault: wh.isDefault },
-        });
-      }
+      const { code } = def.warehouse;
+      const { id: warehouseId } = await tx.warehouse.upsert({
+        where: { shopId_code: { shopId, code } },
+        create: { id: detId(`warehouse:${def.key}:${code}`), shopId, externalId: numericId('7600', `warehouse:${def.key}:${code}`), ...def.warehouse },
+        update: { name: def.warehouse.name, city: def.warehouse.city, isDefault: true },
+        select: { id: true },
+      });
       for (const b of def.buyers) {
         const login = demoAccount(b.name);
         await tx.buyer.upsert({
@@ -156,13 +153,11 @@ export class SeedService {
             update: {},
             select: { id: true },
           });
-          for (let i = 0; i < warehouseIds.length; i++) {
-            await tx.inventoryLevel.upsert({
-              where: { skuId_warehouseId: { skuId, warehouseId: warehouseIds[i] } },
-              create: { id: detId(`inv:${def.key}:${skuExternalId}:${i}`), skuId, warehouseId: warehouseIds[i], quantity: s.stock[i] ?? 0 },
-              update: {},
-            });
-          }
+          await tx.inventoryLevel.upsert({
+            where: { skuId_warehouseId: { skuId, warehouseId } },
+            create: { id: detId(`inv:${def.key}:${skuExternalId}:0`), skuId, warehouseId, quantity: s.stock },
+            update: {},
+          });
         }
       }
       for (const sc of SEED_SCENARIOS) {

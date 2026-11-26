@@ -8,30 +8,25 @@ test.beforeAll(async ({ baseURL }) => {
   await resetAll(baseURL);
 });
 
-test('seller sets a SKU stock to 0 in both warehouses and the Inventory tab shows before/after', async ({ page }) => {
+test('seller sets a SKU stock to 0 and the Inventory tab shows before/after', async ({ page }) => {
   await signInAs(page, 'SELLER', SELLER_A, '/seller-center/products');
   // product cards are collapsed; "Manage" opens the variants & inventory table
   const product = page.getByRole('region', { name: /^Product / }).filter({ hasText: 'BAG-NVY' });
   await product.getByRole('button', { name: 'Manage' }).click();
   const row = product.getByRole('row', { name: 'SKU BAG-NVY' });
   await expect(row).toBeVisible();
-  for (const [wh, before] of [['Kho Hà Nội', '20'], ['Kho TP.HCM', '10']] as const) {
-    const input = row.getByLabel(`Stock of BAG-NVY in ${wh}`);
-    await expect(input).toHaveValue(before);
-    await input.fill('0');
-  }
+  const input = row.getByLabel('Stock of BAG-NVY in Kho Hà Nội');
+  await expect(input).toHaveValue('30');
+  await input.fill('0');
   await row.getByRole('button', { name: 'Set' }).nth(1).click(); // the second "Set" in the row is the stock one
   await expect(row.getByLabel('Stock of BAG-NVY in Kho Hà Nội')).toHaveValue('0');
 
   await page.getByRole('button', { name: 'Stock history' }).click();
   await expect(page.getByRole('heading', { name: 'Stock changes (before / after)' })).toBeVisible();
   const hn = page.getByRole('row').filter({ hasText: 'BAG-NVY' }).filter({ hasText: 'Kho Hà Nội' });
-  await expect(hn.getByRole('cell').nth(3)).toHaveText('20'); // before
+  await expect(hn.getByRole('cell').nth(3)).toHaveText('30'); // before
   await expect(hn.getByRole('cell').nth(4)).toHaveText('0'); // after
   await expect(hn.getByText('SELLER', { exact: true })).toBeVisible();
-  const hcm = page.getByRole('row').filter({ hasText: 'BAG-NVY' }).filter({ hasText: 'Kho TP.HCM' });
-  await expect(hcm.getByRole('cell').nth(3)).toHaveText('10');
-  await expect(hcm.getByRole('cell').nth(4)).toHaveText('0');
   await shot(page, 'phase06-inventory-history');
 });
 

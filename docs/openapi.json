@@ -1526,7 +1526,7 @@
           "TikTok Inventory"
         ],
         "summary": "Update inventory",
-        "description": "Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [1, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.\n\nHandler: `InventoryController.update`.\n\nRequired scope (simulator placeholder): `sim.inventory.write`.",
+        "description": "Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [0, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.\n\nHandler: `InventoryController.update`.\n\nRequired scope (simulator placeholder): `sim.inventory.write`.",
         "operationId": "InventoryController_update",
         "security": [
           {
@@ -1621,7 +1621,7 @@
                           "extra_errors": [
                             {
                               "code": 12052097,
-                              "message": "quantity must be an integer in [1, 99999]",
+                              "message": "quantity must be an integer in [0, 99999]",
                               "warehouse_id": "7000000000000000001"
                             }
                           ]
@@ -1751,8 +1751,8 @@
                               },
                               "quantity": {
                                 "type": "integer",
-                                "description": "Integer 1..99999",
-                                "minimum": 1,
+                                "description": "Integer 0..99999",
+                                "minimum": 0,
                                 "maximum": 99999
                               }
                             },
@@ -9425,7 +9425,7 @@
           "Product"
         ],
         "summary": "Create Product",
-        "description": "Handler: `ProductsController.createProduct`.",
+        "description": "Creates an ACTIVATE product. Stock is validated for every SKU before anything is written: `inventory` omitted = 0 units in the default warehouse; otherwise a non-empty array where each entry has an integer `quantity` in [0, 99999] and a `warehouse_id` of the token shop (omitted = the default warehouse), each warehouse once. No INVENTORY_CHANGED_BY_SHOP event is queued.\n\nHandler: `ProductsController.createProduct`.",
         "operationId": "ProductsController_createProduct",
         "security": [
           {
@@ -9464,6 +9464,16 @@
                     "message",
                     "request_id"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing title or SKUs, listing rules, or invalid SKU `inventory` (see the description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
                 }
               }
             }
@@ -23990,7 +24000,7 @@
                     "shops": 2,
                     "sellers": 1,
                     "buyers": 6,
-                    "warehouses": 4,
+                    "warehouses": 2,
                     "products": 12,
                     "skus": 30,
                     "inventoryLevels": 60,
@@ -24095,7 +24105,7 @@
                     "shops": 2,
                     "sellers": 1,
                     "buyers": 6,
-                    "warehouses": 4,
+                    "warehouses": 2,
                     "products": 12,
                     "skus": 30,
                     "inventoryLevels": 60,

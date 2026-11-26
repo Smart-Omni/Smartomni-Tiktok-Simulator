@@ -651,7 +651,7 @@ Cập nhật tồn kho (số lượng tuyệt đối). _(Update inventory)_
 | `skus[].id` | có | string | SKU id, 1-200 chars |
 | `skus[].inventory` | có | object[] [minItems 1, maxItems 50] |  |
 | `skus[].inventory[].warehouse_id` |  | string |  |
-| `skus[].inventory[].quantity` | có | integer [min 1, max 99999] | Integer 1..99999 |
+| `skus[].inventory[].quantity` | có | integer [min 0, max 99999] | Integer 0..99999 |
 
 Ví dụ:
 
@@ -681,7 +681,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [1, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.
+Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [0, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.
 
 </details>
 
@@ -749,6 +749,8 @@ Inventory by product_ids (max 100) or sku_ids (max 600; wins when both are sent)
 Tạo sản phẩm. _(Create Product)_
 
 - Xác thực: Ký TikTok (`x-tts-access-token` + `app_key`/`timestamp`/`sign`)
+- Tồn kho: bỏ `inventory` thì SKU có 0 ở kho mặc định. Nếu gửi thì phải là mảng không rỗng; mỗi phần tử có `quantity` nguyên trong [0, 99999] và `warehouse_id` của shop (bỏ trống = kho mặc định), mỗi kho một lần. Sai bất kỳ SKU nào: `400 invalid_input`, không tạo gì.
+- Mỗi shop chỉ có một kho (DECISIONS SW-1).
 
 **Phản hồi**:
 
