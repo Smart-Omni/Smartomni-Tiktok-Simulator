@@ -288,7 +288,7 @@ export const paths: PathsFragment = {
       tag: 'TikTok Inventory',
       summary: 'Update inventory',
       description:
-        'Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [1, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.',
+        'Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [0, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.',
       handler: 'InventoryController.update',
       security: ['TiktokSignedApi'],
       scope: 'sim.inventory.write',
@@ -298,7 +298,7 @@ export const paths: PathsFragment = {
         schema: obj(
           {
             skus: {
-              ...arr(obj({ id: str('SKU id, 1-200 chars'), inventory: { ...arr(obj({ warehouse_id: str(), quantity: int('Integer 1..99999', { minimum: 1, maximum: 99999 }) }, ['quantity'])), minItems: 1, maxItems: 50 } }, ['id', 'inventory'])),
+              ...arr(obj({ id: str('SKU id, 1-200 chars'), inventory: { ...arr(obj({ warehouse_id: str(), quantity: int('Integer 0..99999', { minimum: 0, maximum: 99999 }) }, ['quantity'])), minItems: 1, maxItems: 50 } }, ['id', 'inventory'])),
               minItems: 1,
               maxItems: 100,
             },
@@ -310,7 +310,7 @@ export const paths: PathsFragment = {
       ok: {
         description: 'Code 0 with per-SKU errors (empty when all applied). With a fault rule the body may instead be code -1 (APP_ERROR_200) or the connection is dropped (no response).',
         schema: envelope(obj({ errors: arr(obj({ code: int('12052990 (OAS example value, meaning unverified)'), message: str(), detail: obj({ sku_id: str(), extra_errors: arr(obj({ code: int('12052097 (OAS example value)'), message: str(), warehouse_id: str() })) }) })) }, ['errors'])),
-        example: { code: 0, message: 'Success', request_id: 'TEST-REQ-0401', data: { errors: [{ code: 12052990, message: 'the inventory of this SKU was not updated', detail: { sku_id: '1729000000000000101', extra_errors: [{ code: 12052097, message: 'quantity must be an integer in [1, 99999]', warehouse_id: '7000000000000000001' }] } }] } },
+        example: { code: 0, message: 'Success', request_id: 'TEST-REQ-0401', data: { errors: [{ code: 12052990, message: 'the inventory of this SKU was not updated', detail: { sku_id: '1729000000000000101', extra_errors: [{ code: 12052097, message: 'quantity must be an integer in [0, 99999]', warehouse_id: '7000000000000000001' }] } }] } },
       },
       errors: { ...SIGNED_ERRORS, 400: `${SIGNED_ERRORS[400]} Also invalid_input: body not an object, skus not an array of 1-100, skus[].id invalid, inventory not a non-empty array (max 50), warehouse_id not a string.`, 404: 'product_not_found: unknown id or product of another shop.' },
       errorShape: 'tiktok',

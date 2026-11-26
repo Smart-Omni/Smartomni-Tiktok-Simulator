@@ -34,7 +34,7 @@ const clockSnapshot = obj(
 const clockExample = { now: '2026-10-15T08:00:00.000Z', systemNow: '2026-10-15T08:00:00.120Z', offsetMs: 0, frozen: false, frozenAt: null };
 
 const seedSummary = obj({ shops: int(), sellers: int(), buyers: int(), warehouses: int(), products: int(), skus: int(), inventoryLevels: int(), scenarios: int(), apps: int() }, ['shops', 'sellers', 'buyers', 'warehouses', 'products', 'skus', 'inventoryLevels', 'scenarios', 'apps']);
-const seedExample = { shops: 2, sellers: 1, buyers: 6, warehouses: 4, products: 12, skus: 30, inventoryLevels: 60, scenarios: 4, apps: 1 };
+const seedExample = { shops: 2, sellers: 1, buyers: 6, warehouses: 2, products: 12, skus: 30, inventoryLevels: 60, scenarios: 4, apps: 1 };
 
 const resetScope = { type: 'string', enum: ['LOGS', 'WEBHOOKS', 'SHOP', 'ALL'], description: 'What to delete. SHOP deletes one shop and re-seeds its baseline; ALL deletes everything and re-seeds; LOGS = HTTP request logs; WEBHOOKS = webhook jobs and attempts.' };
 

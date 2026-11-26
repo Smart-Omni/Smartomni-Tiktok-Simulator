@@ -96,10 +96,11 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
     });
 
     it('reserves stock, refuses overselling and never goes below zero under concurrent checkouts', async () => {
+      await prisma.inventoryLevel.updateMany({ where: { sku: { externalId: SKU_BLACK, shopId: shopAId } }, data: { quantity: 35 } });
       const before = await stockOf(SKU_BLACK);
       const buyer = await t.buyerSession(0);
       const buyer2 = await t.buyerSession(0, 1);
-      // single warehouse has 35 of BLK-M in WH-HN; ask for more than any one warehouse holds
+      // 35 units: the first order of 20 fits, the second does not
       const over = await t.checkout(buyer, [{ skuId: SKU_BLACK, quantity: 20 }], 'key-over-0001');
       expect(over.status).toBe(201);
       const over2 = await t.checkout(buyer2, [{ skuId: SKU_BLACK, quantity: 20 }], 'key-over-0002');

@@ -15,7 +15,7 @@
 ## Phase 06
 | # | Issue | Choice | Reason |
 |---|---|---|---|
-| D6.1 | OAS says quantity "Valid range: [1, 99,999]". A client may want to mark a SKU sold out with 0. | Quantity 0 is rejected as a per-warehouse error; follow the OAS text. | The phase says fixtures must check the official validity rules; accepting 0 would be inventing behaviour. Revisit if Partner Center confirms 0 is accepted. |
+| D6.1 | OAS says quantity "Valid range: [1, 99,999]". A client may want to mark a SKU sold out with 0. | **[Changed: the code accepts 0, valid range [0, 99999]]** Originally: quantity 0 rejected, following the OAS text. | A client must be able to mark a SKU sold out. This differs from the OAS text. |
 | D6.2 | Partial failure semantics are not stated in the OAS. | Each SKU is atomic; valid SKUs in the same request are applied, failing ones are listed in `data.errors[]` inside a code-0 envelope (as in the OAS fixture). | The response schema is a per-SKU error list, not an envelope failure. Unverified. |
 | D6.3 | Error code values are undocumented. | Main error 12052990 and secondary 12052097 (the two example numbers printed in the OAS) for every per-SKU failure; messages describe the reason. | No readable source defines the codes; do not invent new ones. Their meaning is unverified. |
 | D6.4 | How to simulate "timeout". | The connection is closed without a response (before or after the write, optional `delayMs`). | A client then sees the same unknown outcome as a real timeout. |
@@ -172,3 +172,10 @@ Deliberate deviation from TikTok: the simulator never holds a paid order. Supers
 |---|---|---|---|
 | DL1 | Demo sign-in. | `POST /demo/sessions` takes `email` + `password` (was `sellerId`/`buyerId`; breaking). Every seeded account has `<name>.ttsim@gmail.com` and password `123`, stored as a scrypt hash in new `loginEmail`/`passwordHash` columns. `/demo/identities` still lists the accounts with their login email. A seller switches shops with `POST /demo/sessions/current/shop`. | Requested sign-in step. Contact `email` is untouched, so data sent to SmartOmni does not point at real mail domains. With one shared, published password this is a demo step, not a security control. |
 
+## Single warehouse per shop
+
+| # | Issue | Choice | Reason |
+|---|---|---|---|
+| SW-1 | Number of warehouses. | Every shop has exactly one warehouse and it is the default one; `Warehouse(shopId)` is unique. The TikTok shapes are unchanged (`warehouses[]`, `inventory[].warehouse_id`). | User instruction. A simulator restriction: real TikTok Shop sellers may have several warehouses. |
+| SW-2 | Existing databases. | Migration `20261128000000_single_warehouse` adds the stock of the other warehouses to the default one, logs the change (source ADMIN), re-points orders, deletes the other warehouses (their history rows go with them) and queues no webhook. It stops, changing nothing, if a SKU would exceed 99999 units; Prisma then marks it failed and the API container does not start until the stock is lowered and `prisma migrate resolve --rolled-back 20261128000000_single_warehouse` is run. A successful run cannot be undone: back up the database first. | SKU totals stay what clients already hold. Clients must re-read the warehouse list and drop removed warehouse ids. |
+| SW-3 | Stock in Create Product. | `inventory` omitted = 0 units in the default warehouse; otherwise warehouse ids must belong to the shop, appear once, and `quantity` must be an integer in [0, 99999]; anything else is 400 and nothing is written. | Before, bad entries were dropped or rewritten silently (a SKU could end with no warehouse). The bounds match Update Inventory (the OAS text says [1, 99999]). |

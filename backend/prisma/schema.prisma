@@ -212,6 +212,8 @@ model Warehouse {
   inventoryChanges InventoryChange[]
   createdAt        DateTime          @default(now())
 
+  // One warehouse per shop (DECISIONS SW-1).
+  @@unique([shopId])
   @@unique([shopId, code])
   @@unique([shopId, externalId])
 }
