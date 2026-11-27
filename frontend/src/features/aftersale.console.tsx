@@ -7,6 +7,7 @@ import { api, vnd } from '../lib/api';
 import { useAsync } from '../lib/useAsync';
 import type { ConsoleTab } from './registry';
 import { ArbitrationPanel } from '../pages/console/ArbitrationPanel';
+import { completeAftersale, getAftersaleRecords, type AftersaleRecords } from '../pages/console/adminEndpoints';
 import { statusTone } from '../components/console/statusTone';
 
 interface AdminAftersale {
@@ -18,9 +19,7 @@ interface AdminAftersale {
   units: number;
   refundTotalVnd: number;
 }
-interface History {
-  records: { from: string | null; to: string; actor: string; note: string; at: string }[];
-}
+type History = AftersaleRecords;
 
 export function AftersalePanel({ shopId }: { shopId: string }) {
   const list = useAsync(() => api<{ items: AdminAftersale[] }>(`/test-admin/aftersale?shopId=${encodeURIComponent(shopId)}`), [shopId], 5000);
@@ -29,7 +28,7 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   const [arbitrationRef, setArbitrationRef] = useState<string>();
   async function complete(id: string) {
     try {
-      await api(`/test-admin/aftersale/${id}/complete?shopId=${encodeURIComponent(shopId)}`, { method: 'POST', body: {} });
+      await completeAftersale(shopId, id);
       setMsg(`${id}: refund completed`);
       list.reload();
     } catch (e) {
@@ -38,7 +37,7 @@ export function AftersalePanel({ shopId }: { shopId: string }) {
   }
   async function show(id: string) {
     try {
-      setHistory({ id, data: await api<History>(`/test-admin/aftersale/${id}/records?shopId=${encodeURIComponent(shopId)}`) });
+      setHistory({ id, data: await getAftersaleRecords(shopId, id) });
     } catch (e) {
       setMsg((e as Error).message);
     }

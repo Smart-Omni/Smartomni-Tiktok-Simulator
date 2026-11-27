@@ -60,6 +60,15 @@ export interface LoyaltyOrdersResult {
 export const createLoyaltyOrders = (body: { shopId: string; thresholdDays: number; buyerId?: string }) =>
   api<LoyaltyOrdersResult>('/test-admin/scenarios/loyalty-orders', { method: 'POST', body });
 
+export interface AftersaleRecords {
+  records: { from: string | null; to: string; actor: string; note: string; at: string }[];
+}
+export const getAftersaleRecords = (shopId: string, ref: string) =>
+  api<AftersaleRecords>(`/test-admin/aftersale/${encodeURIComponent(ref)}/records?shopId=${encodeURIComponent(shopId)}`);
+/** The refund was paid out: SUCCESS -> COMPLETE (cancellations and returns). */
+export const completeAftersale = (shopId: string, ref: string) =>
+  api<unknown>(`/test-admin/aftersale/${encodeURIComponent(ref)}/complete?shopId=${encodeURIComponent(shopId)}`, { method: 'POST', body: {} });
+
 export const arbitrateAftersale = (shopId: string, ref: string, arbitration_status: ArbitrationDecision, note: string) =>
   api<{ id: string; arbitration_status: ArbitrationDecision; changed: boolean }>(`/test-admin/aftersale/${encodeURIComponent(ref)}/arbitration`, {
     method: 'POST', body: { shopId, arbitration_status, note },

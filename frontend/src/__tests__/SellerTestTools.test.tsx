@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AftersaleTestActions } from '@/components/seller/AftersaleTestActions';
 import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { TestToolsButton, TestToolsFrame } from '@/components/seller/TestTools';
 import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
@@ -89,6 +90,39 @@ describe('Seller Center test tools', () => {
     expect(within(boundary).getByText('255,000 VND')).toBeTruthy();
     expect(within(within(table).getByText('o-2').closest('tr')!).getAllByText('—')).toHaveLength(1);
     vi.unstubAllGlobals();
+  });
+
+  it('completes a refund after confirming and shows the records of a request', async () => {
+    const calls: { url: string; method: string }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? 'GET' });
+      if (url.includes('/records')) return json({ records: [{ from: null, to: 'RETURN_OR_REFUND_REQUEST_PENDING', actor: 'BUYER', note: 'requested', at: '2026-11-20T00:00:00.000Z' }] });
+      return json({});
+    }));
+    const onChanged = vi.fn();
+    render(<AftersaleTestActions shopId="shop-1" request={{ id: 'ret 1', kind: 'RETURN', status: 'RETURN_OR_REFUND_REQUEST_SUCCESS' }} onChanged={onChanged} />);
+    const open = () => fireEvent.keyDown(screen.getByRole('button', { name: 'Test actions for ret 1' }), { key: 'Enter' });
+    open();
+    expect(await screen.findByRole('menuitem', { name: 'Arbitrate dispute' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Complete refund' }));
+    expect(calls).toHaveLength(0);
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Complete refund?' })).getByRole('button', { name: 'Complete refund' }));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/test-admin/aftersale/ret%201/complete?shopId=shop-1', method: 'POST' }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+
+    open();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'View records' }));
+    expect(await screen.findByText('Created → RETURN_OR_REFUND_REQUEST_PENDING')).toBeTruthy();
+    expect(calls).toContainEqual({ url: '/test-admin/aftersale/ret%201/records?shopId=shop-1', method: 'GET' });
+    vi.unstubAllGlobals();
+  });
+
+  it('offers no arbitration or completion when they do not apply', async () => {
+    render(<AftersaleTestActions shopId="shop-1" request={{ id: 'c-1', kind: 'CANCELLATION', status: 'CANCELLATION_REQUEST_PENDING' }} onChanged={() => undefined} />);
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Test actions for c-1' }), { key: 'Enter' });
+    expect(await screen.findByRole('menuitem', { name: 'View records' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: 'Arbitrate dispute' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Complete refund' })).toBeNull();
   });
 
   it('opens a TEST sheet with one tab per tool, mounts only the active tab and reports the close', () => {
