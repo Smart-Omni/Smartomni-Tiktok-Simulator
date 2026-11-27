@@ -4,6 +4,8 @@ export type OrderWithLines = Order & { lines: OrderLine[]; buyer: { externalId: 
 
 const secs = (d: Date | null | undefined): number | undefined => (d ? Math.floor(d.getTime() / 1000) : undefined);
 const vnd = (n: number): string => String(n);
+/** Time a paid order has to be shipped, the same window as the Shopee simulator. */
+const SHIP_SLA_MS = 48 * 3600 * 1000;
 const defined = <T extends Record<string, unknown>>(o: T): Partial<T> => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
 
 /** `data.orders[]` item for Get Order List / Get Order Detail (OAS: schemas/ops/order.*.response.json). Money fields are strings. */
@@ -17,6 +19,7 @@ export function orderItem(o: OrderWithLines) {
     create_time: secs(o.createdAt),
     update_time: secs(o.updatedAt),
     paid_time: secs(o.paidAt),
+    rts_sla_time: o.paidAt ? secs(new Date(o.paidAt.getTime() + SHIP_SLA_MS)) : undefined,
     rts_time: secs(o.rtsAt),
     collection_time: secs(o.collectionAt),
     delivery_time: secs(o.deliveredAt),
