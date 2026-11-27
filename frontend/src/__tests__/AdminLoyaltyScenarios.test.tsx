@@ -74,7 +74,7 @@ it('submits the default test tiers without optional caps', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create loyalty voucher batches' }));
   fireEvent.click(screen.getByRole('button', { name: 'Generate voucher batches' }));
   await waitFor(() => expect(fetcher.mock.calls.some(([, opts]) => opts?.method === 'POST')).toBe(true));
-  expect(JSON.parse(fetcher.mock.calls.find(([, opts]) => opts?.method === 'POST')![1]!.body as string)).toEqual({ shopId: 'shop-1', quantityPerTier: 20, validDays: 30, tiers: [{ name: 'Silver', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] });
+  expect(JSON.parse(fetcher.mock.calls.find(([, opts]) => opts?.method === 'POST')![1]!.body as string)).toEqual({ shopId: 'shop-1', quantityPerTier: 100, validDays: 365, tiers: [{ name: 'Gold', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] });
 });
 
 it('does not retry creation automatically after a lost response', async () => {

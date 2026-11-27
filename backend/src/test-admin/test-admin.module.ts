@@ -207,8 +207,15 @@ export class TestAdminController {
     const cursor = after === undefined || after === '' ? undefined : Number(after);
     if (cursor !== undefined && (!Number.isInteger(cursor) || cursor < 0)) throw new BadRequestException('after must be the `next` value of a previous page');
     const now = this.businessClock.now();
+    const filter = { ...(shopId ? { shopId } : {}), ...(batchId ? { batchId } : {}) };
+    // counts over every coupon matching the filter, not only this page (ONGOING = couponStatus on the business clock)
+    const [total, ongoing, redeemed] = await Promise.all([
+      this.prisma.coupon.count({ where: filter }),
+      this.prisma.coupon.count({ where: { ...filter, deactivated: false, startAt: { lte: now }, endAt: { gt: now } } }),
+      this.prisma.coupon.aggregate({ where: filter, _sum: { redeemedCount: true } }),
+    ]);
     const rows = await this.prisma.coupon.findMany({
-      where: { ...(shopId ? { shopId } : {}), ...(batchId ? { batchId } : {}), ...(cursor !== undefined ? { seq: { gt: cursor } } : {}) },
+      where: { ...filter, ...(cursor !== undefined ? { seq: { gt: cursor } } : {}) },
       orderBy: { seq: 'asc' },
       take: take + 1,
       include: { usages: { orderBy: { createdAt: 'asc' }, include: { order: { select: { externalId: true } } } } },
@@ -228,6 +235,7 @@ export class TestAdminController {
         usages: c.usages.map((u) => ({ orderId: u.order.externalId, discountVnd: u.discountVnd, at: u.createdAt.toISOString() })),
       })),
       next: rows.length > take ? String(page[page.length - 1].seq) : '',
+      summary: { total, ongoing, redemptions: redeemed._sum.redeemedCount ?? 0 },
     };
   }
 

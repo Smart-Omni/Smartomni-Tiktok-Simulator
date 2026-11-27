@@ -3,15 +3,15 @@ import { api } from '../../lib/api';
 
 const whole = (value: string, max: number) => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
 const defaultTiers = [
-  { name: 'Silver', percentage: '10', cap: '' },
+  { name: 'Gold', percentage: '10', cap: '' },
   { name: 'Platinum', percentage: '20', cap: '' },
   { name: 'Diamond', percentage: '30', cap: '' },
 ];
 
 /** Test-data setup: one batch of single-use percentage codes per tier, using the business clock. */
 export function LoyaltyVouchersForm({ shopId, onCreated, onClose }: { shopId: string; onCreated: (message: string) => void; onClose: () => void }) {
-  const [quantity, setQuantity] = useState('20');
-  const [validDays, setValidDays] = useState('30');
+  const [quantity, setQuantity] = useState('100');
+  const [validDays, setValidDays] = useState('365');
   const [tiers, setTiers] = useState(defaultTiers);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

@@ -478,7 +478,7 @@ describe('Seller Center vouchers', () => {
     expect(within(sheet).getByText('TEST')).toBeTruthy();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Generate voucher batches' }));
     await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([
-      { url: '/test-admin/scenarios/loyalty-vouchers', method: 'POST', body: { shopId: 'shop-1', quantityPerTier: 20, validDays: 30, tiers: [{ name: 'Silver', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] } },
+      { url: '/test-admin/scenarios/loyalty-vouchers', method: 'POST', body: { shopId: 'shop-1', quantityPerTier: 100, validDays: 365, tiers: [{ name: 'Gold', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] } },
     ]));
   });
 
