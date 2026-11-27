@@ -154,6 +154,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       const unpaid = (await t.call('GET', DETAIL, accessToken, { query: { ids: id } }).expect(200)).body.data.orders[0];
       expect(unpaid.status).toBe('UNPAID');
       expect(unpaid.recipient_address).toBeUndefined(); // OAS: not available under UNPAID
+      expect(unpaid.rts_sla_time).toBeUndefined();
       const paid = await t.pay(buyer, id).expect(201);
       expect(paid.body.order.status).toBe('AWAITING_SHIPMENT');
       expect(paid.body.order).not.toHaveProperty('releaseAt');
@@ -162,6 +163,7 @@ describe('Phase 05: checkout, orders, Events API and signed webhooks', () => {
       expect(open.is_on_hold_order).toBe(false);
       expect(open).not.toHaveProperty('release_date');
       expect(open.paid_time).toBeGreaterThan(0);
+      expect(open.rts_sla_time).toBe(open.paid_time + 48 * 3600);
       expect(open.recipient_address.region_code).toBe('VN');
       const row = await prisma.order.findFirstOrThrow({ where: { externalId: id } });
       expect(await prisma.package.findUnique({ where: { orderId: row.id } })).toMatchObject({ status: 'TO_FULFILL' });
