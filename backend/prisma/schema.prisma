@@ -68,6 +68,9 @@ model Seller {
   name      String
   email     String   @unique
   shops     Shop[]
+  // Demo sign-in (fake account); `email` stays the contact address.
+  loginEmail String? @unique
+  passwordHash String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -126,6 +129,9 @@ model Buyer {
   orders        Order[]
   cartItems     CartItem[]
   conversations Conversation[]
+  // Demo sign-in (fake account); `email` stays the contact address.
+  loginEmail String? @unique
+  passwordHash String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -206,6 +212,8 @@ model Warehouse {
   inventoryChanges InventoryChange[]
   createdAt        DateTime          @default(now())
 
+  // One warehouse per shop (DECISIONS SW-1).
+  @@unique([shopId])
   @@unique([shopId, code])
   @@unique([shopId, externalId])
 }

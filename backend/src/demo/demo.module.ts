@@ -7,7 +7,6 @@ import {
   Get,
   Inject,
   Module,
-  NotFoundException,
   Param,
   Post,
   Query,
@@ -18,6 +17,7 @@ import {
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { hashToken } from '../common/hash';
+import { verifyPassword } from '../common/password';
 import { ZodPipe } from '../common/zod.pipe';
 import { APP_CONFIG, AppConfig } from '../config/config';
 import { OAuthModule } from '../oauth/oauth.module';
@@ -44,10 +44,18 @@ import {
   DemoSessionGuard,
 } from './demo-session.guard';
 
+const credentials = {
+  email: z.string().trim().toLowerCase().min(1).max(200),
+  password: z.string().min(1).max(200),
+  shopId: z.string().min(1).optional(),
+};
 const CreateSession = z.union([
-  z.object({ role: z.literal('SELLER'), sellerId: z.string().min(1), shopId: z.string().min(1).optional() }),
-  z.object({ role: z.literal('BUYER'), buyerId: z.string().min(1), shopId: z.string().min(1).optional() }),
+  z.object({ role: z.literal('SELLER'), ...credentials }),
+  z.object({ role: z.literal('BUYER'), ...credentials }),
 ]);
+const SwitchShop = z.object({ shopId: z.string().min(1) });
+/** Same answer for an unknown email and a wrong password. */
+const WRONG_CREDENTIALS = 'Wrong email or password';
 
 const ConsentQuery = z.object({ app_key: z.string().min(1).max(200), redirect_uri: z.string().max(2000).optional(), state: z.string().max(512).optional() });
 const ConsentDecision = z.object({
@@ -70,16 +78,16 @@ export class DemoController {
     @Inject(OAuthService) private readonly oauth: OAuthService,
   ) {}
 
-  /** Names only, so the demo UI can offer a "sign in as" picker. No tokens, secrets or contact data. */
+  /** Names and demo login emails, so the sign-in page can list the fake accounts. No passwords, tokens or contact data. */
   @Get('identities')
   async identities() {
     const [sellers, buyers] = await Promise.all([
       this.prisma.seller.findMany({ include: { shops: { select: { id: true, name: true } } }, orderBy: { name: 'asc' } }),
-      this.prisma.buyer.findMany({ select: { id: true, name: true, shopId: true }, orderBy: { name: 'asc' } }),
+      this.prisma.buyer.findMany({ select: { id: true, name: true, shopId: true, loginEmail: true }, orderBy: { name: 'asc' } }),
     ]);
     return {
-      sellers: sellers.map((s) => ({ id: s.id, name: s.name, shops: s.shops })),
-      buyers,
+      sellers: sellers.map((s) => ({ id: s.id, name: s.name, email: s.loginEmail, shops: s.shops })),
+      buyers: buyers.map(({ loginEmail, ...b }) => ({ ...b, email: loginEmail })),
     };
   }
 
@@ -87,29 +95,45 @@ export class DemoController {
   async createSession(@Body(new ZodPipe(CreateSession)) body: z.infer<typeof CreateSession>) {
     let shopId: string;
     let buyerId: string | null = null;
-    let scope: 'MARKETPLACE' | 'SHOP';
     if (body.role === 'SELLER') {
-      const seller = await this.prisma.seller.findUnique({ where: { id: body.sellerId }, include: { shops: true } });
-      if (!seller) throw new NotFoundException('Unknown seller');
+      const seller = await this.prisma.seller.findUnique({ where: { loginEmail: body.email }, include: { shops: true } });
+      if (!seller || !verifyPassword(body.password, seller.passwordHash)) throw new UnauthorizedException(WRONG_CREDENTIALS);
       const shop = body.shopId ? seller.shops.find((s) => s.id === body.shopId) : seller.shops[0];
       if (!shop) throw new BadRequestException('Seller has no such shop');
       shopId = shop.id;
-      scope = 'SHOP';
     } else {
-      const buyer = await this.prisma.buyer.findUnique({ where: { id: body.buyerId } });
-      if (!buyer) throw new NotFoundException('Unknown buyer');
+      const buyer = await this.prisma.buyer.findUnique({ where: { loginEmail: body.email } });
+      if (!buyer || !verifyPassword(body.password, buyer.passwordHash)) throw new UnauthorizedException(WRONG_CREDENTIALS);
       const fallbackShop = await this.prisma.shop.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
       shopId = buyer.shopId ?? body.shopId ?? fallbackShop?.id ?? 'default-shop';
       buyerId = buyer.id;
-      scope = 'MARKETPLACE';
     }
+    return this.issueSession(body.role, shopId, buyerId);
+  }
+
+  /** A signed-in seller moves to another of their own shops without typing the password again. */
+  @Post('sessions/current/shop')
+  @UseGuards(DemoSessionGuard)
+  async switchShop(@Req() req: DemoRequest, @Body(new ZodPipe(SwitchShop)) body: z.infer<typeof SwitchShop>) {
+    const p = principal(req);
+    if (p.role !== 'SELLER') throw new ForbiddenException('Only a seller session can switch shops');
+    const current = await this.prisma.shop.findUniqueOrThrow({ where: { id: p.shopId }, select: { sellerId: true } });
+    const target = await this.prisma.shop.findFirst({ where: { id: body.shopId, sellerId: current.sellerId }, select: { id: true } });
+    if (!target) throw new BadRequestException('Seller has no such shop');
+    const session = await this.issueSession('SELLER', target.id, null);
+    await this.prisma.demoSession.deleteMany({ where: { id: p.sessionId } });
+    return session;
+  }
+
+  private async issueSession(role: 'SELLER' | 'BUYER', shopId: string, buyerId: string | null) {
+    const scope: 'MARKETPLACE' | 'SHOP' = role === 'BUYER' ? 'MARKETPLACE' : 'SHOP';
     const raw = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + this.config.demoSessionTtlMs);
     await this.prisma.demoSession.create({
-      data: { tokenHash: hashToken(raw), role: body.role, shopId, buyerId, expiresAt },
+      data: { tokenHash: hashToken(raw), role, shopId, buyerId, expiresAt },
     });
     // The raw token is returned exactly once and never stored or logged (redacted by key name).
-    return { sessionToken: raw, role: body.role, scope, shopId, buyerId, expiresAt: expiresAt.toISOString() };
+    return { sessionToken: raw, role, scope, shopId, buyerId, expiresAt: expiresAt.toISOString() };
   }
 
   @Delete('sessions/current')

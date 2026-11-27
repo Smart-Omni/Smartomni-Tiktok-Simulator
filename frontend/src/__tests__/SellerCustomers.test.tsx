@@ -5,7 +5,7 @@ import { SellerCustomers } from '@/pages/seller-center/SellerCustomers';
 
 vi.mock('@/lib/auth', () => ({ useAuth: vi.fn() }));
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
-const auth = (shopId: string) => ({ seller: { role: 'SELLER' as const, shopId, sessionToken: `token-${shopId}`, buyerId: null, expiresAt: '2099-01-01' }, buyer: null, session: vi.fn(), signIn: vi.fn(), signOut: vi.fn() });
+const auth = (shopId: string) => ({ seller: { role: 'SELLER' as const, shopId, sessionToken: `token-${shopId}`, buyerId: null, expiresAt: '2099-01-01' }, buyer: null, session: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), switchShop: vi.fn() });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
 
 it('loads customers with the seller session and searches real names, city and IDs across pages', async () => {

@@ -39,6 +39,50 @@ describe('OAS alignment P1: Update Price, Inventory Search, Delete / Recover Pro
   const create = async (extra: Record<string, unknown> = {}) =>
     (await t.call('POST', '/product/202309/products', token, { body: { title: 'Mới', skus: [{ seller_sku: 'NEW-1', price: { amount: '1000', currency: 'VND' } }], ...extra } }).expect(200)).body.data.product_id as string;
 
+  describe('Create Product stock', () => {
+    const send = (inventory: unknown) =>
+      t.call('POST', '/product/202309/products', token, { body: { title: 'Tồn', skus: [{ seller_sku: 'STK-1', price: { amount: '1000', currency: 'VND' }, ...(inventory === undefined ? {} : { inventory }) }] } });
+    const warehouseOf = async (shop: string) => (await prisma.warehouse.findFirstOrThrow({ where: { shop: { name: { contains: shop } } } })).externalId;
+
+    it('stores the sent quantity in the shop warehouse; omitted inventory means 0 in the default one', async () => {
+      const wh = await warehouseOf('Mộc Lan');
+      for (const [inventory, quantity] of [
+        [[{ warehouse_id: wh, quantity: 0 }], 0],
+        [[{ warehouse_id: wh, quantity: 99_999 }], 99_999],
+        [[{ quantity: 7 }], 7],
+        [undefined, 0],
+      ] as const) {
+        const r = await send(inventory).expect(200);
+        const detail = await t.call('GET', `/product/202309/products/${r.body.data.product_id}`, token).expect(200);
+        expect(detail.body.data.skus[0].inventory).toEqual([{ warehouse_id: wh, quantity }]);
+      }
+    });
+
+    it('rejects unknown or foreign warehouses, repeats and bad quantities, creating nothing', async () => {
+      const wh = await warehouseOf('Mộc Lan');
+      const foreign = await warehouseOf('Gốm');
+      const before = await prisma.product.count();
+      for (const inventory of [
+        [{ warehouse_id: '7600000000000000000', quantity: 5 }],
+        [{ warehouse_id: foreign, quantity: 5 }],
+        [{ warehouse_id: wh, quantity: -5 }],
+        [{ warehouse_id: wh, quantity: 100_000 }],
+        [{ warehouse_id: wh, quantity: 1.5 }],
+        [{ warehouse_id: wh, quantity: '5' }],
+        [{ warehouse_id: wh }],
+        [{ warehouse_id: wh, quantity: 1 }, { warehouse_id: wh, quantity: 2 }],
+        [{ warehouse_id: wh, quantity: 1 }, { quantity: 2 }],
+        [],
+        'x',
+        [null],
+      ]) {
+        const r = await send(inventory);
+        expect([inventory, r.status, r.body.simulator_fault?.kind]).toEqual([inventory, 400, 'invalid_input']);
+      }
+      expect(await prisma.product.count()).toBe(before);
+    });
+  });
+
   describe('Update Price', () => {
     const upd = (pid: string, body: unknown, tok = token) => t.call('POST', `/product/202309/products/${pid}/prices/update`, tok, { body });
 

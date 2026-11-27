@@ -14,12 +14,12 @@ export interface DemoSession {
 }
 
 export interface Identities {
-  sellers: { id: string; name: string; shops: { id: string; name: string }[] }[];
-  buyers: { id: string; name: string; shopId: string }[];
+  sellers: { id: string; name: string; email?: string | null; shops: { id: string; name: string }[] }[];
+  buyers: { id: string; name: string; email?: string | null; shopId: string }[];
 }
 
 /** Body of POST /demo/sessions. */
-export type SignInIdentity = { role: 'SELLER'; sellerId: string; shopId?: string } | { role: 'BUYER'; buyerId: string };
+export type SignInIdentity = { role: 'SELLER' | 'BUYER'; email: string; password: string };
 
 /** GET /demo/me. `buyer` is null for SELLER sessions. */
 export interface Me {
@@ -273,6 +273,8 @@ export interface Aftersale {
   rejectReason: string | null;
   returnTrackingNumber: string | null;
   arbitrationStatus: 'NO_ARBITRATION' | 'IN_ARBITRATION' | 'ARBITRATION_WIN' | 'ARBITRATION_LOSS';
+  /** Optional for older responses; supplied by the API when a seller proposal exists. */
+  sellerProposedReturnType?: string | null;
   buyer: { id: string; name: string };
   refund: { subtotalVnd: number; shippingVnd: number; totalVnd: number };
   createdAt: string;

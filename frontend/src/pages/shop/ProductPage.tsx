@@ -3,14 +3,12 @@ import { Stars } from '@/components/shop/ProductStars';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { loginUrl } from '@/components/RequireRole';
 import { ProductImage } from '@/components/shop/ProductCard';
 import { ShopFooter } from '@/components/shop/ShopFooter';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
 import { getMarketplaceProduct, listMarketplaceProducts } from '@/lib/endpoints';
 import { compactCount, shopPrice } from '@/lib/format';
 import { productPath, shopPath } from '@/lib/links';
@@ -166,9 +164,8 @@ function Notice({ children }: { children: ReactNode }) {
 
 type Detail =
   | { product: EnrichedProduct; shop?: ShopRef }
-  /** A link without a shop (an old link, or a mock product opened while signed in): the real product page to go to, if any. */
-  | { redirectTo: string | null }
-  | null;
+  /** A link without a shop (an old link, or a mock product): the real product page to go to, if any. */
+  | { redirectTo: string | null };
 
 /** Finds the marketplace product behind a link that has no shop: the same id, or the seeded product a mock stands for. */
 async function resolveLegacy(id: string): Promise<string | null> {
@@ -187,17 +184,13 @@ async function resolveLegacy(id: string): Promise<string | null> {
 
 export function ProductPage() {
   const { shopId, id = '' } = useParams();
-  const { buyer } = useAuth();
   const navigate = useNavigate();
+  // Both catalog calls are public: guests view products, and only buying or chatting asks them to sign in.
   const detail = useAsync<Detail>(async () => {
-    if (!buyer) {
-      const mock = mockCatalog.find((p) => p.id === id);
-      return mock ? { product: mock, shop: { id: '', name: mock.shopName ?? '' } } : null;
-    }
     if (!shopId) return { redirectTo: await resolveLegacy(id) };
     const r = await getMarketplaceProduct(shopId, id);
     return { product: enrichProduct({ ...r.product, shop: r.shop }), shop: r.shop };
-  }, [buyer?.sessionToken, shopId, id]);
+  }, [shopId, id]);
 
   const redirectTo = detail.data && 'redirectTo' in detail.data ? detail.data.redirectTo : null;
   useEffect(() => {
@@ -237,16 +230,7 @@ export function ProductPage() {
       </Alert>
     );
   }
-  if (!detail.data) {
-    return (
-      <Notice>
-        <p className="text-muted-foreground">Sign in to view this product.</p>
-        <Button asChild className="bg-buyer text-white hover:bg-buyer/90">
-          <Link to={loginUrl(shopId ? `/product/${encodeURIComponent(shopId)}/${encodeURIComponent(id)}` : `/product/${encodeURIComponent(id)}`)}>Sign in</Link>
-        </Button>
-      </Notice>
-    );
-  }
+  if (!detail.data) return <PageSkeleton />;
 
   const { product, shop } = detail.data;
   return (

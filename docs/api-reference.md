@@ -61,7 +61,7 @@ Mọi request (trừ health probe và các lần console đọc định kỳ) đ
 ### 1.4. Phiên demo (`x-demo-session`)
 
 1. `GET /demo/identities` liệt kê seller và buyer có thể đăng nhập.
-2. `POST /demo/sessions` với `{"role":"SELLER","sellerId":"...","shopId":"..."}` hoặc `{"role":"BUYER","buyerId":"..."}` trả `sessionToken`. Token chỉ được trả **một lần**; DB chỉ lưu SHA-256 của nó.
+2. `POST /demo/sessions` với `{"role":"SELLER","email":"...","password":"123","shopId":"..."}` hoặc `{"role":"BUYER","email":"...","password":"123"}` trả `sessionToken`. Token chỉ được trả **một lần**; DB chỉ lưu SHA-256 của nó.
 3. Gửi token trong header `x-demo-session`. Phiên sống `DEMO_SESSION_TTL_MS` (mặc định 8 giờ).
 4. `DELETE /demo/sessions/current` để đăng xuất.
 
@@ -651,7 +651,7 @@ Cập nhật tồn kho (số lượng tuyệt đối). _(Update inventory)_
 | `skus[].id` | có | string | SKU id, 1-200 chars |
 | `skus[].inventory` | có | object[] [minItems 1, maxItems 50] |  |
 | `skus[].inventory[].warehouse_id` |  | string |  |
-| `skus[].inventory[].quantity` | có | integer [min 1, max 99999] | Integer 1..99999 |
+| `skus[].inventory[].quantity` | có | integer [min 0, max 99999] | Integer 0..99999 |
 
 Ví dụ:
 
@@ -681,7 +681,7 @@ Ví dụ:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [1, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.
+Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [0, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.
 
 </details>
 
@@ -749,6 +749,8 @@ Inventory by product_ids (max 100) or sku_ids (max 600; wins when both are sent)
 Tạo sản phẩm. _(Create Product)_
 
 - Xác thực: Ký TikTok (`x-tts-access-token` + `app_key`/`timestamp`/`sign`)
+- Tồn kho: bỏ `inventory` thì SKU có 0 ở kho mặc định. Nếu gửi thì phải là mảng không rỗng; mỗi phần tử có `quantity` nguyên trong [0, 99999] và `warehouse_id` của shop (bỏ trống = kho mặc định), mỗi kho một lần. Sai bất kỳ SKU nào: `400 invalid_input`, không tạo gì.
+- Mỗi shop chỉ có một kho (DECISIONS SW-1).
 
 **Phản hồi**:
 
@@ -2473,7 +2475,7 @@ Danh sách seller và buyer có thể đăng nhập. _(List sellers and buyers a
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names and ids only, no tokens or contact data. Feeds the "sign in as" picker of the demo UIs.
+Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names, ids and the fake demo login emails; no passwords, tokens or contact data. Feeds the account list of the sign-in page.
 
 </details>
 
@@ -2490,7 +2492,8 @@ Dạng 1:
 | Trường | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|
 | `role` | có | string: `SELLER` |  |
-| `sellerId` | có | string | min 1 char |
+| `email` | có | string | demo login email |
+| `password` | có | string | min 1 char |
 | `shopId` |  | string | optional; must belong to the seller |
 
 Dạng 2:
@@ -2498,7 +2501,8 @@ Dạng 2:
 | Trường | Bắt buộc | Kiểu | Mô tả |
 |---|---|---|---|
 | `role` | có | string: `BUYER` |  |
-| `buyerId` | có | string | min 1 char |
+| `email` | có | string | demo login email |
+| `password` | có | string | min 1 char |
 
 
 Ví dụ:
@@ -2506,7 +2510,8 @@ Ví dụ:
 ```json
 {
   "role": "SELLER",
-  "sellerId": "seller_1"
+  "email": "nguyenthilan.ttsim@gmail.com",
+  "password": "123"
 }
 ```
 
@@ -2514,13 +2519,28 @@ Ví dụ:
 
 - `201`: Session created. Send `sessionToken` as `x-demo-session` on later calls.
 - `400`: Body/query failed zod validation (`message: "Validation failed"` plus `issues: [{path, message}]`). Also: the seller has no such shop.
-- `404`: Unknown seller (`Unknown seller`) or buyer (`Unknown buyer`).
+- `401`: Unknown email or wrong password (`Wrong email or password`).
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Public. Body is a zod union on `role`. SELLER: looks up the seller (404 if unknown) and picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: looks up the buyer (404) and uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).
+Public. Body is a zod union on `role`, with the demo login `email` and `password` (401 if either is wrong). SELLER: picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).
 
 </details>
+
+#### `POST /demo/sessions/current/shop`
+
+Seller chuyển phiên sang shop khác của chính mình. _(Switch the seller session to another own shop)_
+
+- Xác thực: Header `x-demo-session` (phiên seller)
+
+**Body** (`application/json`, bắt buộc): `{ "shopId": "..." }`
+
+**Phản hồi**:
+
+- `201`: New session. The old token no longer works.
+- `400`: the seller has no such shop.
+- `401`: Missing, unknown or expired session.
+- `403`: Not a seller session.
 
 #### `DELETE /demo/sessions/current`
 

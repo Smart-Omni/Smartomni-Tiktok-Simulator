@@ -122,7 +122,7 @@ describe('Seller Center product listing fields (/demo catalog with images, categ
   it('saves a seeded product unchanged the way the product page sends it (stored external images are kept)', async () => {
     const ids = (await http.get('/demo/identities').expect(200)).body;
     const seller = ids.sellers.find((s: any) => s.shops.some((sh: any) => sh.name === fashion.shops[0].name));
-    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
+    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', email: seller.email, password: '123' }).expect(201)).body;
     const auth = { 'x-demo-session': sess.sessionToken };
     const list = (await http.get(`/demo/shops/${sess.shopId}/catalog`).set(auth).expect(200)).body.items;
     const p = list.find((x: any) => x.images.length > 0 && x.categoryId);

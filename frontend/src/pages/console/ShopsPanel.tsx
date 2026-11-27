@@ -5,21 +5,40 @@ import type { AsyncResult } from '../../lib/useAsync';
 import type { ShopSummary } from './types';
 import { PaginatedList } from '../../components/console/PaginatedList';
 
+function BulkProducts({ shop, onCreated }: { shop: ShopSummary; onCreated: (message: string) => void }) {
+  const [count, setCount] = useState('50');
+  const [skus, setSkus] = useState('2');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const whole = (value: string, max: number) => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
+  const valid = whole(count, 500) && whole(skus, 5);
+  async function create() {
+    if (!valid || busy) return;
+    setBusy(true); setError('');
+    try {
+      const r = await api<{ created: number; totalProducts: number }>('/test-admin/catalog/bulk', { method: 'POST', body: { shopId: shop.id, count: Number(count), skusPerProduct: Number(skus) } });
+      onCreated(`Added ${r.created} products to ${shop.name} (${r.totalProducts} in this shop).`);
+    } catch (e) {
+      setError(`${(e as Error).message}. Check the shop catalog before submitting again: some products may already have been created.`);
+    } finally { setBusy(false); }
+  }
+  return <form className="admin-scenario-form" aria-label={`Create test products for ${shop.name}`} onSubmit={(e) => { e.preventDefault(); void create(); }}>
+    <fieldset className="admin-fields-grid" disabled={busy}>
+      <label>Products to create<input type="number" required min={1} max={500} step={1} value={count} onChange={(e) => setCount(e.target.value)} /></label>
+      <label>SKUs per product<input type="number" required min={1} max={5} step={1} value={skus} onChange={(e) => setSkus(e.target.value)} /></label>
+      {!valid && <p role="alert">Choose 1–500 products and 1–5 SKUs per product, using whole numbers.</p>}
+      <button disabled={!valid}>{busy ? 'Adding products…' : `Add ${count || '0'} test products`}</button>
+    </fieldset>
+    {error && <p className="state state-error" role="alert">{error}</p>}
+  </form>;
+}
+
 export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[] }> }) {
   const [msg, setMsg] = useState<string>();
   const activate = async (shopId: string, key: string) => {
     try {
       await api(`/test-admin/shops/${shopId}/scenario`, { method: 'POST', body: { key } });
       setMsg(`Scenario "${key}" activated.`);
-      shops.reload();
-    } catch (e) {
-      setMsg((e as Error).message);
-    }
-  };
-  const bulk = async (shopId: string) => {
-    try {
-      const r = await api<{ created: number; totalProducts: number }>('/test-admin/catalog/bulk', { method: 'POST', body: { shopId, count: 50 } });
-      setMsg(`Added ${r.created} products (${r.totalProducts} in this shop).`);
       shops.reload();
     } catch (e) {
       setMsg((e as Error).message);
@@ -43,7 +62,7 @@ export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[
                   </select>
                 </label>
                 <div className="muted admin-scenario-description">{s.scenarios.find((x) => x.id === s.activeScenarioId)?.description}</div>
-                <button onClick={() => void bulk(s.id)}>Add 50 test products</button>
+                <BulkProducts shop={s} onCreated={(message) => { setMsg(message); shops.reload(); }} />
               </article>
             ))}
           </div>}</PaginatedList>

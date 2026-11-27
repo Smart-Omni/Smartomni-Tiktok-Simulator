@@ -27,10 +27,10 @@ describe('Product images stored in PostgreSQL (/demo media)', () => {
 
   async function sellerSessions() {
     const ids = (await http.get('/demo/identities').expect(200)).body;
-    const [a, b] = ids.sellers as { id: string; shops: { id: string }[] }[];
-    const sa = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: a.id }).expect(201)).body;
-    const sb = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: b.id }).expect(201)).body;
-    const buyer = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: ids.buyers[0].id }).expect(201)).body;
+    const [a, b] = ids.sellers as { id: string; email: string; shops: { id: string }[] }[];
+    const sa = (await http.post('/demo/sessions').send({ role: 'SELLER', email: a.email, password: '123' }).expect(201)).body;
+    const sb = (await http.post('/demo/sessions').send({ role: 'SELLER', email: b.email, password: '123' }).expect(201)).body;
+    const buyer = (await http.post('/demo/sessions').send({ role: 'BUYER', email: ids.buyers[0].email, password: '123' }).expect(201)).body;
     return { sa, sb, buyer };
   }
 

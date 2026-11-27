@@ -9,11 +9,12 @@ export function mediaFileProblem(file: File): string | undefined {
   if (/[\\/]/.test(file.name) || file.name === '.' || file.name === '..') return 'The filename must not contain a path.';
   return undefined;
 }
-export async function uploadSimulatorMedia(file: File): Promise<MediaUploadResult> {
+export async function uploadSimulatorMedia(file: File, customMediaId = ''): Promise<MediaUploadResult> {
   const problem = mediaFileProblem(file);
   if (problem) throw new Error(problem);
   const body = new FormData();
   body.append('file', file);
+  if (customMediaId.trim()) body.append('media_id', customMediaId.trim());
   const result = await api<{ code: number; message: string; request_id?: string; data: MediaUploadResult }>('/api/v2/media/upload', { method: 'POST', body });
   if (result.code !== 0 || !result.data?.media_id || !result.data?.media_url) throw new ApiError(result.message || 'Invalid media response', 200, result.request_id);
   return result.data;

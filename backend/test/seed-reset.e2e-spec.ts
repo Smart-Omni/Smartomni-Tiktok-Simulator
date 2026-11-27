@@ -26,7 +26,7 @@ describe('seed and reset', () => {
     const summary = await app.get(SeedService).seedAll();
     expect(summary.shops).toBe(5);
     expect(summary.sellers).toBe(5);
-    expect(summary.warehouses).toBe(10);
+    expect(summary.warehouses).toBe(5);
     expect(summary.buyers).toBe(11);
     expect(summary.skus).toBeGreaterThanOrEqual(8);
     // Fashion catalog: 150 products, each on a seeded leaf category with the 3 required attributes, no duplicates.

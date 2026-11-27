@@ -41,7 +41,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * - Each SKU is applied atomically (all of its warehouses or none). A request is NOT all-or-nothing across SKUs: the OAS response is a list of per-SKU
  *   errors inside a code-0 envelope, so the valid SKUs are applied and the failing ones are listed in data.errors (unverified).
  * - Per OAS text: every SKU must belong to this product, the product must not be FREEZE/DELETED, the inventory list must name EVERY warehouse
- *   assigned to the SKU (none omitted, none foreign), `warehouse_id` is optional only when a single warehouse is assigned, quantity is in [1, 99999].
+ *   assigned to the SKU (none omitted, none foreign), `warehouse_id` is optional only when a single warehouse is assigned, quantity is in [0, 99999] (the OAS says from 1; DECISIONS D6.1).
  * - Everything is scoped to the token's shop: ids of another shop are indistinguishable from unknown ids.
  * - Fault rules TIMEOUT_BEFORE_WRITE / TIMEOUT_AFTER_WRITE (connection dropped without an answer) and APP_ERROR_200 (HTTP 200, non-zero code, nothing written)
  *   are consumed here only (see FaultService.INVENTORY_FAULT_KINDS).

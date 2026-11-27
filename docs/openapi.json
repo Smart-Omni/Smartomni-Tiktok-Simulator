@@ -1526,7 +1526,7 @@
           "TikTok Inventory"
         ],
         "summary": "Update inventory",
-        "description": "Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [1, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.\n\nHandler: `InventoryController.update`.\n\nRequired scope (simulator placeholder): `sim.inventory.write`.",
+        "description": "Absolute (idempotent) stock replacement per SKU, one DB transaction per SKU; failing SKUs are listed in data.errors inside a code-0 HTTP 200 (valid SKUs are still applied). Every warehouse assigned to a SKU must be listed (warehouse_id optional only if exactly one is assigned); quantity integer in [0, 99999]; FREEZE/DELETED products are rejected per SKU. Test-fault rules TIMEOUT_BEFORE_WRITE/TIMEOUT_AFTER_WRITE destroy the socket without a response, and APP_ERROR_200 returns HTTP 200 with code -1 and nothing written.\n\nHandler: `InventoryController.update`.\n\nRequired scope (simulator placeholder): `sim.inventory.write`.",
         "operationId": "InventoryController_update",
         "security": [
           {
@@ -1621,7 +1621,7 @@
                           "extra_errors": [
                             {
                               "code": 12052097,
-                              "message": "quantity must be an integer in [1, 99999]",
+                              "message": "quantity must be an integer in [0, 99999]",
                               "warehouse_id": "7000000000000000001"
                             }
                           ]
@@ -1751,8 +1751,8 @@
                               },
                               "quantity": {
                                 "type": "integer",
-                                "description": "Integer 1..99999",
-                                "minimum": 1,
+                                "description": "Integer 0..99999",
+                                "minimum": 0,
                                 "maximum": 99999
                               }
                             },
@@ -9425,7 +9425,7 @@
           "Product"
         ],
         "summary": "Create Product",
-        "description": "Handler: `ProductsController.createProduct`.",
+        "description": "Creates an ACTIVATE product. Stock is validated for every SKU before anything is written: `inventory` omitted = 0 units in the default warehouse; otherwise a non-empty array where each entry has an integer `quantity` in [0, 99999] and a `warehouse_id` of the token shop (omitted = the default warehouse), each warehouse once. No INVENTORY_CHANGED_BY_SHOP event is queued.\n\nHandler: `ProductsController.createProduct`.",
         "operationId": "ProductsController_createProduct",
         "security": [
           {
@@ -9464,6 +9464,16 @@
                     "message",
                     "request_id"
                   ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input: missing title or SKUs, listing rules, or invalid SKU `inventory` (see the description).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TiktokFaultEnvelope"
                 }
               }
             }
@@ -11513,7 +11523,7 @@
           "Demo Session"
         ],
         "summary": "List sellers and buyers available for sign-in",
-        "description": "Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names and ids only, no tokens or contact data. Feeds the \"sign in as\" picker of the demo UIs.\n\nHandler: `DemoController.identities`.",
+        "description": "Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names, ids and the fake demo login emails; no passwords, tokens or contact data. Feeds the account list of the sign-in page.\n\nHandler: `DemoController.identities`.",
         "operationId": "DemoController_identities",
         "security": [],
         "responses": {
@@ -11534,6 +11544,11 @@
                           },
                           "name": {
                             "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "demo login email",
+                            "nullable": true
                           },
                           "shops": {
                             "type": "array",
@@ -11565,6 +11580,11 @@
                           },
                           "shopId": {
                             "type": "string"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "demo login email",
+                            "nullable": true
                           }
                         }
                       }
@@ -11580,6 +11600,7 @@
                     {
                       "id": "seller_1",
                       "name": "Seller One",
+                      "email": "sellerone.ttsim@gmail.com",
                       "shops": [
                         {
                           "id": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
@@ -11592,7 +11613,8 @@
                     {
                       "id": "buyer_1",
                       "name": "Nguyen Van A",
-                      "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
+                      "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
+                      "email": "nguyenvana.ttsim@gmail.com"
                     }
                   ]
                 }
@@ -11608,7 +11630,7 @@
           "Demo Session"
         ],
         "summary": "Create a demo session (sign in as seller or buyer)",
-        "description": "Public. Body is a zod union on `role`. SELLER: looks up the seller (404 if unknown) and picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: looks up the buyer (404) and uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).\n\nHandler: `DemoController.createSession`.",
+        "description": "Public. Body is a zod union on `role`, with the demo login `email` and `password` (401 if either is wrong). SELLER: picks `shopId` if given, else the seller's first shop (400 if the seller has no such shop). BUYER: uses the buyer's shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).\n\nHandler: `DemoController.createSession`.",
         "operationId": "DemoController_createSession",
         "security": [],
         "responses": {
@@ -11669,8 +11691,8 @@
               }
             }
           },
-          "404": {
-            "description": "Unknown seller (`Unknown seller`) or buyer (`Unknown buyer`).",
+          "401": {
+            "description": "Unknown email or wrong password (`Wrong email or password`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -11695,7 +11717,11 @@
                           "SELLER"
                         ]
                       },
-                      "sellerId": {
+                      "email": {
+                        "type": "string",
+                        "description": "demo login email"
+                      },
+                      "password": {
                         "type": "string",
                         "description": "min 1 char"
                       },
@@ -11706,7 +11732,8 @@
                     },
                     "required": [
                       "role",
-                      "sellerId"
+                      "email",
+                      "password"
                     ]
                   },
                   {
@@ -11718,21 +11745,142 @@
                           "BUYER"
                         ]
                       },
-                      "buyerId": {
+                      "email": {
+                        "type": "string",
+                        "description": "demo login email"
+                      },
+                      "password": {
                         "type": "string",
                         "description": "min 1 char"
                       }
                     },
                     "required": [
                       "role",
-                      "buyerId"
+                      "email",
+                      "password"
                     ]
                   }
                 ]
               },
               "example": {
                 "role": "SELLER",
-                "sellerId": "seller_1"
+                "email": "nguyenthilan.ttsim@gmail.com",
+                "password": "123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/sessions/current/shop": {
+      "post": {
+        "tags": [
+          "Demo Session"
+        ],
+        "summary": "Switch the seller session to another own shop",
+        "description": "Seller session only. Issues a new session for a shop of the same seller and deletes the calling one.\n\nHandler: `DemoController.switchShop`.",
+        "operationId": "DemoController_switchShop",
+        "security": [
+          {
+            "DemoSession": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "New session. The old token no longer works.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionToken": {
+                      "type": "string",
+                      "description": "64 hex chars, shown once"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "SELLER"
+                      ]
+                    },
+                    "shopId": {
+                      "type": "string"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "sessionToken",
+                    "role",
+                    "shopId",
+                    "expiresAt"
+                  ]
+                },
+                "example": {
+                  "sessionToken": "9f2c4e7a1b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b",
+                  "role": "SELLER",
+                  "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11",
+                  "buyerId": null,
+                  "expiresAt": "2026-10-15T16:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Body/query failed zod validation (`message: \"Validation failed\"` plus `issues: [{path, message}]`). Also: the seller has no such shop.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, unknown or expired session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a seller session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shopId": {
+                    "type": "string",
+                    "description": "must belong to the same seller"
+                  }
+                },
+                "required": [
+                  "shopId"
+                ]
+              },
+              "example": {
+                "shopId": "3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11"
               }
             }
           }
@@ -23852,7 +24000,7 @@
                     "shops": 2,
                     "sellers": 1,
                     "buyers": 6,
-                    "warehouses": 4,
+                    "warehouses": 2,
                     "products": 12,
                     "skus": 30,
                     "inventoryLevels": 60,
@@ -23957,7 +24105,7 @@
                     "shops": 2,
                     "sellers": 1,
                     "buyers": 6,
-                    "warehouses": 4,
+                    "warehouses": 2,
                     "products": 12,
                     "skus": 30,
                     "inventoryLevels": 60,

@@ -86,7 +86,7 @@ Xem [quy trình GitHub](docs/github-workflow.md) để tạo nhánh, kiểm tra,
 
 ## Frontend (Tiptop Shop UI)
 
-React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` (no password); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time.
+React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` with a fake account (see [Demo accounts](#demo-accounts)); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time. The last seller sign-in is also kept in `localStorage`; the consent page uses only that one.
 
 | Route | Page | Who |
 |---|---|---|
@@ -147,6 +147,29 @@ Notes:
 * Anyone who can open the Vercel site can call `/test-admin/*` through the function (reset, clock, faults), exactly like port 3090 in Docker. Keep the deployment for demos, or protect it with Vercel Deployment Protection.
 * The free Render plan sleeps when idle: the first request after a pause can take about a minute.
 
+## Demo accounts
+
+Created by the seed; every password is `123`. They are fake sign-ins for this simulator only: nothing is sent to these addresses, and the contact `email` of sellers and buyers is unchanged (`@simulator.local`). A database seeded earlier needs `npx prisma migrate deploy` and then one more seed run (API restart with `SEED_ON_START=true`, Test Console, or `npm run seed`).
+
+| Role | Name | Shop | Email |
+|---|---|---|---|
+| Seller | Nguyễn Thị Lan | Cửa hàng Mộc Lan | `nguyenthilan.ttsim@gmail.com` |
+| Seller | Đặng Minh Quân | Tiệm Gốm Bát Tràng | `dangminhquan.ttsim@gmail.com` |
+| Seller | Phạm Gia Huy | SmartOmni Official Flagship | `phamgiahuy.ttsim@gmail.com` |
+| Seller | Ngô Thanh Tùng | Hanoi Streetwear Co. | `ngothanhtung.ttsim@gmail.com` |
+| Seller | Bùi Ngọc Anh | Saigon Modern Living | `buingocanh.ttsim@gmail.com` |
+| Buyer | Trần Văn An | Cửa hàng Mộc Lan | `tranvanan.ttsim@gmail.com` |
+| Buyer | Lê Thu Hà | Cửa hàng Mộc Lan | `lethuha.ttsim@gmail.com` |
+| Buyer | Phạm Quốc Bảo | Cửa hàng Mộc Lan | `phamquocbao.ttsim@gmail.com` |
+| Buyer | Võ Thị Mai | Tiệm Gốm Bát Tràng | `vothimai.ttsim@gmail.com` |
+| Buyer | Hoàng Đức Long | Tiệm Gốm Bát Tràng | `hoangduclong.ttsim@gmail.com` |
+| Buyer | Nguyễn Minh Khôi | SmartOmni Official Flagship | `nguyenminhkhoi.ttsim@gmail.com` |
+| Buyer | Trịnh Bảo Ngọc | SmartOmni Official Flagship | `trinhbaongoc.ttsim@gmail.com` |
+| Buyer | Phan Gia Huy | Hanoi Streetwear Co. | `phangiahuy.ttsim@gmail.com` |
+| Buyer | Đỗ Thanh Hương | Hanoi Streetwear Co. | `dothanhhuong.ttsim@gmail.com` |
+| Buyer | Bùi Quang Vinh | Saigon Modern Living | `buiquangvinh.ttsim@gmail.com` |
+| Buyer | Lý Ngọc Trâm | Saigon Modern Living | `lyngoctram.ttsim@gmail.com` |
+
 ## API documentation (Swagger / OpenAPI)
 
 All 116 HTTP operations (TikTok-shaped, `/demo`, `/test-admin`, `/health`) are documented in OpenAPI 3.0.3.
@@ -163,7 +186,7 @@ Seller, Shop, Buyer (belongs to one shop), App (fake app key/secret, redirect UR
 
 ### Seed
 
-Deterministic and idempotent: two Vietnamese shops (VND), one seller and separate buyers per shop, products/SKUs, two warehouses each, scenarios. Ids are derived from stable names, so reset + reseed restores the same ids. Inventory is created but never overwritten by a re-run. Triggers: automatically on API start (`SEED_ON_START`), `POST /test-admin/seed`, the Test Console, or `npm run seed` (backend).
+Deterministic and idempotent: two Vietnamese shops (VND), one seller and separate buyers per shop, products/SKUs, one warehouse each (DECISIONS SW-1), scenarios. Ids are derived from stable names, so reset + reseed restores the same ids. Inventory is created but never overwritten by a re-run. Triggers: automatically on API start (`SEED_ON_START`), `POST /test-admin/seed`, the Test Console, or `npm run seed` (backend).
 
 ### Reset (explicit scope and confirmation)
 
@@ -195,7 +218,7 @@ Everything below is simulator behaviour built on **unverified** contract materia
 
 | Step | Where | Notes |
 |---|---|---|
-| Consent page | UI `http://localhost:3090/seller/authorize?app_key=<key>&state=<state>[&redirect_uri=<registered uri>]` | Demo seller signs in, sees shop + scopes, authorizes or denies. API: `GET/POST /demo/authorization/consent` (`x-demo-session`). |
+| Consent page | UI `http://localhost:3090/seller/authorize?app_key=<key>&state=<state>[&redirect_uri=<registered uri>]` | Only the shop of the seller currently signed in to the simulator can be authorized (otherwise the page sends you to `/login` and back). Shows shop + scopes; authorize or deny. API: `GET/POST /demo/authorization/consent` (`x-demo-session`). |
 | Callback | registered redirect URI only (exact match) | `?code=<auth code>&state=<echo>` or `?error=access_denied&state=<echo>`. Codes are single use, TTL `OAUTH_AUTH_CODE_TTL_MS`. |
 | Token exchange | `GET /api/v2/token/get?app_key&app_secret&auth_code[&grant_type]` | Envelope `{code:0,message,request_id,data:{access_token,access_token_expire_in,refresh_token,refresh_token_expire_in,open_id,granted_scopes[]}}`. `granted_scopes` = the token's granted scopes (what the guard enforces; `sim.` placeholders). `*_expire_in` are absolute Unix seconds (unconfirmed). |
 | Refresh | `GET /api/v2/token/refresh?app_key&app_secret&refresh_token[&grant_type]` | Rotates both tokens; the old refresh token is dead; concurrent use of one refresh token has exactly one winner. |

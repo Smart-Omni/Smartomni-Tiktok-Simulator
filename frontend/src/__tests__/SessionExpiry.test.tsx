@@ -1,7 +1,8 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RequireRole } from '@/components/RequireRole';
 import { SessionExpiryWatcher } from '@/components/SessionExpiryWatcher';
 import { api } from '@/lib/api';
 import { AuthProvider } from '@/lib/auth';
@@ -22,6 +23,15 @@ const renderAt = (path: string) =>
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider>
         <SessionExpiryWatcher />
+        <Routes>
+          <Route element={<RequireRole role="BUYER" />}>
+            <Route path="/account/orders" element={null} />
+          </Route>
+          <Route element={<RequireRole role="SELLER" />}>
+            <Route path="/seller-center/orders" element={null} />
+          </Route>
+          <Route path="*" element={null} />
+        </Routes>
         <Location />
       </AuthProvider>
     </MemoryRouter>,
@@ -62,6 +72,14 @@ describe('SessionExpiryWatcher', () => {
     await waitFor(() => expect(location()).toBe('/login?next=%2Fseller-center%2Forders&role=seller'));
     expect(sessionStorage.getItem('sim.demo-session.SELLER')).toBeNull();
     expect(sessionStorage.getItem('sim.demo-session.BUYER')).not.toBeNull();
+  });
+
+  it('keeps an expired buyer on a public page', async () => {
+    renderAt('/product/shop-1/7500T');
+    await call('/demo/shops/shop-1/cart', 'tok-b');
+    await waitFor(() => expect(sessionStorage.getItem('sim.demo-session.BUYER')).toBeNull());
+    expect(location()).toBe('/product/shop-1/7500T');
+    expect(toast.error).toHaveBeenCalledWith(EXPIRED);
   });
 
   it('ignores 401 from /test-admin and from requests without a demo session', async () => {

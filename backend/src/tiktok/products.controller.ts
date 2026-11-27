@@ -34,6 +34,38 @@ import { TiktokFaultFilter } from './tiktok-fault.filter';
 import { FaultService } from '../faults/fault.service';
 import { parseRawQuery } from './signature';
 
+/** Same upper bound as Update Inventory; 0 is accepted there too (DECISIONS SW-3). */
+const MAX_STOCK = 99_999;
+
+/**
+ * Stock rows of one Create Product SKU. `inventory` omitted: 0 units in the default warehouse. Otherwise every entry needs an
+ * integer quantity in [0, 99999] and a warehouse of this shop (`warehouse_id` omitted means the default one), each named once.
+ */
+function createStock(item: unknown, index: number, warehouses: { id: string; externalId: string; isDefault: boolean }[]): { warehouseId: string; quantity: number }[] {
+  const bad = (m: string) => new TiktokFault(400, 'invalid_input', `skus[${index}]${m}`);
+  if (!item || typeof item !== 'object' || Array.isArray(item)) throw bad(' must be an object');
+  const fallback = warehouses.find((w) => w.isDefault);
+  const { inventory } = item as { inventory?: unknown };
+  if (inventory === undefined) {
+    if (!fallback) throw bad(': the shop has no default warehouse');
+    return [{ warehouseId: fallback.id, quantity: 0 }];
+  }
+  if (!Array.isArray(inventory) || inventory.length === 0) throw bad('.inventory must be a non-empty array');
+  const named = new Set<string>();
+  return inventory.map((entry, j) => {
+    if (!entry || typeof entry !== 'object') throw bad(`.inventory[${j}] must be an object`);
+    const { warehouse_id: wid, quantity } = entry as { warehouse_id?: unknown; quantity?: unknown };
+    const warehouse = wid === undefined ? fallback : warehouses.find((w) => w.externalId === wid);
+    if (!warehouse) throw bad(`.inventory[${j}].warehouse_id is not a warehouse of this shop`);
+    if (named.has(warehouse.id)) throw bad(`.inventory[${j}]: the warehouse appears more than once`);
+    named.add(warehouse.id);
+    if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 0 || quantity > MAX_STOCK) {
+      throw bad(`.inventory[${j}].quantity must be an integer in [0, ${MAX_STOCK}]`);
+    }
+    return { warehouseId: warehouse.id, quantity };
+  });
+}
+
 /** Values of the Search Products `status` filter, from the OAS description (ALL plus the product statuses). */
 const STATUS_FILTER = new Set(['ALL', 'DRAFT', 'PENDING', 'FAILED', 'ACTIVATE', 'SELLER_DEACTIVATED', 'PLATFORM_DEACTIVATED', 'FREEZE', 'DELETED']);
 
@@ -242,7 +274,9 @@ export class ProductsController {
     const listing = checkListing(body);
     if (listing.reasons.length) throw new TiktokFault(400, 'invalid_input', listing.reasons.join('; '));
 
-    const defaultWarehouse = await this.prisma.warehouse.findFirst({ where: { shopId: shop.id } });
+    const warehouses = await this.prisma.warehouse.findMany({ where: { shopId: shop.id } });
+    // Every SKU's stock is validated before the first write, so a bad entry creates nothing.
+    const stock = skus.map((item, i) => createStock(item, i, warehouses));
     const now = this.clock.now();
     const productId = randomUUID();
     const externalId = numericId('7500', `product:${productId}`);
@@ -293,32 +327,7 @@ export class ProductsController {
           },
         });
 
-        // Inventory
-        const invList = Array.isArray(item.inventory) ? item.inventory : [];
-        if (invList.length > 0) {
-          for (const inv of invList) {
-            const wh = await tx.warehouse.findFirst({ where: { shopId: shop.id, externalId: inv.warehouse_id } });
-            if (wh) {
-              await tx.inventoryLevel.create({
-                data: {
-                  id: randomUUID(),
-                  skuId: s.id,
-                  warehouseId: wh.id,
-                  quantity: Number(inv.quantity) || 10,
-                },
-              });
-            }
-          }
-        } else if (defaultWarehouse) {
-          await tx.inventoryLevel.create({
-            data: {
-              id: randomUUID(),
-              skuId: s.id,
-              warehouseId: defaultWarehouse.id,
-              quantity: 100,
-            },
-          });
-        }
+        await tx.inventoryLevel.createMany({ data: stock[i].map((level) => ({ id: randomUUID(), skuId: s.id, ...level })) });
 
         skuResults.push({ id: skuExtId, seller_sku: sellerSku });
       }

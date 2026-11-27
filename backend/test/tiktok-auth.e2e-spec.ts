@@ -43,7 +43,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
     // index 0 = seeded shop A (Mộc Lan), index 1 = seeded shop B (Bát Tràng); the three fashion shops are not addressed by index
     const isA = (x: any) => x.shops.some((sh: any) => sh.name.includes('Mộc Lan'));
     const seller = index === 0 ? ids.sellers.find(isA) : ids.sellers.find((x: any) => x.shops.some((sh: any) => sh.name.includes('Bát Tràng')));
-    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', sellerId: seller.id }).expect(201)).body;
+    const sess = (await http.post('/demo/sessions').send({ role: 'SELLER', email: seller.email, password: '123' }).expect(201)).body;
     return { token: sess.sessionToken as string, shopId: sess.shopId as string };
   }
   const consentBody = (decision: 'accept' | 'deny', state?: string, extra: Record<string, unknown> = {}) => ({ app_key: appKey, decision, ...(state !== undefined ? { state } : {}), ...extra });
@@ -94,7 +94,7 @@ describe('Phase 03: consent, authorization code, tokens, signed Get Authorized S
       await http.get('/demo/authorization/consent').query({ app_key: appKey }).expect(401);
       await http.post('/demo/authorization/consent').send(consentBody('accept')).expect(401);
       const ids = (await http.get('/demo/identities')).body;
-      const buyer = (await http.post('/demo/sessions').send({ role: 'BUYER', buyerId: ids.buyers[0].id }).expect(201)).body;
+      const buyer = (await http.post('/demo/sessions').send({ role: 'BUYER', email: ids.buyers[0].email, password: '123' }).expect(201)).body;
       await http.get('/demo/authorization/consent').query({ app_key: appKey }).set('x-demo-session', buyer.sessionToken).expect(403);
       await http.post('/demo/authorization/consent').set('x-demo-session', buyer.sessionToken).send(consentBody('accept')).expect(403);
       expect(await prisma.authorizationCode.count()).toBe(0);

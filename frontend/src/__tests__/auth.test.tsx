@@ -52,8 +52,8 @@ describe('AuthProvider', () => {
 
   it('signIn posts the identity and stores the session under the legacy key', async () => {
     renderAuth();
-    await act(() => auth.signIn({ role: 'SELLER', sellerId: 'seller_1' }));
-    expect(calls).toEqual([expect.objectContaining({ url: '/demo/sessions', method: 'POST', body: { role: 'SELLER', sellerId: 'seller_1' } })]);
+    await act(() => auth.signIn({ role: 'SELLER', email: 'sellerone.ttsim@gmail.com', password: '123' }));
+    expect(calls).toEqual([expect.objectContaining({ url: '/demo/sessions', method: 'POST', body: { role: 'SELLER', email: 'sellerone.ttsim@gmail.com', password: '123' } })]);
     expect(JSON.parse(sessionStorage.getItem('sim.demo-session.SELLER')!)).toEqual(sellerSession);
     expect(screen.getByText('buyer:none seller:shop-1')).toBeTruthy();
   });

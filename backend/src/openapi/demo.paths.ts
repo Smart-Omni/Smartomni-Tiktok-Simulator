@@ -346,21 +346,21 @@ export const paths: PathsFragment = {
     get: op({
       tag: 'Demo Session',
       summary: 'List sellers and buyers available for sign-in',
-      description: 'Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names and ids only, no tokens or contact data. Feeds the "sign in as" picker of the demo UIs.',
+      description: 'Public. Reads all sellers (with their shops) and all buyers from the database, ordered by name; returns names, ids and the fake demo login emails; no passwords, tokens or contact data. Feeds the account list of the sign-in page.',
       handler: 'DemoController.identities',
       security: [],
       ok: {
         description: 'Sellers with shops, and buyers.',
         schema: obj(
           {
-            sellers: arr(obj({ id: str(), name: str(), shops: arr(obj({ id: str(), name: str() })) })),
-            buyers: arr(obj({ id: str(), name: str(), shopId: str() })),
+            sellers: arr(obj({ id: str(), name: str(), email: str('demo login email', { nullable: true }), shops: arr(obj({ id: str(), name: str() })) })),
+            buyers: arr(obj({ id: str(), name: str(), shopId: str(), email: str('demo login email', { nullable: true }) })),
           },
           ['sellers', 'buyers'],
         ),
         example: {
-          sellers: [{ id: 'seller_1', name: 'Seller One', shops: [{ id: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11', name: 'Demo Shop VN' }] }],
-          buyers: [{ id: 'buyer_1', name: 'Nguyen Van A', shopId: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11' }],
+          sellers: [{ id: 'seller_1', name: 'Seller One', email: 'sellerone.ttsim@gmail.com', shops: [{ id: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11', name: 'Demo Shop VN' }] }],
+          buyers: [{ id: 'buyer_1', name: 'Nguyen Van A', shopId: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11', email: 'nguyenvana.ttsim@gmail.com' }],
         },
       },
       errorShape: 'nest',
@@ -371,17 +371,17 @@ export const paths: PathsFragment = {
       tag: 'Demo Session',
       summary: 'Create a demo session (sign in as seller or buyer)',
       description:
-        'Public. Body is a zod union on `role`. SELLER: looks up the seller (404 if unknown) and picks `shopId` if given, else the seller\'s first shop (400 if the seller has no such shop). BUYER: looks up the buyer (404) and uses the buyer\'s shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).',
+        'Public. Body is a zod union on `role`, with the demo login `email` and `password` (401 if either is wrong). SELLER: picks `shopId` if given, else the seller\'s first shop (400 if the seller has no such shop). BUYER: uses the buyer\'s shop. Stores only the SHA-256 hash of a random 32-byte token; the raw `sessionToken` is returned once. TTL comes from DEMO_SESSION_TTL_MS (default 8 h).',
       handler: 'DemoController.createSession',
       security: [],
       body: {
         schema: {
           oneOf: [
-            obj({ role: str(undefined, { enum: ['SELLER'] }), sellerId: str('min 1 char'), shopId: str('optional; must belong to the seller') }, ['role', 'sellerId']),
-            obj({ role: str(undefined, { enum: ['BUYER'] }), buyerId: str('min 1 char') }, ['role', 'buyerId']),
+            obj({ role: str(undefined, { enum: ['SELLER'] }), email: str('demo login email'), password: str('min 1 char'), shopId: str('optional; must belong to the seller') }, ['role', 'email', 'password']),
+            obj({ role: str(undefined, { enum: ['BUYER'] }), email: str('demo login email'), password: str('min 1 char') }, ['role', 'email', 'password']),
           ],
         },
-        example: { role: 'SELLER', sellerId: 'seller_1' },
+        example: { role: 'SELLER', email: 'nguyenthilan.ttsim@gmail.com', password: '123' },
       },
       ok: {
         description: 'Session created. Send `sessionToken` as `x-demo-session` on later calls.',
@@ -389,7 +389,25 @@ export const paths: PathsFragment = {
         example: { sessionToken: '9f2c4e7a1b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b', role: 'SELLER', shopId: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11', buyerId: null, expiresAt: '2026-10-15T16:00:00.000Z' },
       },
       status: 201,
-      errors: { 400: `${VALIDATION} Also: the seller has no such shop.`, 404: 'Unknown seller (`Unknown seller`) or buyer (`Unknown buyer`).' },
+      errors: { 400: `${VALIDATION} Also: the seller has no such shop.`, 401: 'Unknown email or wrong password (`Wrong email or password`).' },
+      errorShape: 'nest',
+    }),
+  },
+  '/demo/sessions/current/shop': {
+    post: op({
+      tag: 'Demo Session',
+      summary: 'Switch the seller session to another own shop',
+      description: 'Seller session only. Issues a new session for a shop of the same seller and deletes the calling one.',
+      handler: 'DemoController.switchShop',
+      security: SESSION,
+      body: { schema: obj({ shopId: str('must belong to the same seller') }, ['shopId']), example: { shopId: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11' } },
+      ok: {
+        description: 'New session. The old token no longer works.',
+        schema: obj({ sessionToken: str('64 hex chars, shown once'), role: str(undefined, { enum: ['SELLER'] }), shopId: str(), buyerId: str(undefined, { nullable: true }), expiresAt: str(undefined, { format: 'date-time' }) }, ['sessionToken', 'role', 'shopId', 'expiresAt']),
+        example: { sessionToken: '9f2c4e7a1b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b', role: 'SELLER', shopId: '3f6c1d0e-8a54-4a52-9c7e-0d2b6f1a9b11', buyerId: null, expiresAt: '2026-10-15T16:00:00.000Z' },
+      },
+      status: 201,
+      errors: { 400: `${VALIDATION} Also: the seller has no such shop.`, 401: 'Missing, unknown or expired session.', 403: 'Not a seller session.' },
       errorShape: 'nest',
     }),
   },

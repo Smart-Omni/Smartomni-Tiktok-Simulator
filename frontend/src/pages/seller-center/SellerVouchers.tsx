@@ -20,13 +20,14 @@ import { cn } from '@/lib/utils';
 /** Form rules and request body from the former /seller Coupons tab. */
 const DAY_MS = 86_400_000;
 const wholeInRange = (v: string, max: number) => /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
-export const emptyVoucher = { title: '', promoCode: '', kind: 'AMOUNT_OFF', value: '', cap: '', minSpend: '', days: '7', limit: '', audience: 'ALL' };
+export const emptyVoucher = { title: '', promoCode: '', kind: 'AMOUNT_OFF', value: '', cap: '', minSpend: '', days: '7', limit: '', audience: 'ALL', startAt: '' };
 export type VoucherForm = typeof emptyVoucher;
 
 function fieldError(f: Record<string, string>, key: string): string | undefined {
   const value = f[key];
   if (key === 'title') return value.trim().length >= 1 && value.trim().length <= 100 ? undefined : 'Enter a title of 1–100 characters.';
   if (key === 'promoCode') return value.trim() === '' || /^[A-Za-z0-9]{6,12}$/.test(value.trim()) ? undefined : 'Use 6–12 letters or digits, or leave empty.';
+  if (key === 'startAt') return value === '' || Number.isFinite(Date.parse(value)) ? undefined : 'Choose a valid start time.';
   if (['cap', 'minSpend', 'limit'].includes(key) && value === '') return undefined;
   const max = key === 'quantity' ? 500 : key === 'limit' ? 1_000_000 : key === 'days' ? 99_999_999 : key === 'value' && f.kind === 'PERCENT_OFF' ? 100 : 2_000_000_000;
   if (['quantity', 'limit', 'days', 'value', 'cap', 'minSpend'].includes(key)) {
@@ -44,18 +45,24 @@ function expiresAt(days: string, businessNow: number): string {
 const discountOf = (f: { kind: string; value: string; cap: string }) =>
   f.kind === 'AMOUNT_OFF' ? { type: 'AMOUNT_OFF', amountVnd: Number(f.value) } : { type: 'PERCENT_OFF', percentage: Number(f.value), ...(f.cap ? { maxDiscountVnd: Number(f.cap) } : {}) };
 
+function validityBody(f: { startAt: string; days: string }, businessNow: number) {
+  if (!Number.isFinite(businessNow)) throw new Error('Cannot read the business clock.');
+  const start = f.startAt ? Date.parse(f.startAt) : businessNow;
+  if (!Number.isFinite(start)) throw new Error('Choose a valid start time.');
+  return { ...(f.startAt ? { startAt: new Date(start).toISOString() } : {}), endAt: expiresAt(f.days, start) };
+}
+
 /** An empty code is allowed: the backend then generates a 10-character code. */
 export function voucherValid(f: VoucherForm): boolean {
   return formValid(f);
 }
 
 export function voucherBody(f: VoucherForm, businessNow: number) {
-  const endAt = expiresAt(f.days, businessNow);
   return {
     title: f.title.trim(),
     ...(f.promoCode.trim() ? { promoCode: f.promoCode.trim() } : {}),
     discount: discountOf(f),
-    endAt,
+    ...validityBody(f, businessNow),
     audience: f.audience,
     ...(f.minSpend ? { minSpendVnd: Number(f.minSpend) } : {}),
     ...(f.limit ? { redemptionLimit: Number(f.limit) } : {}),
@@ -63,7 +70,7 @@ export function voucherBody(f: VoucherForm, businessNow: number) {
 }
 
 export const MAX_BATCH_QUANTITY = 500;
-export const emptyBatch = { title: '', kind: 'PERCENT_OFF', value: '', cap: '', minSpend: '', days: '30', quantity: '10', audience: 'ALL' };
+export const emptyBatch = { title: '', kind: 'PERCENT_OFF', value: '', cap: '', minSpend: '', days: '30', quantity: '10', audience: 'ALL', startAt: '' };
 export type BatchForm = typeof emptyBatch;
 
 export function batchValid(f: BatchForm): boolean {
@@ -75,7 +82,7 @@ export function batchBody(f: BatchForm, businessNow: number) {
   return {
     title: f.title.trim(),
     discount: discountOf(f),
-    endAt: expiresAt(f.days, businessNow),
+    ...validityBody(f, businessNow),
     audience: f.audience,
     quantity: Number(f.quantity),
     ...(f.minSpend ? { minSpendVnd: Number(f.minSpend) } : {}),
@@ -141,12 +148,14 @@ function FormDialog({ title, description, submit, canSubmit, onClose, onSubmit, 
 function useFormFields<F extends Record<string, string>>(prefix: string, initial: F) {
   const [f, setF] = useState(initial);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const text = (key: keyof F & string, label: string, extra: { placeholder?: string; numeric?: boolean; maxLength?: number; upper?: boolean; hint?: string } = {}) => (
+  const text = (key: keyof F & string, label: string, extra: { placeholder?: string; numeric?: boolean; maxLength?: number; upper?: boolean; hint?: string; type?: 'datetime-local' } = {}) => (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={`${prefix}-${key}`}>{label}</Label>
       <Input
         id={`${prefix}-${key}`}
         value={f[key]}
+        type={extra.type}
+        step={extra.type === 'datetime-local' ? 1 : undefined}
         placeholder={extra.placeholder}
         maxLength={extra.maxLength}
         inputMode={extra.numeric ? 'numeric' : undefined}
@@ -186,13 +195,14 @@ const AUDIENCE_OPTIONS: [string, string][] = [
 function NewVoucherDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (f: VoucherForm) => Promise<void> }) {
   const { f, text, select } = useFormFields('voucher', emptyVoucher);
   return (
-    <FormDialog title="New voucher" description="Validity starts now on the business clock. Code and discount cannot be changed afterwards." submit="Create voucher" canSubmit={voucherValid(f)} onClose={onClose} onSubmit={() => onCreate(f)}>
+    <FormDialog title="New voucher" description="Code and discount cannot be changed afterwards. Valid days are counted from the start time." submit="Create voucher" canSubmit={voucherValid(f)} onClose={onClose} onSubmit={() => onCreate(f)}>
       {text('title', 'Title', { maxLength: 100 })}
       {text('promoCode', 'Code', { placeholder: '6-12 letters/digits', maxLength: 12, upper: true, hint: 'Leave empty to generate a 10-character code' })}
       {select('kind', 'Discount type', KIND_OPTIONS)}
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
       {f.kind === 'PERCENT_OFF' ? text('cap', 'Maximum discount VND (optional)', { numeric: true }) : null}
       {text('minSpend', 'Minimum spend VND (optional)', { numeric: true })}
+      {text('startAt', 'Starts at (optional)', { type: 'datetime-local', hint: 'Local time. Leave empty to start at the current business time. Valid days are counted from the start time.' })}
       {text('days', 'Valid days', { numeric: true })}
       {text('limit', 'Redemption limit (optional)', { numeric: true })}
       {select('audience', 'Audience', AUDIENCE_OPTIONS)}
@@ -205,7 +215,7 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
   return (
     <FormDialog
       title="New code batch"
-      description="Each code can be used once. Codes are private: buyers must type them. Validity starts now on the business clock."
+      description="Each code can be used once. Codes are private: buyers must type them. Valid days are counted from the start time."
       submit="Create batch"
       canSubmit={batchValid(f)}
       onClose={onClose}
@@ -217,6 +227,7 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
       {text('value', f.kind === 'AMOUNT_OFF' ? 'Amount off (VND)' : 'Percent off (1-100)', { numeric: true })}
       {f.kind === 'PERCENT_OFF' ? text('cap', 'Maximum discount VND (optional)', { numeric: true }) : null}
       {text('minSpend', 'Minimum spend VND (optional)', { numeric: true })}
+      {text('startAt', 'Starts at (optional)', { type: 'datetime-local', hint: 'Local time. Leave empty to start at the current business time.' })}
       {text('days', 'Valid for (days)', { numeric: true })}
       {select('audience', 'Audience', AUDIENCE_OPTIONS)}
     </FormDialog>
@@ -453,6 +464,7 @@ function CodeBatches({ seller, tabs }: { seller: DemoSession; tabs: ReactNode })
                     <TableHead>Discount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Used</TableHead>
+                    <TableHead>Valid from</TableHead>
                     <TableHead>Valid until</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead />
@@ -469,6 +481,7 @@ function CodeBatches({ seller, tabs }: { seller: DemoSession; tabs: ReactNode })
                       <TableCell>
                         {b.redeemed} / {b.quantity}
                       </TableCell>
+                      <TableCell>{day(b.startAt)}</TableCell>
                       <TableCell>{day(b.endAt)}</TableCell>
                       <TableCell>{day(b.createdAt)}</TableCell>
                       <TableCell className="text-right whitespace-nowrap">

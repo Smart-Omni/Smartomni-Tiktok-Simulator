@@ -19,7 +19,7 @@ export interface SeedSku {
   code: string;
   name: string;
   priceVnd: number;
-  stock: [number, number]; // per warehouse (HN, HCM)
+  stock: number; // units in the shop warehouse
 }
 export interface SeedProduct {
   /** Marketplace product id; defaults to `sim-product-<code>`. */
@@ -54,9 +54,19 @@ export interface SeedShop {
   shopCipher: string;
   name: string;
   seller: { openId: string; name: string; email: string };
-  warehouses: { code: string; name: string; city: string; isDefault: boolean }[];
+  /** Each shop has exactly one warehouse, and it is the default one (DECISIONS SW-1). */
+  warehouse: { code: string; name: string; city: string; isDefault: true };
   buyers: SeedBuyer[];
   products: SeedProduct[];
+}
+
+/** Password of every demo sign-in account. */
+export const DEMO_PASSWORD = '123';
+
+/** Gmail-style login of a demo account, from the person's name: "Đặng Minh Quân" -> dangminhquan.ttsim@gmail.com. */
+export function demoLoginEmail(name: string): string {
+  const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+  return `${ascii.toLowerCase().replace(/[^a-z0-9]/g, '')}.ttsim@gmail.com`;
 }
 
 // All data below is fake. Ids look TikTok-like but are not real shop identifiers.
@@ -67,10 +77,7 @@ export const SEED_SHOPS: SeedShop[] = [
     shopCipher: 'GCP_SIM_SHOP_A_FAKE_CIPHER',
     name: 'Cửa hàng Mộc Lan',
     seller: { openId: 'sim-seller-open-id-a', name: 'Nguyễn Thị Lan', email: 'seller.a@simulator.local' },
-    warehouses: [
-      { code: 'WH-HN', name: 'Kho Hà Nội', city: 'Hà Nội', isDefault: true },
-      { code: 'WH-HCM', name: 'Kho TP.HCM', city: 'Hồ Chí Minh', isDefault: false },
-    ],
+    warehouse: { code: 'WH-HN', name: 'Kho Hà Nội', city: 'Hà Nội', isDefault: true },
     buyers: [
       { code: 'a-1', name: 'Trần Văn An', phone: '0900000001', addressLine: '12 Lê Lợi', district: 'Quận 1', city: 'Hồ Chí Minh' },
       { code: 'a-2', name: 'Lê Thu Hà', phone: '0900000002', addressLine: '45 Trần Phú', district: 'Hà Đông', city: 'Hà Nội' },
@@ -82,24 +89,24 @@ export const SEED_SHOPS: SeedShop[] = [
         title: 'Áo thun cotton basic',
         description: 'Áo thun cotton 100%, nhiều size.',
         skus: [
-          { code: 'TEE-WHT-M', name: 'Trắng / M', priceVnd: 129000, stock: [40, 25] },
-          { code: 'TEE-WHT-L', name: 'Trắng / L', priceVnd: 129000, stock: [30, 20] },
-          { code: 'TEE-BLK-M', name: 'Đen / M', priceVnd: 135000, stock: [35, 15] },
+          { code: 'TEE-WHT-M', name: 'Trắng / M', priceVnd: 129000, stock: 65 },
+          { code: 'TEE-WHT-L', name: 'Trắng / L', priceVnd: 129000, stock: 50 },
+          { code: 'TEE-BLK-M', name: 'Đen / M', priceVnd: 135000, stock: 50 },
         ],
       },
       {
         code: 'a-bottle',
         title: 'Bình giữ nhiệt 500ml',
         description: 'Inox 304, giữ nhiệt 12 giờ.',
-        skus: [{ code: 'BTL-500-SLV', name: 'Bạc 500ml', priceVnd: 259000, stock: [60, 40] }],
+        skus: [{ code: 'BTL-500-SLV', name: 'Bạc 500ml', priceVnd: 259000, stock: 100 }],
       },
       {
         code: 'a-bag',
         title: 'Túi tote canvas',
         description: 'Túi vải canvas in họa tiết.',
         skus: [
-          { code: 'BAG-NAT', name: 'Màu tự nhiên', priceVnd: 99000, stock: [50, 50] },
-          { code: 'BAG-NVY', name: 'Xanh navy', priceVnd: 105000, stock: [20, 10] },
+          { code: 'BAG-NAT', name: 'Màu tự nhiên', priceVnd: 99000, stock: 100 },
+          { code: 'BAG-NVY', name: 'Xanh navy', priceVnd: 105000, stock: 30 },
         ],
       },
       // Same marketplace product/SKU ids exist in shop B with different data: mapping must be keyed by connection + id.
@@ -108,21 +115,21 @@ export const SEED_SHOPS: SeedShop[] = [
         externalId: 'sim-product-shared-1',
         title: 'Sổ tay bìa cứng (shop A)',
         description: 'Sản phẩm dùng chung ID với shop B để kiểm tra cô lập mapping.',
-        skus: [{ code: 'SHARED-1', externalId: 'sim-sku-shared-1', name: 'A5', priceVnd: 50000, stock: [10, 10] }],
+        skus: [{ code: 'SHARED-1', externalId: 'sim-sku-shared-1', name: 'A5', priceVnd: 50000, stock: 20 }],
       },
       {
         code: 'a-hidden',
         status: 'SELLER_DEACTIVATED',
         title: 'Móc khóa gỗ (đang ẩn)',
         description: 'Seller đã ẩn sản phẩm.',
-        skus: [{ code: 'KEY-WOOD', name: 'Gỗ sồi', priceVnd: 35000, stock: [5, 5] }],
+        skus: [{ code: 'KEY-WOOD', name: 'Gỗ sồi', priceVnd: 35000, stock: 10 }],
       },
       {
         code: 'a-deleted',
         status: 'DELETED',
         title: 'Ốp lưng cũ (đã xóa)',
         description: 'Sản phẩm đã xóa mềm.',
-        skus: [{ code: 'CASE-OLD', name: 'Đen', priceVnd: 79000, stock: [0, 0] }],
+        skus: [{ code: 'CASE-OLD', name: 'Đen', priceVnd: 79000, stock: 0 }],
       },
     ],
   },
@@ -132,10 +139,7 @@ export const SEED_SHOPS: SeedShop[] = [
     shopCipher: 'GCP_SIM_SHOP_B_FAKE_CIPHER',
     name: 'Tiệm Gốm Bát Tràng',
     seller: { openId: 'sim-seller-open-id-b', name: 'Đặng Minh Quân', email: 'seller.b@simulator.local' },
-    warehouses: [
-      { code: 'WH-HN', name: 'Kho Bát Tràng', city: 'Hà Nội', isDefault: true },
-      { code: 'WH-DN', name: 'Kho Đà Nẵng', city: 'Đà Nẵng', isDefault: false },
-    ],
+    warehouse: { code: 'WH-HN', name: 'Kho Bát Tràng', city: 'Hà Nội', isDefault: true },
     buyers: [
       { code: 'b-1', name: 'Võ Thị Mai', phone: '0911000001', addressLine: '3 Hai Bà Trưng', district: 'Hoàn Kiếm', city: 'Hà Nội' },
       { code: 'b-2', name: 'Hoàng Đức Long', phone: '0911000002', addressLine: '77 Nguyễn Văn Linh', district: 'Thanh Khê', city: 'Đà Nẵng' },
@@ -146,36 +150,36 @@ export const SEED_SHOPS: SeedShop[] = [
         title: 'Cốc sứ vẽ tay',
         description: 'Cốc gốm Bát Tràng vẽ tay, 300ml.',
         skus: [
-          { code: 'MUG-BLU', name: 'Họa tiết xanh', priceVnd: 89000, stock: [70, 30] },
-          { code: 'MUG-RED', name: 'Họa tiết đỏ', priceVnd: 89000, stock: [55, 25] },
+          { code: 'MUG-BLU', name: 'Họa tiết xanh', priceVnd: 89000, stock: 100 },
+          { code: 'MUG-RED', name: 'Họa tiết đỏ', priceVnd: 89000, stock: 80 },
         ],
       },
       {
         code: 'b-vase',
         title: 'Bình hoa men rạn',
         description: 'Bình hoa men rạn cao 25cm.',
-        skus: [{ code: 'VASE-25', name: 'Cao 25cm', priceVnd: 349000, stock: [15, 8] }],
+        skus: [{ code: 'VASE-25', name: 'Cao 25cm', priceVnd: 349000, stock: 23 }],
       },
       {
         code: 'b-set',
         title: 'Bộ ấm chén trà',
         description: 'Bộ ấm trà 1 ấm 6 chén.',
-        skus: [{ code: 'TEA-SET-6', name: 'Bộ 6 chén', priceVnd: 599000, stock: [10, 5] }],
+        skus: [{ code: 'TEA-SET-6', name: 'Bộ 6 chén', priceVnd: 599000, stock: 15 }],
       },
       {
         code: 'b-shared',
         externalId: 'sim-product-shared-1',
         title: 'Đĩa sứ trắng (shop B)',
         description: 'Cùng product/SKU ID với shop A nhưng là hàng khác.',
-        skus: [{ code: 'SHARED-1', externalId: 'sim-sku-shared-1', name: 'Ø20cm', priceVnd: 75000, stock: [12, 4] }],
+        skus: [{ code: 'SHARED-1', externalId: 'sim-sku-shared-1', name: 'Ø20cm', priceVnd: 75000, stock: 16 }],
       },
       {
         code: 'b-dup',
         title: 'Lọ cắm hoa mini (trùng seller SKU)',
         description: 'Hai biến thể dùng chung một seller SKU để kiểm tra xử lý ghép SKU trùng.',
         skus: [
-          { code: 'DUP-1', externalId: 'sim-sku-b-dup-1', name: 'Xanh', priceVnd: 59000, stock: [9, 1] },
-          { code: 'DUP-1', externalId: 'sim-sku-b-dup-2', name: 'Hồng', priceVnd: 61000, stock: [7, 2] },
+          { code: 'DUP-1', externalId: 'sim-sku-b-dup-1', name: 'Xanh', priceVnd: 59000, stock: 10 },
+          { code: 'DUP-1', externalId: 'sim-sku-b-dup-2', name: 'Hồng', priceVnd: 61000, stock: 9 },
         ],
       },
     ],
@@ -185,17 +189,17 @@ export const SEED_SHOPS: SeedShop[] = [
 // Fashion catalog: the three Shopee-simulator shops re-created as TikTok shops (same names). Products come from
 // fashion-catalog.json; ids derive from the Shopee item id, so seeding is idempotent (upsert, never duplicates).
 const FASHION_SHOPS = [
-  { tiktokShopId: '7494000000000000003', cipher: 'GCP_SIM_SHOP_C_FAKE_CIPHER', seller: 'Phạm Gia Huy', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho TP.HCM', 'Hồ Chí Minh']],
+  { tiktokShopId: '7494000000000000003', cipher: 'GCP_SIM_SHOP_C_FAKE_CIPHER', seller: 'Phạm Gia Huy', warehouse: ['Kho Hà Nội', 'Hà Nội'],
     buyers: [
       ['Nguyễn Minh Khôi', '21 Lý Thường Kiệt', 'Quận 10', 'Hồ Chí Minh'],
       ['Trịnh Bảo Ngọc', '9 Hàng Bài', 'Hoàn Kiếm', 'Hà Nội'],
     ] },
-  { tiktokShopId: '7494000000000000004', cipher: 'GCP_SIM_SHOP_D_FAKE_CIPHER', seller: 'Ngô Thanh Tùng', warehouses: [['Kho Hà Nội', 'Hà Nội'], ['Kho Đà Nẵng', 'Đà Nẵng']],
+  { tiktokShopId: '7494000000000000004', cipher: 'GCP_SIM_SHOP_D_FAKE_CIPHER', seller: 'Ngô Thanh Tùng', warehouse: ['Kho Hà Nội', 'Hà Nội'],
     buyers: [
       ['Phan Gia Huy', '45 Bạch Đằng', 'Hải Châu', 'Đà Nẵng'],
       ['Đỗ Thanh Hương', '18 Nguyễn Trãi', 'Ninh Kiều', 'Cần Thơ'],
     ] },
-  { tiktokShopId: '7494000000000000005', cipher: 'GCP_SIM_SHOP_E_FAKE_CIPHER', seller: 'Bùi Ngọc Anh', warehouses: [['Kho TP.HCM', 'Hồ Chí Minh'], ['Kho Cần Thơ', 'Cần Thơ']],
+  { tiktokShopId: '7494000000000000005', cipher: 'GCP_SIM_SHOP_E_FAKE_CIPHER', seller: 'Bùi Ngọc Anh', warehouse: ['Kho TP.HCM', 'Hồ Chí Minh'],
     buyers: [
       ['Bùi Quang Vinh', '33 Lạch Tray', 'Ngô Quyền', 'Hải Phòng'],
       ['Lý Ngọc Trâm', '7 Lê Lợi', 'Phú Hội', 'Huế'],
@@ -211,7 +215,7 @@ export const FASHION_SHOPS_SEED: SeedShop[] = fashionCatalog.shops.map((src, idx
     shopCipher: f.cipher,
     name: src.name,
     seller: { openId: `sim-seller-open-id-${key}`, name: f.seller, email: `seller.${key}@simulator.local` },
-    warehouses: f.warehouses.map(([name, city], i) => ({ code: i === 0 ? 'WH-1' : 'WH-2', name, city, isDefault: i === 0 })),
+    warehouse: { code: 'WH-1', name: f.warehouse[0], city: f.warehouse[1], isDefault: true },
     buyers: f.buyers.map(([name, addressLine, district, city], i): SeedBuyer => ({
       code: `${key}-${i + 1}`,
       name,
@@ -239,7 +243,8 @@ export const FASHION_SHOPS_SEED: SeedShop[] = fashionCatalog.shops.map((src, idx
         externalId: numericId('7510', `fashion-sku:${key}:${k.code}`),
         name: k.name,
         priceVnd: k.priceVnd,
-        stock: [k.stock[0], k.stock[1]],
+        // fashion-catalog.json still lists the former two-warehouse split
+        stock: k.stock.reduce((n, q) => n + q, 0),
       })),
     })),
   };
