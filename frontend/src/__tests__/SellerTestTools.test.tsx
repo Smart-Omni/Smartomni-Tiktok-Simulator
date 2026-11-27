@@ -5,6 +5,7 @@ import { AftersaleTestActions } from '@/components/seller/AftersaleTestActions';
 import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { TestToolsButton, TestToolsFrame } from '@/components/seller/TestTools';
 import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
+import { BulkProductsForm } from '@/pages/console/ShopsPanel';
 import { AuthProvider } from '@/lib/auth';
 import { SellerTestingSystem } from '@/pages/seller-center/SellerTesting';
 
@@ -123,6 +124,27 @@ describe('Seller Center test tools', () => {
     expect(await screen.findByRole('menuitem', { name: 'View records' })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: 'Arbitrate dispute' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'Complete refund' })).toBeNull();
+  });
+
+  it('generates bulk test products for the working shop within the API limits', async () => {
+    const posts: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe('/test-admin/catalog/bulk');
+      posts.push(JSON.parse(init!.body as string));
+      return json({ created: 12, totalProducts: 40 });
+    }));
+    const onCreated = vi.fn();
+    render(<BulkProductsForm shopId="shop-1" shopName="this shop" onCreated={onCreated} />);
+    const count = screen.getByRole('spinbutton', { name: 'Products to create' });
+    const submit = () => screen.getByRole('button', { name: /test products/ });
+    fireEvent.change(count, { target: { value: '501' } });
+    expect(submit().hasAttribute('disabled')).toBe(true);
+    fireEvent.change(count, { target: { value: '12' } });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'SKUs per product' }), { target: { value: '3' } });
+    fireEvent.click(submit());
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('Added 12 products to this shop (40 in this shop).'));
+    expect(posts).toEqual([{ shopId: 'shop-1', count: 12, skusPerProduct: 3 }]);
+    vi.unstubAllGlobals();
   });
 
   it('opens a TEST sheet with one tab per tool, mounts only the active tab and reports the close', () => {

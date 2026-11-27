@@ -5,7 +5,8 @@ import type { AsyncResult } from '../../lib/useAsync';
 import type { ShopSummary } from './types';
 import { PaginatedList } from '../../components/console/PaginatedList';
 
-function BulkProducts({ shop, onCreated }: { shop: ShopSummary; onCreated: (message: string) => void }) {
+/** POST /test-admin/catalog/bulk: ACTIVATE products with priced SKUs (fake data), also used by Seller Center Products. */
+export function BulkProductsForm({ shopId, shopName, onCreated }: { shopId: string; shopName: string; onCreated: (message: string) => void }) {
   const [count, setCount] = useState('50');
   const [skus, setSkus] = useState('2');
   const [busy, setBusy] = useState(false);
@@ -16,13 +17,13 @@ function BulkProducts({ shop, onCreated }: { shop: ShopSummary; onCreated: (mess
     if (!valid || busy) return;
     setBusy(true); setError('');
     try {
-      const r = await api<{ created: number; totalProducts: number }>('/test-admin/catalog/bulk', { method: 'POST', body: { shopId: shop.id, count: Number(count), skusPerProduct: Number(skus) } });
-      onCreated(`Added ${r.created} products to ${shop.name} (${r.totalProducts} in this shop).`);
+      const r = await api<{ created: number; totalProducts: number }>('/test-admin/catalog/bulk', { method: 'POST', body: { shopId, count: Number(count), skusPerProduct: Number(skus) } });
+      onCreated(`Added ${r.created} products to ${shopName} (${r.totalProducts} in this shop).`);
     } catch (e) {
       setError(`${(e as Error).message}. Check the shop catalog before submitting again: some products may already have been created.`);
     } finally { setBusy(false); }
   }
-  return <form className="admin-scenario-form" aria-label={`Create test products for ${shop.name}`} onSubmit={(e) => { e.preventDefault(); void create(); }}>
+  return <form className="admin-scenario-form" aria-label={`Create test products for ${shopName}`} onSubmit={(e) => { e.preventDefault(); void create(); }}>
     <fieldset className="admin-fields-grid" disabled={busy}>
       <label>Products to create<input type="number" required min={1} max={500} step={1} value={count} onChange={(e) => setCount(e.target.value)} /></label>
       <label>SKUs per product<input type="number" required min={1} max={5} step={1} value={skus} onChange={(e) => setSkus(e.target.value)} /></label>
@@ -62,7 +63,7 @@ export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[
                   </select>
                 </label>
                 <div className="muted admin-scenario-description">{s.scenarios.find((x) => x.id === s.activeScenarioId)?.description}</div>
-                <BulkProducts shop={s} onCreated={(message) => { setMsg(message); shops.reload(); }} />
+                <BulkProductsForm shopId={s.id} shopName={s.name} onCreated={(message) => { setMsg(message); shops.reload(); }} />
               </article>
             ))}
           </div>}</PaginatedList>
