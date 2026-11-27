@@ -69,6 +69,10 @@ export const getAftersaleRecords = (shopId: string, ref: string) =>
 export const completeAftersale = (shopId: string, ref: string) =>
   api<unknown>(`/test-admin/aftersale/${encodeURIComponent(ref)}/complete?shopId=${encodeURIComponent(shopId)}`, { method: 'POST', body: {} });
 
+/** The buyer of a conversation writes to the shop (stored + NEW_MESSAGE webhook unless suppressed). */
+export const sendTestBuyerMessage = (conversationRef: string, text: string) =>
+  api<unknown>(`/test-admin/chat/conversations/${encodeURIComponent(conversationRef)}/buyer-message`, { method: 'POST', body: { text } });
+
 export const arbitrateAftersale = (shopId: string, ref: string, arbitration_status: ArbitrationDecision, note: string) =>
   api<{ id: string; arbitration_status: ArbitrationDecision; changed: boolean }>(`/test-admin/aftersale/${encodeURIComponent(ref)}/arbitration`, {
     method: 'POST', body: { shopId, arbitration_status, note },

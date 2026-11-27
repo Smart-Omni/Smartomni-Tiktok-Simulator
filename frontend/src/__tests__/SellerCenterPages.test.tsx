@@ -526,6 +526,17 @@ describe('Seller Center messages', () => {
     await waitFor(() => expect(writes()).toEqual([{ url: `${base}/chat/conversations/c1/messages`, method: 'POST', body: { text: 'Size L is back' } }]));
   });
 
+  it('simulates a buyer reply in the open conversation through /test-admin', async () => {
+    renderAt('/seller-center/messages');
+    expect(screen.queryByRole('form', { name: 'Simulate buyer reply' })).toBeNull();
+    fireEvent.click(within(await screen.findByRole('list', { name: 'Conversations' })).getByRole('button', { name: /An/ }));
+    const reply = await screen.findByRole('form', { name: 'Simulate buyer reply' });
+    expect(within(reply).getByText('TEST')).toBeTruthy();
+    fireEvent.change(within(reply).getByRole('textbox', { name: 'Buyer reply text' }), { target: { value: 'Is size L back?' } });
+    fireEvent.click(within(reply).getByRole('button', { name: 'Simulate buyer reply' }));
+    await waitFor(() => expect(writes()).toEqual([{ url: '/test-admin/chat/conversations/c1/buyer-message', method: 'POST', body: { text: 'Is size L back?' } }]));
+  });
+
   it('locks the reply box when the shop cannot send messages', async () => {
     renderAt('/seller-center/messages');
     fireEvent.click(within(await screen.findByRole('list', { name: 'Conversations' })).getByRole('button', { name: /Mai/ }));
