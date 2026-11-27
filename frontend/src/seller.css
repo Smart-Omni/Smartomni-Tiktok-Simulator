@@ -275,3 +275,16 @@ body:has(.seller-desktop-frame) { overflow:hidden; background:#dedfdf; }
 .seller-customers th,.seller-customers td { padding:14px 18px; }
 .seller-customer-name { display:flex; align-items:center; gap:10px; font-weight:500; }
 .seller-customer-avatar { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; flex-shrink:0; background:#f2f2f2; border-radius:50%; color:#666; font-size:12px; }
+
+/* Test tools (docs/seller-center-test-tools-plan.md): console panels inside a Seller Center sheet */
+.seller-test-badge { display:inline-flex; align-items:center; padding:1px 7px; border:1.5px dashed #FE2C55; border-radius:999px; background:#fff1f3; color:#b3123a; font:600 9px/1.5 ui-monospace,monospace; letter-spacing:.08em; }
+.seller-test-scope { display:inline-block; margin:0 0 10px; padding:2px 8px; border-radius:999px; background:#f2f2f2; color:#666; font-size:10px; }
+.seller-test-toolbar { display:flex; justify-content:flex-end; gap:8px; margin:0 0 12px; }
+.seller-page-content .seller-test-button { gap:6px; border-style:dashed; }
+.seller-test-sheet { gap:8px; }
+.seller-test-sheet-header { padding-bottom:0; }
+.seller-test-sheet-body { flex:1; min-height:0; overflow-y:auto; padding:4px 16px 24px; }
+.app.seller-test-tools { padding:0; min-width:0; height:auto; }
+.seller-test-tools .admin-console { display:block; height:auto; max-width:none; margin:0; border-radius:0; background:transparent; overflow:visible; }
+.seller-test-tools .admin-panel { overflow-x:auto; }
+.seller-test-warning { padding:10px 14px; border:1px dashed #FE2C55; border-radius:12px; background:#fff1f3; color:#8a1030; font-size:12px; }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
-import { ClipboardList, Headset, LayoutDashboard, Megaphone, Package, Store, ShieldCheck, ShoppingBag, ChevronRight, type LucideIcon } from 'lucide-react';
+import { ClipboardList, FlaskConical, Headset, LayoutDashboard, Megaphone, Package, Store, ShieldCheck, ShoppingBag, ChevronRight, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -41,6 +41,7 @@ const menu: MenuGroup[] = [
   { label: 'Marketing', icon: Megaphone, items: [{ to: `${base}/vouchers`, label: 'Vouchers' }] },
   { label: 'Customer service', icon: Headset, items: [{ to: `${base}/messages`, label: 'Messages' }, { to: `${base}/customers`, label: 'Customers' }] },
   { label: 'Shop', icon: Store, to: `${base}/shop` },
+  { label: 'Testing', icon: FlaskConical, items: [{ to: `${base}/testing/integration`, label: 'Integration' }, { to: `${base}/testing/system`, label: 'System' }] },
 ];
 
 /** Same navigation hierarchy as the Console, using the existing Seller routes. */
