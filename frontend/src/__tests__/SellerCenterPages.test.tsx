@@ -464,6 +464,22 @@ describe('Seller Center vouchers', () => {
     });
     expect(csv).toBe(batchCsv(batchCodes));
     click.mockRestore();
+
+    // TEST: code usage of this batch comes from /test-admin/coupons, filtered by the batch
+    fireEvent.click(within(dialog).getByRole('button', { name: 'View usage' }));
+    expect(await screen.findByRole('dialog', { name: /Code usage/ })).toBeTruthy();
+    await waitFor(() => expect(calls.map((c) => c.url)).toContain('/test-admin/coupons?shopId=shop-1&limit=200&batchId=b1'));
+  });
+
+  it('generates loyalty tier batches from the voucher Test tools', async () => {
+    renderAt('/seller-center/vouchers');
+    fireEvent.click(await screen.findByRole('button', { name: 'Test tools' }));
+    const sheet = await screen.findByRole('dialog', { name: /Voucher test tools/ });
+    expect(within(sheet).getByText('TEST')).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Generate voucher batches' }));
+    await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([
+      { url: '/test-admin/scenarios/loyalty-vouchers', method: 'POST', body: { shopId: 'shop-1', quantityPerTier: 20, validDays: 30, tiers: [{ name: 'Silver', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] } },
+    ]));
   });
 
   it('creates a scheduled code batch with the right body and opens its codes', async () => {

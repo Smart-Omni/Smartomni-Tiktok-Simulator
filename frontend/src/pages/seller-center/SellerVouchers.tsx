@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Copy, Download, Pencil, Plus } from 'lucide-react';
+import { Copy, Download, FlaskConical, Pencil, Plus } from 'lucide-react';
+import { TestToolbar, TestToolsButton, TestToolsSheet } from '@/components/seller/TestTools';
+import { CouponsPanel } from '@/features/coupons.console';
+import { LoyaltyVouchersForm } from '@/pages/console/LoyaltyVouchersForm';
 import { toast } from 'sonner';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -260,6 +263,7 @@ function EditVoucherDialog({ coupon, onClose, onSave }: { coupon: Coupon; onClos
 function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchId: string; onClose: () => void }) {
   const detail = useAsync(() => getCouponBatch(seller, batchId), [seller.sessionToken, seller.shopId, batchId]);
   const [deactivating, setDeactivating] = useState<CouponBatchCode>();
+  const [usage, setUsage] = useState(false);
   const copyAll = async (codes: CouponBatchCode[]) => {
     try {
       await navigator.clipboard.writeText(codes.map((c) => c.promoCode).join('\n'));
@@ -296,6 +300,9 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
                 <Button size="sm" variant="outline" onClick={() => download(d.batch.title, d.codes)}>
                   <Download /> Download CSV
                 </Button>
+                <Button size="sm" variant="outline" className="seller-test-button" onClick={() => setUsage(true)}>
+                  <FlaskConical /> View usage
+                </Button>
               </div>
               <div className="max-h-96 overflow-y-auto rounded-lg ring-1 ring-line-soft">
                 <Table aria-label="Codes">
@@ -324,6 +331,7 @@ function CodesDialog({ seller, batchId, onClose }: { seller: DemoSession; batchI
             </div>
           )}
         </Loaded>
+        {usage && <TestToolsSheet open title="Code usage" description="Orders that used each code of this batch." tabs={[{ label: 'Code usage', scope: 'shop', render: () => <CouponsPanel shopId={seller.shopId} initialBatchId={batchId} /> }]} onOpenChange={(o) => !o && setUsage(false)} />}
         {deactivating && <FormDialog title="Deactivate code?" description={`${deactivating.promoCode} cannot be reactivated afterwards.`} submit="Deactivate code" canSubmit onClose={() => setDeactivating(undefined)} onSubmit={async () => { await patchCoupon(seller, deactivating.id, { deactivated: true }); setDeactivating(undefined); detail.reload(); toast.success('Code deactivated'); }}><span className="text-xs text-muted-foreground sm:col-span-2">Other codes in this batch stay available.</span></FormDialog>}
       </DialogContent>
     </Dialog>
@@ -528,9 +536,20 @@ function CodeBatches({ seller, tabs }: { seller: DemoSession; tabs: ReactNode })
   );
 }
 
+/** TEST: loyalty tier batches from /test-admin, with the result message. */
+function LoyaltyBatchesPanel({ shopId }: { shopId: string }) {
+  const [msg, setMsg] = useState('');
+  const [round, setRound] = useState(0);
+  return <div>
+    {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
+    <LoyaltyVouchersForm key={round} shopId={shopId} onCreated={(m) => { setMsg(m); setRound((r) => r + 1); }} onClose={() => setRound((r) => r + 1)} />
+  </div>;
+}
+
 function Vouchers({ seller }: { seller: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') === 'batches' ? 'batches' : 'vouchers';
+  const [round, setRound] = useState(0);
   const tabs = (
       <Tabs value={tab} onValueChange={(v) => setParams(v === 'batches' ? { tab: 'batches' } : {}, { replace: true })}>
         <TabsList variant="line" className="h-11 justify-start gap-2">
@@ -539,7 +558,20 @@ function Vouchers({ seller }: { seller: DemoSession }) {
         </TabsList>
       </Tabs>
   );
-  return <div className="seller-vouchers-page">{tab === 'batches' ? <CodeBatches seller={seller} tabs={tabs} /> : <SingleVouchers seller={seller} tabs={tabs} />}</div>;
+  return <div className="seller-vouchers-page">
+    <TestToolbar>
+      <TestToolsButton
+        title="Voucher test tools"
+        description="Generate one batch of single-use codes per loyalty tier, and see which orders used each code."
+        onClose={() => setRound((r) => r + 1)}
+        tabs={[
+          { label: 'Loyalty batches', scope: 'shop', render: () => <LoyaltyBatchesPanel shopId={seller.shopId} /> },
+          { label: 'Code usage', scope: 'shop', render: () => <CouponsPanel shopId={seller.shopId} /> },
+        ]}
+      />
+    </TestToolbar>
+    {tab === 'batches' ? <CodeBatches key={round} seller={seller} tabs={tabs} /> : <SingleVouchers key={round} seller={seller} tabs={tabs} />}
+  </div>;
 }
 
 export function SellerVouchers() {
