@@ -16,6 +16,9 @@ import { cn } from '@/lib/utils';
 import { emptyVariant, MAX_SKUS, validPrice, validStock, variantBody, variantError } from '@/lib/catalogValidation';
 import { VariantExtras } from '@/components/seller/VariantExtras';
 import { EditSkuDialog } from '@/components/seller/EditSkuDialog';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
+import { MediaPanel } from '@/pages/console/MediaPanel';
+import { BulkProductsForm } from '@/pages/console/ShopsPanel';
 
 /** Rules from the former /seller catalog (SellerCatalog). */
 const STATUSES = ['DRAFT', 'ACTIVATE', 'SELLER_DEACTIVATED'];
@@ -384,6 +387,17 @@ function StockHistory({ seller, onBack }: { seller: DemoSession; onBack: () => v
   );
 }
 
+/** Bulk product generator with its result message (the catalog reloads when the sheet closes). */
+function BulkProductsPanel({ shopId }: { shopId: string }) {
+  const [msg, setMsg] = useState('');
+  return <div className="card">
+    <h3>Generate test products</h3>
+    <p className="muted">Creates active products with priced SKUs and stock, to exercise multi-page product imports.</p>
+    <BulkProductsForm shopId={shopId} shopName="this shop" onCreated={setMsg} />
+    {msg ? <div className="state state-empty" role="status">{msg}</div> : null}
+  </div>;
+}
+
 function Products({ seller }: { seller: DemoSession }) {
   const [params, setParams] = useSearchParams();
   const lowOnly = params.get('filter') === 'low-stock';
@@ -404,6 +418,17 @@ function Products({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="seller-products-page flex flex-col gap-4">
+      <TestToolbar>
+        <TestToolsButton
+          title="Product test tools"
+          description="Generate test products for this shop, or try the TikTok-shaped media upload API."
+          onClose={catalog.reload}
+          tabs={[
+            { label: 'Bulk products', scope: 'shop', render: () => <BulkProductsPanel shopId={seller.shopId} /> },
+            { label: 'Media upload API', scope: 'all', render: () => <MediaPanel /> },
+          ]}
+        />
+      </TestToolbar>
       <div className={cn('flex-col gap-4', tab === 'products' ? 'flex' : 'hidden')}>
           {lowOnly ? (
             <div className="flex w-fit items-center gap-2 rounded-full bg-teal-soft px-3 py-1 text-sm text-teal">

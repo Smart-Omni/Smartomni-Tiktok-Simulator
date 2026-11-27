@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChatThread } from '@/components/ChatThread';
 import { Loaded, SellerCard } from '@/components/seller/SellerUi';
+import { SimulateBuyerReply } from '@/components/seller/SimulateBuyerReply';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
+import { ChatPanel } from '@/features/chat.console';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/lib/auth';
@@ -46,10 +49,19 @@ function Messages({ seller }: { seller: DemoSession }) {
   const unreadOnly = params.get('filter') === 'unread';
   const list = useAsync(() => listConversations(seller), [seller.sessionToken, seller.shopId], 4000);
   const [selected, setSelected] = useState<string>();
+  // remount the thread so it fetches the simulated reply at once instead of on its next poll
+  const [round, setRound] = useState(0);
 
   return (
     <div className="flex flex-col gap-4">
-
+      <TestToolbar>
+        <TestToolsButton
+          title="Chat test tools"
+          description="Simulate buyer messages, lost or duplicated events, agent activity and send faults."
+          onClose={list.reload}
+          tabs={[{ label: 'Chat testing', scope: 'all', render: () => <ChatPanel shopId={seller.shopId} /> }]}
+        />
+      </TestToolbar>
       <SellerCard className="grid overflow-hidden md:grid-cols-[320px_minmax(0,1fr)]">
         <div className="border-b border-line-soft md:border-b-0 md:border-r">
           <label className="flex items-center gap-2 border-b border-line-soft px-4 py-3 text-sm">
@@ -60,7 +72,10 @@ function Messages({ seller }: { seller: DemoSession }) {
             {(d) => <ConversationList items={unreadOnly ? d.items.filter((c) => c.unread > 0) : d.items} current={selected} onSelect={setSelected} />}
           </Loaded>
         </div>
-        <ChatThread session={seller} conversationId={selected} onSent={list.reload} />
+        <div className="flex min-w-0 flex-col">
+          <ChatThread key={round} session={seller} conversationId={selected} onSent={list.reload} />
+          {selected ? <SimulateBuyerReply conversationId={selected} onSent={() => { setRound((r) => r + 1); list.reload(); }} /> : null}
+        </div>
       </SellerCard>
     </div>
   );

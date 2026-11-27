@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { AftersaleTestActions } from '@/components/seller/AftersaleTestActions';
 import { humanize, Loaded, NativeSelect, SellerCard } from '@/components/seller/SellerUi';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
+import { ArbitrationPanel } from '@/pages/console/ArbitrationPanel';
+import { DisputesPanel } from '@/pages/console/DisputesPanel';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -42,7 +46,17 @@ function Returns({ seller }: { seller: DemoSession }) {
   const open = all.filter((r) => OPEN_AFTERSALE.includes(r.status));
   return (
     <div className="flex flex-col gap-4">
-
+      <TestToolbar>
+        <TestToolsButton
+          title="Returns test tools"
+          description="Simulator disputes and operator arbitration. Use Test actions on a request for its records, arbitration or refund completion."
+          onClose={list.reload}
+          tabs={[
+            { label: 'Disputes', scope: 'shop', render: () => <DisputesPanel shopId={seller.shopId} /> },
+            { label: 'Arbitration', scope: 'shop', render: () => <ArbitrationPanel shopId={seller.shopId} /> },
+          ]}
+        />
+      </TestToolbar>
       <SellerCard>
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'open' ? { status: 'open' } : { status: 'all' }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">
@@ -123,6 +137,7 @@ function Returns({ seller }: { seller: DemoSession }) {
                         ) : (
                           <span className="text-xs text-muted-2">—</span>
                         )}
+                        <div className="mt-2"><AftersaleTestActions shopId={seller.shopId} request={r} onChanged={list.reload} /></div>
                       </TableCell>
                     </TableRow>
                   ))}

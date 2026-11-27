@@ -29,6 +29,8 @@ const SellerProductForm = named(() => import('./pages/seller-center/SellerProduc
 const SellerVouchers = named(() => import('./pages/seller-center/SellerVouchers'), 'SellerVouchers');
 const SellerMessages = named(() => import('./pages/seller-center/SellerMessages'), 'SellerMessages');
 const SellerCustomers = named(() => import('./pages/seller-center/SellerCustomers'), 'SellerCustomers');
+const SellerTestingIntegration = named(() => import('./pages/seller-center/SellerTesting'), 'SellerTestingIntegration');
+const SellerTestingSystem = named(() => import('./pages/seller-center/SellerTesting'), 'SellerTestingSystem');
 const ConsolePage = named(() => import('./pages/ConsolePage'), 'ConsolePage');
 const AuthorizePage = named(() => import('./pages/AuthorizePage'), 'AuthorizePage');
 
@@ -83,6 +85,8 @@ export function App() {
             <Route path="messages" element={page(SellerMessages)} />
             <Route path="customers" element={page(SellerCustomers)} />
             <Route path="shop" element={page(SellerShop)} />
+            <Route path="testing/integration" element={page(SellerTestingIntegration)} />
+            <Route path="testing/system" element={page(SellerTestingSystem)} />
           </Route>
 
           {/* links to the removed /buyer and /seller pages */}

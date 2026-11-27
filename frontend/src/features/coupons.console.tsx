@@ -36,8 +36,8 @@ const couponsUrl = (shopId: string, batchId: string, after = '') =>
  * Read-only overview. Coupon status is derived from the BUSINESS clock: move it on the Clock tab to cross a start/expiry boundary.
  * The first page refreshes every 5 s; "Load more" appends the following pages (cursor `next`).
  */
-export function CouponsPanel({ shopId }: { shopId: string }) {
-  const [batchId, setBatchId] = useState('');
+export function CouponsPanel({ shopId, initialBatchId = '' }: { shopId: string; initialBatchId?: string }) {
+  const [batchId, setBatchId] = useState(initialBatchId);
   // pages loaded with "Load more", kept only for the filter they were loaded with
   const [loaded, setLoaded] = useState<{ key: string; items: AdminCoupon[]; next: string } | null>(null);
   const [msg, setMsg] = useState('');

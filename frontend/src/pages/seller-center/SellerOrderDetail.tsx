@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check } from 'lucide-react';
+import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { OrderActions } from '@/components/seller/OrderActions';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
+import { OrderAuditPanel } from '@/pages/console/OrderAuditPanel';
 import { OrderStatusBadge } from '@/components/seller/OrderStatusBadge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -162,6 +165,15 @@ function Detail({ seller, id }: { seller: DemoSession; id: string }) {
         <OrderStatusBadge status={order.status} />
         <OrderActions seller={seller} orderId={order.id} status={order.status} hasTracking={Boolean(pkg?.trackingNumber)} onChanged={refresh} className="ml-auto" />
       </div>
+      <TestToolbar>
+        <ForceStatusMenu shopId={seller.shopId} orderId={order.id} status={order.status} onChanged={refresh} />
+        <TestToolsButton
+          title="Order test tools"
+          description="Status history of this order with actor and note, as recorded by the simulator."
+          onClose={refresh}
+          tabs={[{ label: 'Audit log', scope: 'shop', render: () => <OrderAuditPanel shopId={seller.shopId} orderRef={order.id} /> }]}
+        />
+      </TestToolbar>
 
       <StepBar progress={orderProgress(order, history)} cancelReason={order.cancelReason} />
 
