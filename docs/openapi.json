@@ -1866,6 +1866,10 @@
                               "paid_time": {
                                 "type": "integer"
                               },
+                              "rts_sla_time": {
+                                "type": "integer",
+                                "description": "Latest shipping time: paid_time + 48 hours (Unix seconds)"
+                              },
                               "rts_time": {
                                 "type": "integer"
                               },
@@ -2070,6 +2074,7 @@
                         "create_time": 1700000000,
                         "update_time": 1700000300,
                         "paid_time": 1700000100,
+                        "rts_sla_time": 1700172900,
                         "is_buyer_request_cancel": false,
                         "is_on_hold_order": false,
                         "user_id": "7100000000000000001",
@@ -2373,6 +2378,10 @@
                               "paid_time": {
                                 "type": "integer"
                               },
+                              "rts_sla_time": {
+                                "type": "integer",
+                                "description": "Latest shipping time: paid_time + 48 hours (Unix seconds)"
+                              },
                               "rts_time": {
                                 "type": "integer"
                               },
@@ -2570,6 +2579,7 @@
                         "create_time": 1700000000,
                         "update_time": 1700000300,
                         "paid_time": 1700000100,
+                        "rts_sla_time": 1700172900,
                         "is_buyer_request_cancel": false,
                         "is_on_hold_order": false,
                         "user_id": "7100000000000000001",
