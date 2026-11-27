@@ -22,10 +22,10 @@ let orderId = '';
 const TEE = '/product/sim-product-a-tee';
 
 test('a marketplace product link opens the right product for a buyer and the SKU picker selects the variant', async ({ page }) => {
-  // the old /buyer link still works and lands on the product page, which asks a guest to sign in
+  // the old /buyer link still works: a guest ends up on the selling shop's product page
   await page.goto('/buyer/product/sim-product-a-tee');
-  await expect(page).toHaveURL(new RegExp(`${TEE}$`));
-  await expect(page.getByText('Sign in to view this product.')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Áo thun cotton basic' })).toBeVisible();
+  await expect(page).toHaveURL(/\/product\/[^/]+\/sim-product-a-tee$/);
   await signInAs(page, 'BUYER', BUYER_A, TEE);
   // the selling shop is shown in the breadcrumb (Home > shop > product)
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Cửa hàng Mộc Lan');

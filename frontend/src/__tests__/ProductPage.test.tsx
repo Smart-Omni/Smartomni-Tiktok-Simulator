@@ -21,6 +21,7 @@ const tee: StorefrontProduct = {
   skus: [
     { id: 'sku-wm', name: 'Trắng / M', attributeName: 'Màu / Size', priceVnd: 129000, available: true, stock: 2 },
     { id: 'sku-bm', name: 'Đen / M', attributeName: 'Màu / Size', priceVnd: 135000, available: true, stock: 9 },
+    { id: 'sku-wl', name: 'Trắng / L', attributeName: 'Màu / Size', priceVnd: 129000, available: true, stock: 0 },
   ],
 };
 
@@ -78,7 +79,7 @@ describe('ProductPage', () => {
   });
 
   it('switches information tabs with keyboard and retains review filters', async () => {
-    renderProduct('mock-1');
+    renderProduct('7500T', 'shop-2');
     const info = await screen.findByRole('tab', { name: 'Product information' });
     fireEvent.keyDown(info, { key: 'ArrowRight' });
     expect(screen.getByRole('tab', { name: 'Ratings & reviews' }).getAttribute('aria-selected')).toBe('true');
@@ -87,35 +88,35 @@ describe('ProductPage', () => {
     expect(screen.getByRole('tabpanel', { name: 'Product information' })).toBeTruthy();
   });
   it('changes the price with the selected SKU', async () => {
-    renderProduct('mock-1');
+    renderProduct('7500T', 'shop-2');
     expect((await screen.findByTestId('price')).textContent).toBe('₫129.000');
-    expect(screen.getByRole('radio', { name: 'White / M' }).getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('radio', { name: 'Black / M' }));
+    expect(screen.getByRole('radio', { name: 'Trắng / M' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Đen / M' }));
     expect(screen.getByTestId('price').textContent).toBe('₫135.000');
-    expect(screen.getByText('12 available')).toBeTruthy();
+    expect(screen.getByText('9 available')).toBeTruthy();
   });
 
   it('disables sold-out variants in the selection grid', async () => {
-    renderProduct('mock-1');
-    const unavailable = await screen.findByRole('radio', { name: 'White / L' });
+    renderProduct('7500T', 'shop-2');
+    const unavailable = await screen.findByRole('radio', { name: 'Trắng / L' });
     expect(unavailable.hasAttribute('disabled')).toBe(true);
     fireEvent.click(unavailable);
     expect(unavailable.getAttribute('aria-checked')).toBe('false');
-    fireEvent.click(screen.getByRole('radio', { name: 'Black / M' }));
-    expect(screen.getByRole('radio', { name: 'Black / M' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Đen / M' }));
+    expect(screen.getByRole('radio', { name: 'Đen / M' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByTestId('price').textContent).toBe('₫135.000');
   });
 
-  it('sends a guest who adds to cart to sign in and come back', async () => {
-    renderProduct('mock-1');
-    fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
-    expect(screen.getByTestId('location').textContent).toBe('/login?next=%2Fproduct%2Fmock-1');
-    expect(calls).toEqual([]);
+  it('shows a real product to a guest', async () => {
+    renderProduct('7500T', 'shop-2');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Áo thun cotton basic' })).toBeTruthy();
   });
 
-  it('asks a guest to sign in for a real product id', async () => {
+  it('sends a guest who adds to cart to sign in and come back', async () => {
     renderProduct('7500T', 'shop-2');
-    expect(await screen.findByText('Sign in to view this product.')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to cart' }));
+    expect(screen.getByTestId('location').textContent).toBe('/login?next=%2Fproduct%2Fshop-2%2F7500T');
+    expect(calls.filter((c) => c.url.includes('/cart'))).toEqual([]);
   });
 
   it('links the shop breadcrumb to the product owner rather than the buyer session shop', async () => {
