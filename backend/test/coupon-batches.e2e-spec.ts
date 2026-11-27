@@ -437,7 +437,11 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       expect(pages).toBe(3);
       expect(seen).toHaveLength(250);
       expect(new Set(seen).size).toBe(250);
-      expect((await overview({ shopId: shop }).expect(200)).body.items).toHaveLength(200);
+      const firstPage = (await overview({ shopId: shop }).expect(200)).body;
+      expect(firstPage.items).toHaveLength(200);
+      // the summary counts every matching code, not just the 200 of this page
+      expect(firstPage.summary).toEqual({ total: 253, ongoing: 253, redemptions: 0 });
+      expect((await overview({ batchId: batch.id, limit: '10' }).expect(200)).body.summary).toEqual({ total: 250, ongoing: 250, redemptions: 0 });
       for (const limit of ['0', '501', 'x']) await overview({ limit }).expect(400);
       await overview({ after: 'abc' }).expect(400);
     });
@@ -449,6 +453,7 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       const items = (await overview({ batchId: batch.id }).expect(200)).body.items;
       expect(items.map((c: any) => c.usages)).toEqual([[], [{ orderId: order, discountVnd: 77400, at: expect.any(String) }]]);
       expect(items[1]).toMatchObject({ redeemedCount: 1, redemptionLimit: 1, status: 'ONGOING' });
+      expect((await overview({ batchId: batch.id }).expect(200)).body.summary).toEqual({ total: 2, ongoing: 2, redemptions: 1 });
     });
   });
 });

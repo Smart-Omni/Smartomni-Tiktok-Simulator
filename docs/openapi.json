@@ -25049,7 +25049,7 @@
           "Test Admin: Data"
         ],
         "summary": "Coupon overview",
-        "description": "Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).\n\nHandler: `TestAdminController.listCoupons`.",
+        "description": "Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `summary` counts every coupon matching `shopId`/`batchId` (all pages), so a client can show the real total while loading one page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).\n\nHandler: `TestAdminController.listCoupons`.",
         "operationId": "TestAdminController_listCoupons",
         "security": [
           {
@@ -25134,11 +25134,34 @@
                     "next": {
                       "type": "string",
                       "description": "Cursor for the next page; empty string on the last page"
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Coupons matching shopId/batchId, all pages"
+                        },
+                        "ongoing": {
+                          "type": "integer",
+                          "description": "Of those, ONGOING on the business clock"
+                        },
+                        "redemptions": {
+                          "type": "integer",
+                          "description": "Sum of redeemedCount over all of them"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "ongoing",
+                        "redemptions"
+                      ]
                     }
                   },
                   "required": [
                     "items",
-                    "next"
+                    "next",
+                    "summary"
                   ]
                 },
                 "example": {
@@ -25162,7 +25185,12 @@
                       ]
                     }
                   ],
-                  "next": ""
+                  "next": "",
+                  "summary": {
+                    "total": 300,
+                    "ongoing": 299,
+                    "redemptions": 1
+                  }
                 }
               }
             }

@@ -202,7 +202,7 @@ export const paths: PathsFragment = {
   '/test-admin/coupons': {
     get: op({
       tag: T_DATA, summary: 'Coupon overview', handler: 'TestAdminController.listCoupons', security: SEC, errorShape: E,
-      description: 'Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).',
+      description: 'Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `summary` counts every coupon matching `shopId`/`batchId` (all pages), so a client can show the real total while loading one page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).',
       query: [
         shopIdQuery,
         { name: 'batchId', description: 'Only the codes of this batch (`batchId` of a code, or `id` of a /demo coupon batch).', example: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b' },
@@ -218,8 +218,9 @@ export const paths: PathsFragment = {
             usages: arr(obj({ orderId: str('Order external id'), discountVnd: int(), at: dt() })),
           })),
           next: str('Cursor for the next page; empty string on the last page'),
-        }, ['items', 'next']),
-        example: { items: [{ id: '7600000000000001', title: 'Loyalty Diamond 30%', promoCode: 'K7M2QX9PRT', status: 'ONGOING', redeemedCount: 1, redemptionLimit: 1, startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-12-31T00:00:00.000Z', batchId: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b', usages: [{ orderId: '5800000000000001', discountVnd: 77400, at: '2026-10-02T08:00:00.000Z' }] }], next: '' },
+          summary: obj({ total: int('Coupons matching shopId/batchId, all pages'), ongoing: int('Of those, ONGOING on the business clock'), redemptions: int('Sum of redeemedCount over all of them') }, ['total', 'ongoing', 'redemptions']),
+        }, ['items', 'next', 'summary']),
+        example: { items: [{ id: '7600000000000001', title: 'Loyalty Diamond 30%', promoCode: 'K7M2QX9PRT', status: 'ONGOING', redeemedCount: 1, redemptionLimit: 1, startAt: '2026-10-01T00:00:00.000Z', endAt: '2026-12-31T00:00:00.000Z', batchId: '0b6f1c2e-4d7a-4f0e-9a51-2c3d4e5f6a7b', usages: [{ orderId: '5800000000000001', discountVnd: 77400, at: '2026-10-02T08:00:00.000Z' }] }], next: '', summary: { total: 300, ongoing: 299, redemptions: 1 } },
       },
       errors: { 400: '`limit` not an integer in 1..500, or `after` not a valid cursor.', 401: E401 },
     }),

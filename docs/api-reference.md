@@ -4829,7 +4829,7 @@ Tổng quan coupon. _(Coupon overview)_
 
 **Phản hồi**:
 
-- `200`: Coupons.
+- `200`: Coupons. `summary` (`total`, `ongoing`, `redemptions`) counts every coupon matching `shopId`/`batchId` across all pages.
 - `400`: `limit` not an integer in 1..500, or `after` not a valid cursor.
 - `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
 
@@ -4857,7 +4857,12 @@ Ví dụ phản hồi thành công:
       ]
     }
   ],
-  "next": ""
+  "next": "",
+  "summary": {
+    "total": 300,
+    "ongoing": 299,
+    "redemptions": 1
+  }
 }
 ```
 
