@@ -1,5 +1,7 @@
 import { MapPin, Store, Warehouse } from 'lucide-react';
 import { Loaded, SellerCard, humanize } from '@/components/seller/SellerUi';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
+import { ShopScenarioPanel } from '@/pages/console/ShopsPanel';
 import { useAuth } from '@/lib/auth';
 import { getShop } from '@/lib/endpoints';
 import { useAsync } from '@/lib/useAsync';
@@ -8,6 +10,13 @@ export function SellerShop() {
   const { seller } = useAuth();
   const shop = useAsync(() => seller ? getShop(seller) : Promise.reject(new Error('Not signed in')), [seller?.sessionToken, seller?.shopId]);
   return <Loaded result={shop} what="shop information">{(data) => <div className="flex flex-col gap-4">
+    <TestToolbar>
+      <TestToolsButton
+        title="Shop test tools"
+        description="Choose the simulator scenario of this shop. For tokens, webhooks and faults use Testing › Integration."
+        tabs={[{ label: 'Scenario', scope: 'shop', render: () => <ShopScenarioPanel shopId={data.id} /> }]}
+      />
+    </TestToolbar>
     <SellerCard label="Shop profile" className="p-5">
       <div className="mb-5 flex items-center gap-3"><Store size={22} /><div><h2>{data.name}</h2><span className="text-xs text-muted-foreground">{humanize(data.status)}</span></div></div>
       <dl className="seller-shop-facts">{[['Shop ID', data.id], ['Region', data.region], ['Currency', data.currency]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>

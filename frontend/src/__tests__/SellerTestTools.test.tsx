@@ -5,7 +5,7 @@ import { AftersaleTestActions } from '@/components/seller/AftersaleTestActions';
 import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { TestToolsButton, TestToolsFrame } from '@/components/seller/TestTools';
 import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
-import { BulkProductsForm } from '@/pages/console/ShopsPanel';
+import { BulkProductsForm, ShopScenarioPanel } from '@/pages/console/ShopsPanel';
 import { AuthProvider } from '@/lib/auth';
 import { SellerTestingSystem } from '@/pages/seller-center/SellerTesting';
 
@@ -144,6 +144,22 @@ describe('Seller Center test tools', () => {
     fireEvent.click(submit());
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('Added 12 products to this shop (40 in this shop).'));
     expect(posts).toEqual([{ shopId: 'shop-1', count: 12, skusPerProduct: 3 }]);
+    vi.unstubAllGlobals();
+  });
+
+  it('activates a scenario for the working shop only', async () => {
+    const shop = (id: string, name: string) => ({ id, name, tiktokShopId: `tt-${id}`, region: 'VN', currency: 'VND', status: 'ACTIVE', activeScenarioId: 'sc-1', counts: { products: 1, buyers: 1, webhookJobs: 0 }, scenarios: [{ id: 'sc-1', key: 'normal', name: 'Normal', description: 'Happy path' }, { id: 'sc-2', key: 'rate_limit', name: 'Rate limited', description: 'Every call is throttled' }] });
+    const posts: { url: string; body: unknown }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') { posts.push({ url, body: JSON.parse(init.body as string) }); return json({}); }
+      return json({ items: [shop('shop-0', 'Other shop'), shop('shop-1', 'My shop')] });
+    }));
+    render(<ShopScenarioPanel shopId="shop-1" />);
+    expect(await screen.findByText('My shop')).toBeTruthy();
+    expect(screen.queryByText('Other shop')).toBeNull();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Scenario' }), { target: { value: 'sc-2' } });
+    await waitFor(() => expect(posts).toEqual([{ url: '/test-admin/shops/shop-1/scenario', body: { key: 'rate_limit' } }]));
+    expect(await screen.findByText('Scenario "rate_limit" activated.')).toBeTruthy();
     vi.unstubAllGlobals();
   });
 

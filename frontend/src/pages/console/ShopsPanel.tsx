@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AsyncState } from '../../components/AsyncState';
 import { api } from '../../lib/api';
-import type { AsyncResult } from '../../lib/useAsync';
+import { useAsync, type AsyncResult } from '../../lib/useAsync';
 import type { ShopSummary } from './types';
 import { PaginatedList } from '../../components/console/PaginatedList';
 
@@ -32,6 +32,52 @@ export function BulkProductsForm({ shopId, shopName, onCreated }: { shopId: stri
     </fieldset>
     {error && <p className="state state-error" role="alert">{error}</p>}
   </form>;
+}
+
+/**
+ * Scenario of one shop (GET /test-admin/shops, POST /test-admin/shops/:shopId/scenario), used by Seller Center Shop.
+ * A scenario changes how the TikTok router answers for this shop.
+ */
+export function ShopScenarioPanel({ shopId }: { shopId: string }) {
+  const shops = useAsync(() => api<{ items: ShopSummary[] }>('/test-admin/shops'), []);
+  const [msg, setMsg] = useState<{ text: string; failed: boolean }>();
+  const [busy, setBusy] = useState(false);
+  const activate = async (key: string) => {
+    setBusy(true);
+    try {
+      await api(`/test-admin/shops/${encodeURIComponent(shopId)}/scenario`, { method: 'POST', body: { key } });
+      setMsg({ text: `Scenario "${key}" activated.`, failed: false });
+      shops.reload();
+    } catch (e) {
+      setMsg({ text: (e as Error).message, failed: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <AsyncState {...shops} onRetry={shops.reload}>
+      {(d) => {
+        const s = d.items.find((x) => x.id === shopId);
+        if (!s) return <div className="state state-empty">This shop is not in the simulator shop list.</div>;
+        const active = s.scenarios.find((x) => x.id === s.activeScenarioId);
+        return (
+          <article className="card admin-shop-card">
+            {msg ? <div className={msg.failed ? 'state state-error' : 'state state-empty'} role={msg.failed ? 'alert' : 'status'}>{msg.text}</div> : null}
+            <h3>{s.name}</h3>
+            <div className="muted">{s.region} / {s.currency}<span className="admin-shop-id">TikTok shop ID {s.tiktokShopId}</span></div>
+            <div className="muted">{s.counts.products} products, {s.counts.buyers} buyers, {s.counts.webhookJobs} webhook jobs</div>
+            <label className="admin-shop-scenario">
+              Scenario{' '}
+              <select aria-label="Scenario" value={s.activeScenarioId ?? ''} disabled={busy} onChange={(e) => { const sc = s.scenarios.find((x) => x.id === e.target.value); if (sc) void activate(sc.key); }}>
+                {s.scenarios.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+              </select>
+            </label>
+            <div className="muted admin-scenario-description">{active?.description}</div>
+          </article>
+        );
+      }}
+    </AsyncState>
+  );
 }
 
 export function ShopsPanel({ shops }: { shops: AsyncResult<{ items: ShopSummary[] }> }) {
