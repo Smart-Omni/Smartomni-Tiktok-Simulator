@@ -99,8 +99,11 @@ React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). 
 | `/seller-center/orders`, `/orders/:id` | Manage orders (arrange shipment, print label, simulate carrier, cancel) and order detail | seller |
 | `/seller-center/returns`, `/products`, `/vouchers`, `/messages` | Returns & refunds, products + stock history, vouchers (tabs Vouchers and Code batches: single-use code batches for SmartOmni loyalty), buyer chat | seller |
 | `/seller-center/products/new`, `/products/:id/edit` | Product page: title/description, up to 9 uploaded images (first is the main one), category by level or search, brand, attributes generated from the category (required ones starred), package weight/dimensions, variants on create | seller |
+| `/seller-center/testing/integration`, `/testing/system` | TEST pages: authorization tokens, webhooks, HTTP log and faults; simulator status, seed and business clock (no reset) | seller (tester) |
 | `/console` | Test Console (unchanged) | developers |
 | `/seller/authorize` | OAuth consent page for SmartOmni (unchanged) | seller |
+
+**Test tools in Seller Center.** Every `/test-admin` and simulator-only API (`/api/v2/simulator/dispute*`, `/api/v2/media/upload`) can be used from Seller Center as well as the Test Console: a dashed **Test tools** button on Manage orders, Order detail, Returns, Products, Vouchers, Messages and Shop opens the matching tools (sandbox and loyalty orders, Force status, aftersale records/arbitration/refund completion, disputes, bulk products, media upload, loyalty voucher batches and code usage, chat simulation, shop scenario), all marked `TEST`. Only reset, and three lists that duplicate a `/demo` list, stay in the Test Console. The map of API to page is in `docs/seller-center-test-tools-plan.md`; `frontend/src/__tests__/sellerTestToolsCoverage.test.ts` fails if an API loses its place.
 
 Buyer-only and seller-only routes send a guest to `/login?next=...`. Links to the removed pages still work: `/buyer/product/<id>` opens `/product/<id>`, other `/buyer/*` paths open `/`, other `/seller/*` paths open `/seller-center`.
 

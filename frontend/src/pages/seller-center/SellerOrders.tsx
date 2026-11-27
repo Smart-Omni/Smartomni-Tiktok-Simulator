@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { OrderActions } from '@/components/seller/OrderActions';
+import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { OrderStatusBadge } from '@/components/seller/OrderStatusBadge';
+import { TestToolbar, TestToolsButton } from '@/components/seller/TestTools';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +17,8 @@ import { countByTab, hasPackage, sellerOrderTabs, sellerTabOf, type SellerOrderT
 import type { DemoSession, Order } from '@/lib/types';
 import { useAsync } from '@/lib/useAsync';
 import { normalizeTitle } from '@/mocks';
+import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
+import { SandboxPanel } from '@/pages/console/SandboxPanel';
 
 const POLL_MS = 10_000;
 
@@ -64,16 +68,19 @@ function OrderRow({ seller, order, onChanged }: { seller: DemoSession; order: Or
         )}
       </TableCell>
       <TableCell className="py-3">
-        <OrderActions
-          seller={seller}
-          orderId={order.id}
-          status={order.status}
-          hasTracking={Boolean(pkg?.trackingNumber)}
-          onChanged={() => {
-            onChanged();
-            f.reload();
-          }}
-        />
+        <div className="flex flex-col items-start gap-2">
+          <OrderActions
+            seller={seller}
+            orderId={order.id}
+            status={order.status}
+            hasTracking={Boolean(pkg?.trackingNumber)}
+            onChanged={() => {
+              onChanged();
+              f.reload();
+            }}
+          />
+          <ForceStatusMenu shopId={seller.shopId} orderId={order.id} status={order.status} onChanged={() => { onChanged(); f.reload(); }} />
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -91,7 +98,17 @@ function Orders({ seller }: { seller: DemoSession }) {
 
   return (
     <div className="flex flex-col gap-4">
-
+      <TestToolbar>
+        <TestToolsButton
+          title="Order test tools"
+          description="Create test orders for this shop. Use Force status on an order to move it through the simulator state machine."
+          onClose={orders.reload}
+          tabs={[
+            { label: 'Create test orders', scope: 'shop', render: () => <SandboxPanel shopId={seller.shopId} /> },
+            { label: 'Loyalty orders', scope: 'shop', render: () => <LoyaltyOrdersForm shopId={seller.shopId} /> },
+          ]}
+        />
+      </TestToolbar>
       <div className="rounded-card bg-white shadow-xs ring-1 ring-line-soft">
         <Tabs value={tab} onValueChange={(v) => setParams(v === 'all' ? {} : { tab: v }, { replace: true })}>
           <TabsList variant="line" className="h-12 w-full justify-start gap-2 overflow-x-auto overflow-y-hidden rounded-none border-b border-line-soft px-4 [scrollbar-width:none]">

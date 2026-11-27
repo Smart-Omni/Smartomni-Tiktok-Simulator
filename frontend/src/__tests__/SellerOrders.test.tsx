@@ -132,7 +132,9 @@ describe('Seller Center orders', () => {
       </MemoryRouter>,
     );
   const row = (id: string) => screen.getByRole('row', { name: `Order ${id}` });
-  const buttons = (el: HTMLElement) => within(el).queryAllByRole('button').map((b) => b.textContent);
+  /** Seller actions only: the TEST Force status menu is checked on its own. */
+  const buttons = (el: HTMLElement) => within(el).queryAllByRole('button').map((b) => b.textContent).filter((t) => t !== 'Force status');
+  const forced = (el: HTMLElement) => within(el).queryAllByRole('button', { name: /^Force status of / }).length === 1;
 
   it('counts per tab, opens the tab from ?tab= and filters by order ID or buyer name', async () => {
     renderAt('/seller-center/orders?tab=to-ship');
@@ -161,6 +163,9 @@ describe('Seller Center orders', () => {
     expect(buttons(row('o5'))).toEqual(['Print label', 'Simulate carrier']);
     expect(buttons(row('o6'))).toEqual(['Print label']);
     expect(buttons(row('o7'))).toEqual([]);
+    // TEST Force status on every order that can still move; none on the cancelled one
+    expect(['o1', 'o2', 'o3', 'o4', 'o5', 'o6'].every((id) => forced(row(id)))).toBe(true);
+    expect(forced(row('o7'))).toBe(false);
   });
 
   it('arranges, simulates the carrier, cancels with a reason and prints the label', async () => {

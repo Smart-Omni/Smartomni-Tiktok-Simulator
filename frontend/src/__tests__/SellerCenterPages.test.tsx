@@ -464,6 +464,22 @@ describe('Seller Center vouchers', () => {
     });
     expect(csv).toBe(batchCsv(batchCodes));
     click.mockRestore();
+
+    // TEST: code usage of this batch comes from /test-admin/coupons, filtered by the batch
+    fireEvent.click(within(dialog).getByRole('button', { name: 'View usage' }));
+    expect(await screen.findByRole('dialog', { name: /Code usage/ })).toBeTruthy();
+    await waitFor(() => expect(calls.map((c) => c.url)).toContain('/test-admin/coupons?shopId=shop-1&limit=200&batchId=b1'));
+  });
+
+  it('generates loyalty tier batches from the voucher Test tools', async () => {
+    renderAt('/seller-center/vouchers');
+    fireEvent.click(await screen.findByRole('button', { name: 'Test tools' }));
+    const sheet = await screen.findByRole('dialog', { name: /Voucher test tools/ });
+    expect(within(sheet).getByText('TEST')).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Generate voucher batches' }));
+    await waitFor(() => expect(calls.filter((c) => c.method === 'POST')).toEqual([
+      { url: '/test-admin/scenarios/loyalty-vouchers', method: 'POST', body: { shopId: 'shop-1', quantityPerTier: 20, validDays: 30, tiers: [{ name: 'Silver', percentage: 10 }, { name: 'Platinum', percentage: 20 }, { name: 'Diamond', percentage: 30 }] } },
+    ]));
   });
 
   it('creates a scheduled code batch with the right body and opens its codes', async () => {
@@ -508,6 +524,17 @@ describe('Seller Center messages', () => {
     fireEvent.change(within(thread).getByRole('textbox', { name: 'Message' }), { target: { value: 'Size L is back' } });
     fireEvent.click(within(thread).getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(writes()).toEqual([{ url: `${base}/chat/conversations/c1/messages`, method: 'POST', body: { text: 'Size L is back' } }]));
+  });
+
+  it('simulates a buyer reply in the open conversation through /test-admin', async () => {
+    renderAt('/seller-center/messages');
+    expect(screen.queryByRole('form', { name: 'Simulate buyer reply' })).toBeNull();
+    fireEvent.click(within(await screen.findByRole('list', { name: 'Conversations' })).getByRole('button', { name: /An/ }));
+    const reply = await screen.findByRole('form', { name: 'Simulate buyer reply' });
+    expect(within(reply).getByText('TEST')).toBeTruthy();
+    fireEvent.change(within(reply).getByRole('textbox', { name: 'Buyer reply text' }), { target: { value: 'Is size L back?' } });
+    fireEvent.click(within(reply).getByRole('button', { name: 'Simulate buyer reply' }));
+    await waitFor(() => expect(writes()).toEqual([{ url: '/test-admin/chat/conversations/c1/buyer-message', method: 'POST', body: { text: 'Is size L back?' } }]));
   });
 
   it('locks the reply box when the shop cannot send messages', async () => {

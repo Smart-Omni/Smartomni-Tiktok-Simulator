@@ -54,7 +54,7 @@ export function TokensPanel({ shopId }: { shopId: string }) {
                 <div className="admin-token-actions">
                   <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-access`)}>Expire access token</button>
                   <button data-tone="warning" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/expire-refresh`)}>Expire refresh token</button>
-                  <button data-tone="danger" disabled={t.status !== 'ACTIVE'} onClick={() => void act(`/test-admin/tokens/${t.id}/revoke`)}>Revoke authorization</button>
+                  <button data-tone="danger" disabled={t.status !== 'ACTIVE'} onClick={() => { if (window.confirm('Revoke this authorization? SmartOmni must authorize the shop again.')) void act(`/test-admin/tokens/${t.id}/revoke`); }}>Revoke authorization</button>
                 </div>
                 <details className="admin-token-scopes"><summary>Granted scopes ({t.scopes.length})</summary><div className="admin-scope-grid">
                   {t.scopes.map((s) => (
