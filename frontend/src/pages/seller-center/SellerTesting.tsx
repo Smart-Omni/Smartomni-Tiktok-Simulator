@@ -4,6 +4,10 @@ import { TestBadge, TestScopeNote, TestToolsFrame, type TestTab } from '@/compon
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/auth';
 import { ClockPanel } from '@/pages/console/ClockPanel';
+import { FaultsPanel } from '@/pages/console/FaultsPanel';
+import { HttpLogPanel } from '@/pages/console/HttpLogPanel';
+import { TokensPanel } from '@/pages/console/TokensPanel';
+import { WebhooksPanel } from '@/pages/console/WebhooksPanel';
 import { StatusPanel } from '@/pages/console/StatusPanel';
 
 /** A Testing page: tabs kept in `?tab=` so a tool can be linked directly. */
@@ -35,8 +39,13 @@ function TestingPage({ title, description, warning, tabs }: { title: string; des
 export function SellerTestingIntegration() {
   const { seller } = useAuth();
   if (!seller) return null;
-  const tabs: TestTab[] = [];
-  return <TestingPage title="Integration testing" description="Test how SmartOmni handles tokens, webhooks and API faults for this shop." tabs={tabs.length ? tabs : [{ label: 'Integration', scope: 'shop', render: () => null }]} />;
+  const tabs: TestTab[] = [
+    { label: 'Authorization', scope: 'shop', render: () => <TokensPanel shopId={seller.shopId} /> },
+    { label: 'Webhooks', scope: 'shop', render: () => <WebhooksPanel shopId={seller.shopId} /> },
+    { label: 'HTTP log', scope: 'all', render: () => <HttpLogPanel shopId={seller.shopId} /> },
+    { label: 'Faults', scope: 'all', render: () => <FaultsPanel shopId={seller.shopId} /> },
+  ];
+  return <TestingPage title="Integration testing" description="Test how SmartOmni handles tokens, webhooks, request logs and API faults. Lists may include other shops; new items use this shop." tabs={tabs} />;
 }
 
 /** Simulator-wide tools. Reset stays in the Test Console only (decided 2026-11-27). */

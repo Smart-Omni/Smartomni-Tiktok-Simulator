@@ -56,6 +56,7 @@ export function FaultsPanel({ shopId }: { shopId: string }) {
     }
   };
   const remove = async (id: string) => {
+    if (!window.confirm('Remove this fault rule? Requests stop failing at once.')) return;
     await api(`/test-admin/faults/${id}`, { method: 'DELETE' });
     faults.reload();
   };

@@ -7,7 +7,7 @@ import { TestToolsButton, TestToolsFrame } from '@/components/seller/TestTools';
 import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
 import { BulkProductsForm, ShopScenarioPanel } from '@/pages/console/ShopsPanel';
 import { AuthProvider } from '@/lib/auth';
-import { SellerTestingSystem } from '@/pages/seller-center/SellerTesting';
+import { SellerTestingIntegration, SellerTestingSystem } from '@/pages/seller-center/SellerTesting';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -161,6 +161,26 @@ describe('Seller Center test tools', () => {
     await waitFor(() => expect(posts).toEqual([{ url: '/test-admin/shops/shop-1/scenario', body: { key: 'rate_limit' } }]));
     expect(await screen.findByText('Scenario "rate_limit" activated.')).toBeTruthy();
     vi.unstubAllGlobals();
+  });
+
+  it('shows tokens, webhooks, HTTP log and faults for the working shop on the Integration page', async () => {
+    sessionStorage.setItem('sim.demo-session.SELLER', JSON.stringify({ sessionToken: 'tok', role: 'SELLER', shopId: 'shop-1', buyerId: null, expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(url);
+      return json({ items: [] });
+    }));
+    const view = (tab?: string) => render(<MemoryRouter initialEntries={[`/seller-center/testing/integration${tab ? `?tab=${encodeURIComponent(tab)}` : ''}`]}><AuthProvider><Routes><Route path="/seller-center/testing/integration" element={<SellerTestingIntegration />} /></Routes></AuthProvider></MemoryRouter>);
+    view();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Authorization', 'Webhooks', 'HTTP log', 'Faults']);
+    await waitFor(() => expect(urls).toContain('/test-admin/tokens?shopId=shop-1'));
+    for (const [tab, path] of [['Webhooks', '/test-admin/webhooks'], ['HTTP log', '/test-admin/http-logs'], ['Faults', '/test-admin/faults']]) {
+      cleanup();
+      view(tab);
+      await waitFor(() => expect(urls.some((u) => u.startsWith(path))).toBe(true));
+    }
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
   });
 
   it('opens a TEST sheet with one tab per tool, mounts only the active tab and reports the close', () => {
