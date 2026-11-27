@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ForceStatusMenu } from '@/components/seller/ForceStatusMenu';
 import { TestToolsButton, TestToolsFrame } from '@/components/seller/TestTools';
+import { LoyaltyOrdersForm } from '@/pages/console/LoyaltyOrdersForm';
 import { AuthProvider } from '@/lib/auth';
 import { SellerTestingSystem } from '@/pages/seller-center/SellerTesting';
 
@@ -42,6 +44,51 @@ describe('Seller Center test tools', () => {
     expect(calls.some((c) => c.url.includes('/reset'))).toBe(false);
     vi.unstubAllGlobals();
     sessionStorage.clear();
+  });
+
+  it('forces an order status through /test-admin, or one step when no status is chosen', async () => {
+    const bodies: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe('/test-admin/orders/ord-1/transition');
+      bodies.push(JSON.parse(init!.body as string));
+      return json({ id: 'ord-1', from: 'DELIVERED', status: 'COMPLETED', transitioned: true, updatedAt: 'x' });
+    }));
+    const onChanged = vi.fn();
+    render(<ForceStatusMenu shopId="shop-1" orderId="ord-1" status="DELIVERED" onChanged={onChanged} />);
+    const open = () => fireEvent.keyDown(screen.getByRole('button', { name: 'Force status of ord-1' }), { key: 'Enter' });
+    open();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Completed' }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    open();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Next step' }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(2));
+    expect(bodies).toEqual([{ to: 'COMPLETED', shopId: 'shop-1' }, { shopId: 'shop-1' }]);
+    vi.unstubAllGlobals();
+  });
+
+  it('hides Force status for a final order', () => {
+    render(<ForceStatusMenu shopId="shop-1" orderId="ord-1" status="COMPLETED" onChanged={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /Force status/ })).toBeNull();
+  });
+
+  it('lists each loyalty test order with its case, completion time and sub total', async () => {
+    const amounts = { productTotal: 230000, sellerDiscount: 0, platformDiscount: 0, subTotal: 230000, shippingFee: 25000, tax: 0, total: 255000 };
+    vi.stubGlobal('fetch', vi.fn(async () => json({
+      shopId: 'shop-1', thresholdDays: 15, note: 'Points come from sub_total.',
+      orders: [
+        { label: 'completed exactly 15 days ago (boundary)', orderId: 'o-1', status: 'COMPLETED', completedAt: '2026-11-12T12:00:00.000Z', deliveredAt: null, updatedAt: 'x', amountsVnd: amounts },
+        { label: 'paid, awaiting shipment (never eligible)', orderId: 'o-2', status: 'AWAITING_SHIPMENT', completedAt: null, deliveredAt: null, updatedAt: 'x', amountsVnd: amounts },
+      ],
+    })));
+    render(<LoyaltyOrdersForm shopId="shop-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate loyalty orders' }));
+    const table = await screen.findByRole('region', { name: 'Loyalty test orders' });
+    expect(within(table).getByText('Points come from sub_total.')).toBeTruthy();
+    const boundary = within(table).getByText('completed exactly 15 days ago (boundary)').closest('tr')!;
+    expect(within(boundary).getByText('230,000 VND')).toBeTruthy();
+    expect(within(boundary).getByText('255,000 VND')).toBeTruthy();
+    expect(within(within(table).getByText('o-2').closest('tr')!).getAllByText('—')).toHaveLength(1);
+    vi.unstubAllGlobals();
   });
 
   it('opens a TEST sheet with one tab per tool, mounts only the active tab and reports the close', () => {

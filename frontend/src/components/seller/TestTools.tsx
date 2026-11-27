@@ -55,7 +55,7 @@ export function TestToolsSheet({ title, description, tabs, open, onOpenChange, i
   const active = tabs.find((t) => t.label === tab) ?? tabs[0];
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="theme-seller seller-test-sheet font-sans w-full sm:max-w-3xl">
+      <SheetContent className="theme-seller seller-test-sheet font-sans w-full sm:max-w-[min(1120px,94vw)]">
         <SheetHeader className="seller-test-sheet-header">
           <SheetTitle className="flex items-center gap-2"><FlaskConical size={16} aria-hidden="true" />{title}<TestBadge /></SheetTitle>
           <SheetDescription>{description}</SheetDescription>
