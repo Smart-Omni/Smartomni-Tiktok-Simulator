@@ -3,7 +3,7 @@ import { api } from '../../lib/api';
 
 const whole = (value: string, max: number) => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
 const defaultTiers = [
-  { name: 'Silver', percentage: '10', cap: '' },
+  { name: 'Gold', percentage: '10', cap: '' },
   { name: 'Platinum', percentage: '20', cap: '' },
   { name: 'Diamond', percentage: '30', cap: '' },
 ];

@@ -519,7 +519,7 @@ export const paths: PathsFragment = {
   '/test-admin/scenarios/loyalty-vouchers': {
     post: op({
       tag: T_SCEN, summary: 'Create loyalty voucher batches', handler: 'LoyaltyAdminController.createVouchers', security: SEC, errorShape: E, status: 201,
-      description: 'Creates one batch of single-use PERCENT_OFF codes per tier (default Silver 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).',
+      description: 'Creates one batch of single-use PERCENT_OFF codes per tier (default Gold 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).',
       body: {
         schema: obj({
           shopId: str('Internal shop id', { minLength: 1 }),

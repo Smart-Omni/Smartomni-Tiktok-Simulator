@@ -223,7 +223,7 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       const created = await createBatch(seller, { quantity: 150 }).expect(201);
       expect(created.body.codes).toHaveLength(150);
       expect(created.body.batch).toMatchObject({ title: 'Loyalty Diamond 30%', quantity: 150, redeemed: 0, status: 'ONGOING', discountText: '30% off' });
-      await createBatch(seller, { title: 'Loyalty Silver 10%', discount: { type: 'PERCENT_OFF', percentage: 10 }, quantity: 2 }).expect(201);
+      await createBatch(seller, { title: 'Loyalty Gold 10%', discount: { type: 'PERCENT_OFF', percentage: 10 }, quantity: 2 }).expect(201);
 
       const seen: string[] = [];
       let token = '';
@@ -391,11 +391,11 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       await http.get('/test-admin/coupons').expect(401);
     });
 
-    it('creates Silver 10% / Platinum 20% / Diamond 30% batches that SmartOmni can pull with Search; every call creates new batches', async () => {
+    it('creates Gold 10% / Platinum 20% / Diamond 30% batches that SmartOmni can pull with Search; every call creates new batches', async () => {
       const { accessToken, seller } = await t.connect(0);
       const r = await scenario({ shopId: seller.shopId, quantityPerTier: 4 }).expect(201);
       expect(r.body.batches.map((b: any) => [b.tier, b.title, b.percentage, b.codes.length])).toEqual([
-        ['Silver', 'Loyalty Silver 10%', 10, 4],
+        ['Gold', 'Loyalty Gold 10%', 10, 4],
         ['Platinum', 'Loyalty Platinum 20%', 20, 4],
         ['Diamond', 'Loyalty Diamond 30%', 30, 4],
       ]);

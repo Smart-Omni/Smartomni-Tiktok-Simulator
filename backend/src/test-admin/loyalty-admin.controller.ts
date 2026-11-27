@@ -39,7 +39,7 @@ const LoyaltyVouchers = z
   .strict();
 /** Test data only: the real percentages are configured by SmartOmni staff. */
 const DEFAULT_TIERS: z.infer<typeof VoucherTier>[] = [
-  { name: 'Silver', percentage: 10 },
+  { name: 'Gold', percentage: 10 },
   { name: 'Platinum', percentage: 20 },
   { name: 'Diamond', percentage: 30 },
 ];
