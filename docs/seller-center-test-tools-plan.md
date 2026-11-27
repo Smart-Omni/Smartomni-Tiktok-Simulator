@@ -222,7 +222,7 @@ Ký hiệu cột "Thành phần":
 - Thêm xác nhận cho revoke và xóa fault nếu panel chưa có.
 - **Test:** mỗi tab gọi đúng endpoint đầu tiên với `shopId`.
 
-### Bước 9: Trang System
+### Bước 9: Trang System (làm chung với Bước 1)
 
 - `StatusPanel`, `ClockPanel`. Không có Reset (đã chốt).
 - Đầu trang có cảnh báo: "These tools affect every shop".
