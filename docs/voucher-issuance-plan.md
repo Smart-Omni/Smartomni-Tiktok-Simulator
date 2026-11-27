@@ -231,8 +231,8 @@ Gate: backend. Commit ⭐.
 File: `backend/src/test-admin/loyalty-admin.controller.ts` (cạnh `scenarios/loyalty-orders`, cùng `AdminTokenGuard`).
 
 - `POST /test-admin/scenarios/loyalty-vouchers`
-  `{ "shopId": "...", "quantityPerTier": 20, "validDays": 30, "tiers"?: [{ "name": "Gold", "percentage": 10, "maxDiscountVnd"?: ... }] }`
-  - Mặc định `tiers` = Gold 10 / Platinum 20 / Diamond 30, `quantityPerTier` 1–500 (mặc định 20), `validDays` 1–365 (mặc định 30).
+  `{ "shopId": "...", "quantityPerTier": 100, "validDays": 365, "tiers"?: [{ "name": "Gold", "percentage": 10, "maxDiscountVnd"?: ... }] }`
+  - Mặc định `tiers` = Gold 10 / Platinum 20 / Diamond 30, `quantityPerTier` 1–500 (mặc định 100), `validDays` 1–365 (mặc định 365).
   - Tạo mỗi tier một lô bằng `CouponBatchService.createBatch`. Title: `Loyalty Gold 10%`, `Loyalty Platinum 20%`, `Loyalty Diamond 30%`.
   - Trả `{ batches: [{ tier, batchId, title, codes: [...] }] }`.
   - Mỗi lần gọi tạo lô mới (không idempotent); ghi rõ trong OpenAPI.

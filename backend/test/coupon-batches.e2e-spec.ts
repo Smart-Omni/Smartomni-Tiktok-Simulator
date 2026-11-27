@@ -400,7 +400,7 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
         ['Diamond', 'Loyalty Diamond 30%', 30, 4],
       ]);
       const start = new Date(r.body.batches[0].startAt).getTime();
-      expect(new Date(r.body.batches[0].endAt).getTime() - start).toBe(30 * DAY);
+      expect(new Date(r.body.batches[0].endAt).getTime() - start).toBe(365 * DAY);
       const found = await t.call('POST', '/promotion/202406/coupons/search', accessToken, { query: { page_size: '100' }, body: { title_keyword: 'LOYALTY DIAMOND' } }).expect(200);
       expect(found.body.data.coupons.map((c: any) => c.promo_code).sort()).toEqual(r.body.batches[2].codes.map((c: any) => c.promoCode).sort());
       expect(found.body.data.coupons.every((c: any) => c.discount.percentage === '30')).toBe(true);

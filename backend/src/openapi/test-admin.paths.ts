@@ -523,11 +523,11 @@ export const paths: PathsFragment = {
       body: {
         schema: obj({
           shopId: str('Internal shop id', { minLength: 1 }),
-          quantityPerTier: int('Codes per tier', { minimum: 1, maximum: 500, default: 20 }),
-          validDays: int('Validity from now (business clock)', { minimum: 1, maximum: 365, default: 30 }),
+          quantityPerTier: int('Codes per tier', { minimum: 1, maximum: 500, default: 100 }),
+          validDays: int('Validity from now (business clock)', { minimum: 1, maximum: 365, default: 365 }),
           tiers: arr(obj({ name: str('1-40 chars'), percentage: int(undefined, { minimum: 1, maximum: 100 }), maxDiscountVnd: int('Optional cap', { minimum: 1 }) }, ['name', 'percentage'])),
         }, ['shopId']),
-        example: { shopId: SHOP_ID, quantityPerTier: 20, validDays: 30 },
+        example: { shopId: SHOP_ID, quantityPerTier: 100, validDays: 365 },
       },
       ok: {
         description: 'Created batches (201 Created).',

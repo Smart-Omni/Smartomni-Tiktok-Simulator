@@ -10,8 +10,8 @@ const defaultTiers = [
 
 /** Test-data setup: one batch of single-use percentage codes per tier, using the business clock. */
 export function LoyaltyVouchersForm({ shopId, onCreated, onClose }: { shopId: string; onCreated: (message: string) => void; onClose: () => void }) {
-  const [quantity, setQuantity] = useState('20');
-  const [validDays, setValidDays] = useState('30');
+  const [quantity, setQuantity] = useState('100');
+  const [validDays, setValidDays] = useState('365');
   const [tiers, setTiers] = useState(defaultTiers);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

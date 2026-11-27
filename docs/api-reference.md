@@ -5761,8 +5761,8 @@ Ví dụ:
 ```json
 {
   "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
-  "quantityPerTier": 20,
-  "validDays": 30
+  "quantityPerTier": 100,
+  "validDays": 365
 }
 ```
 

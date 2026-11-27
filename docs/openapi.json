@@ -29501,14 +29501,14 @@
                     "description": "Codes per tier",
                     "minimum": 1,
                     "maximum": 500,
-                    "default": 20
+                    "default": 100
                   },
                   "validDays": {
                     "type": "integer",
                     "description": "Validity from now (business clock)",
                     "minimum": 1,
                     "maximum": 365,
-                    "default": 30
+                    "default": 365
                   },
                   "tiers": {
                     "type": "array",
@@ -29543,8 +29543,8 @@
               },
               "example": {
                 "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
-                "quantityPerTier": 20,
-                "validDays": 30
+                "quantityPerTier": 100,
+                "validDays": 365
               }
             }
           }
