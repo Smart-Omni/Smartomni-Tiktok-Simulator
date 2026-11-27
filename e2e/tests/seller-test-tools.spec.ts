@@ -51,7 +51,7 @@ test('generates loyalty tier batches and opens their code usage from Vouchers', 
   const sheet = page.getByRole('dialog', { name: /Voucher test tools/ });
   await sheet.getByRole('spinbutton', { name: 'Codes per tier' }).fill('3');
   await sheet.getByRole('button', { name: 'Generate voucher batches' }).click();
-  await expect(sheet.getByText(/Created Loyalty Silver 10% \(3 codes\)/)).toBeVisible();
+  await expect(sheet.getByText(/Created Loyalty Gold 10% \(3 codes\)/)).toBeVisible();
   await page.keyboard.press('Escape');
 
   const batch = page.getByRole('row', { name: 'Batch Loyalty Diamond 30%' });

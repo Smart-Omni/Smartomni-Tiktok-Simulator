@@ -26,6 +26,8 @@ export interface AdminCoupon {
 interface CouponPage {
   items: AdminCoupon[];
   next: string;
+  /** Counts over every coupon of the filter (all pages), so the totals do not stop at the first page. */
+  summary?: { total: number; ongoing: number; redemptions: number };
 }
 
 const PAGE = 200;
@@ -51,6 +53,7 @@ export function CouponsPanel({ shopId, initialBatchId = '' }: { shopId: string; 
   const more = loaded?.key === key ? loaded : null;
   const next = more ? more.next : (first.data?.next ?? '');
   const items = [...(first.data?.items ?? []), ...(more?.items ?? [])];
+  const summary = first.data?.summary;
   const filtered = items.filter((c) => (!status || c.status === status) && `${c.promoCode} ${c.title}`.toLowerCase().includes(query.trim().toLowerCase()));
 
   async function loadMore() {
@@ -70,11 +73,11 @@ export function CouponsPanel({ shopId, initialBatchId = '' }: { shopId: string; 
   return (
     <div className="admin-coupons">
       {msg && <div className={failed ? 'state state-error' : 'admin-coupon-notice'} role={failed ? 'alert' : 'status'}>{!failed && <Check size={16} />}{msg}<button type="button" aria-label="Dismiss notification" onClick={() => setMsg('')}><X size={14} /></button></div>}
-      <div className="admin-coupon-metrics" aria-label="Loaded coupon summary">
+      <div className="admin-coupon-metrics" aria-label="Coupon summary">
         {[
-          { label: 'Codes loaded', value: items.length, icon: Ticket },
-          { label: 'Ongoing codes', value: items.filter((c) => c.status === 'ONGOING').length, icon: Tag },
-          { label: 'Redemptions', value: items.reduce((sum, c) => sum + c.redeemedCount, 0), icon: Check },
+          { label: 'Total codes', value: summary?.total ?? items.length, icon: Ticket },
+          { label: 'Ongoing codes', value: summary?.ongoing ?? items.filter((c) => c.status === 'ONGOING').length, icon: Tag },
+          { label: 'Redemptions', value: summary?.redemptions ?? items.reduce((sum, c) => sum + c.redeemedCount, 0), icon: Check },
         ].map(({ label, value, icon: Icon }) => <div key={label}><span className="admin-coupon-metric-icon"><Icon size={18} /></span><div><span>{label}</span><strong>{first.data ? value.toLocaleString() : '—'}</strong></div></div>)}
       </div>
       <section className="admin-coupon-register" aria-label="Coupon register">
@@ -109,11 +112,11 @@ export function CouponsPanel({ shopId, initialBatchId = '' }: { shopId: string; 
                 ))}
               </tbody>
             </table>{filtered.length === 0 && <div className="admin-coupon-no-results">No vouchers match your search. Try another code or clear the filters.</div>}</div>}</PaginatedList>
-            {next && <div className="admin-coupon-load-more"><span>More codes are available for this shop.</span><button className="admin-icon-action" disabled={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} />{loadingMore ? 'Loading…' : 'Load more'}</button></div>}
+            {next && <div className="admin-coupon-load-more"><span>{summary ? `Showing ${items.length.toLocaleString()} of ${summary.total.toLocaleString()} codes.` : 'More codes are available for this shop.'}</span><button className="admin-icon-action" disabled={loadingMore} onClick={() => void loadMore()}><ArrowDown size={14} />{loadingMore ? 'Loading…' : 'Load more'}</button></div>}
           </>
         )}
       </AsyncState>
-        <div className="admin-coupon-footer"><Layers size={14} /><span>Batch codes are private and single use. Counts reflect loaded codes{batchId ? ' in the selected batch' : ''}.</span></div>
+        <div className="admin-coupon-footer"><Layers size={14} /><span>Batch codes are private and single use. Counts cover every code{batchId ? ' of the selected batch' : ' of this shop'}; the table lists the loaded pages.</span></div>
       </section>
     </div>
   );

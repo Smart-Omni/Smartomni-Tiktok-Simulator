@@ -223,7 +223,7 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       const created = await createBatch(seller, { quantity: 150 }).expect(201);
       expect(created.body.codes).toHaveLength(150);
       expect(created.body.batch).toMatchObject({ title: 'Loyalty Diamond 30%', quantity: 150, redeemed: 0, status: 'ONGOING', discountText: '30% off' });
-      await createBatch(seller, { title: 'Loyalty Silver 10%', discount: { type: 'PERCENT_OFF', percentage: 10 }, quantity: 2 }).expect(201);
+      await createBatch(seller, { title: 'Loyalty Gold 10%', discount: { type: 'PERCENT_OFF', percentage: 10 }, quantity: 2 }).expect(201);
 
       const seen: string[] = [];
       let token = '';
@@ -391,16 +391,16 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       await http.get('/test-admin/coupons').expect(401);
     });
 
-    it('creates Silver 10% / Platinum 20% / Diamond 30% batches that SmartOmni can pull with Search; every call creates new batches', async () => {
+    it('creates Gold 10% / Platinum 20% / Diamond 30% batches that SmartOmni can pull with Search; every call creates new batches', async () => {
       const { accessToken, seller } = await t.connect(0);
       const r = await scenario({ shopId: seller.shopId, quantityPerTier: 4 }).expect(201);
       expect(r.body.batches.map((b: any) => [b.tier, b.title, b.percentage, b.codes.length])).toEqual([
-        ['Silver', 'Loyalty Silver 10%', 10, 4],
+        ['Gold', 'Loyalty Gold 10%', 10, 4],
         ['Platinum', 'Loyalty Platinum 20%', 20, 4],
         ['Diamond', 'Loyalty Diamond 30%', 30, 4],
       ]);
       const start = new Date(r.body.batches[0].startAt).getTime();
-      expect(new Date(r.body.batches[0].endAt).getTime() - start).toBe(30 * DAY);
+      expect(new Date(r.body.batches[0].endAt).getTime() - start).toBe(365 * DAY);
       const found = await t.call('POST', '/promotion/202406/coupons/search', accessToken, { query: { page_size: '100' }, body: { title_keyword: 'LOYALTY DIAMOND' } }).expect(200);
       expect(found.body.data.coupons.map((c: any) => c.promo_code).sort()).toEqual(r.body.batches[2].codes.map((c: any) => c.promoCode).sort());
       expect(found.body.data.coupons.every((c: any) => c.discount.percentage === '30')).toBe(true);
@@ -437,7 +437,11 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       expect(pages).toBe(3);
       expect(seen).toHaveLength(250);
       expect(new Set(seen).size).toBe(250);
-      expect((await overview({ shopId: shop }).expect(200)).body.items).toHaveLength(200);
+      const firstPage = (await overview({ shopId: shop }).expect(200)).body;
+      expect(firstPage.items).toHaveLength(200);
+      // the summary counts every matching code, not just the 200 of this page
+      expect(firstPage.summary).toEqual({ total: 253, ongoing: 253, redemptions: 0 });
+      expect((await overview({ batchId: batch.id, limit: '10' }).expect(200)).body.summary).toEqual({ total: 250, ongoing: 250, redemptions: 0 });
       for (const limit of ['0', '501', 'x']) await overview({ limit }).expect(400);
       await overview({ after: 'abc' }).expect(400);
     });
@@ -449,6 +453,7 @@ describe('Phase 09c: voucher batches (single-use promo codes)', () => {
       const items = (await overview({ batchId: batch.id }).expect(200)).body.items;
       expect(items.map((c: any) => c.usages)).toEqual([[], [{ orderId: order, discountVnd: 77400, at: expect.any(String) }]]);
       expect(items[1]).toMatchObject({ redeemedCount: 1, redemptionLimit: 1, status: 'ONGOING' });
+      expect((await overview({ batchId: batch.id }).expect(200)).body.summary).toEqual({ total: 2, ongoing: 2, redemptions: 1 });
     });
   });
 });

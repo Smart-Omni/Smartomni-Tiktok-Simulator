@@ -25049,7 +25049,7 @@
           "Test Admin: Data"
         ],
         "summary": "Coupon overview",
-        "description": "Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).\n\nHandler: `TestAdminController.listCoupons`.",
+        "description": "Read-only list of coupons (oldest first by seq), optionally for one shop and/or one code batch, in pages of `limit` (default 200, 1..500). Pass the `next` of a page as `after` to get the following page; `next` is empty on the last page. `summary` counts every coupon matching `shopId`/`batchId` (all pages), so a client can show the real total while loading one page. `status` is computed on the business clock: DEACTIVATED, NOT_START, EXPIRED or ONGOING. `usages` lists the orders that used the coupon: this order <-> code link exists only on /test-admin, never on the TikTok router (Order Detail has no coupon field).\n\nHandler: `TestAdminController.listCoupons`.",
         "operationId": "TestAdminController_listCoupons",
         "security": [
           {
@@ -25134,11 +25134,34 @@
                     "next": {
                       "type": "string",
                       "description": "Cursor for the next page; empty string on the last page"
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "description": "Coupons matching shopId/batchId, all pages"
+                        },
+                        "ongoing": {
+                          "type": "integer",
+                          "description": "Of those, ONGOING on the business clock"
+                        },
+                        "redemptions": {
+                          "type": "integer",
+                          "description": "Sum of redeemedCount over all of them"
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "ongoing",
+                        "redemptions"
+                      ]
                     }
                   },
                   "required": [
                     "items",
-                    "next"
+                    "next",
+                    "summary"
                   ]
                 },
                 "example": {
@@ -25162,7 +25185,12 @@
                       ]
                     }
                   ],
-                  "next": ""
+                  "next": "",
+                  "summary": {
+                    "total": 300,
+                    "ongoing": 299,
+                    "redemptions": 1
+                  }
                 }
               }
             }
@@ -29354,7 +29382,7 @@
           "Test Admin: Scenarios"
         ],
         "summary": "Create loyalty voucher batches",
-        "description": "Creates one batch of single-use PERCENT_OFF codes per tier (default Silver 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).\n\nHandler: `LoyaltyAdminController.createVouchers`.",
+        "description": "Creates one batch of single-use PERCENT_OFF codes per tier (default Gold 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).\n\nHandler: `LoyaltyAdminController.createVouchers`.",
         "operationId": "LoyaltyAdminController_createVouchers",
         "security": [
           {
@@ -29501,14 +29529,14 @@
                     "description": "Codes per tier",
                     "minimum": 1,
                     "maximum": 500,
-                    "default": 20
+                    "default": 100
                   },
                   "validDays": {
                     "type": "integer",
                     "description": "Validity from now (business clock)",
                     "minimum": 1,
                     "maximum": 365,
-                    "default": 30
+                    "default": 365
                   },
                   "tiers": {
                     "type": "array",
@@ -29543,8 +29571,8 @@
               },
               "example": {
                 "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
-                "quantityPerTier": 20,
-                "validDays": 30
+                "quantityPerTier": 100,
+                "validDays": 365
               }
             }
           }

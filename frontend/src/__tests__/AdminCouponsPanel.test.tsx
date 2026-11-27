@@ -35,3 +35,18 @@ it('keeps local pagination and status colors while loading and filtering voucher
   expect(screen.getByText('Page 1 of 1')).toBeTruthy();
   expect(fetcher.mock.calls.some(([url]) => url.includes('batchId=batch-1'))).toBe(true);
 });
+
+it('shows the totals of every code, not only the first page of 200', async () => {
+  const page = Array.from({ length: 200 }, (_, i) => ({
+    id: `c-${i}`, promoCode: `CODE${i}`, title: 'Loyalty Gold 10%', batchId: 'b-1',
+    status: 'ONGOING', redeemedCount: i < 2 ? 1 : 0, redemptionLimit: 1,
+    startAt: '2026-11-01', endAt: '2027-11-01', usages: [],
+  }));
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: page, next: 'cursor-200', summary: { total: 300, ongoing: 299, redemptions: 3 } }), { headers: { 'content-type': 'application/json' } })));
+  render(<CouponsPanel shopId="shop-1" />);
+  const metrics = await screen.findByLabelText('Coupon summary');
+  await waitFor(() => expect(metrics.textContent).toContain('Total codes300'));
+  expect(metrics.textContent).toContain('Ongoing codes299');
+  expect(metrics.textContent).toContain('Redemptions3');
+  expect(screen.getByText('Showing 200 of 300 codes.')).toBeTruthy();
+});

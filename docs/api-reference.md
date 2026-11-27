@@ -4829,7 +4829,7 @@ Tổng quan coupon. _(Coupon overview)_
 
 **Phản hồi**:
 
-- `200`: Coupons.
+- `200`: Coupons. `summary` (`total`, `ongoing`, `redemptions`) counts every coupon matching `shopId`/`batchId` across all pages.
 - `400`: `limit` not an integer in 1..500, or `after` not a valid cursor.
 - `401`: Missing or invalid `x-test-admin-token` header (`Missing or invalid x-test-admin-token`).
 
@@ -4857,7 +4857,12 @@ Ví dụ phản hồi thành công:
       ]
     }
   ],
-  "next": ""
+  "next": "",
+  "summary": {
+    "total": 300,
+    "ongoing": 299,
+    "redemptions": 1
+  }
 }
 ```
 
@@ -5761,8 +5766,8 @@ Ví dụ:
 ```json
 {
   "shopId": "3f0c9a52-1d3e-4c52-9a53-0f7a6a2c1b11",
-  "quantityPerTier": 20,
-  "validDays": 30
+  "quantityPerTier": 100,
+  "validDays": 365
 }
 ```
 
@@ -5800,7 +5805,7 @@ Ví dụ phản hồi thành công:
 
 <details><summary>Ghi chú kỹ thuật (trích OpenAPI)</summary>
 
-Creates one batch of single-use PERCENT_OFF codes per tier (default Silver 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).
+Creates one batch of single-use PERCENT_OFF codes per tier (default Gold 10% / Platinum 20% / Diamond 30%; test data only, SmartOmni staff configure the real percentages), titled `Loyalty <name> <percentage>%`, valid from the current business time for `validDays`, `quantityPerTier` codes each (same rules as POST /demo/shops/{shopId}/coupon-batches). NOT idempotent: every call creates new batches with new codes. SmartOmni pulls the codes with Search Coupon List (`title_keyword`, case-insensitive).
 
 </details>
 

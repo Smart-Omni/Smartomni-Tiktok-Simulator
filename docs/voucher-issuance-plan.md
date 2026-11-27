@@ -23,7 +23,7 @@ api-reference). Không push, không mở PR nếu chưa được yêu cầu.
 | Q4 | Mỗi lô **1–500 mã**. | Đủ cho demo/test; SmartOmni kéo tối đa 5 trang Search (100 mã/trang). Một transaction vẫn nhanh. |
 | Q5 | Cột nội bộ **`Coupon.batchId`** (nullable) đánh dấu mã thuộc lô; **không lộ ra API TikTok**. | Dùng để ẩn mã khỏi buyer, gom nhóm trên Seller Center, tắt cả lô. |
 | Q6 | **Mã thuộc lô bị ẩn khỏi danh sách voucher của buyer** (`GET /demo/shops/:id/coupons`, ô chọn voucher ở checkout). Khách phải tự gõ mã nhận từ SmartOmni. Voucher lẻ vẫn hiện như cũ. | Mapper đã trả `display_channels: ['PRIVATE']`: theo OAS, người dùng không biết mã cho đến khi được đưa. Test checkout/e2e cũ không đổi. |
-| Q7 | Thêm `POST /test-admin/scenarios/loyalty-vouchers` tạo sẵn 3 lô Silver 10% / Platinum 20% / Diamond 30%. | Để SmartOmni và e2e test không phải bấm tay. Chỉ là dữ liệu test; mức % thật do staff SmartOmni cấu hình. |
+| Q7 | Thêm `POST /test-admin/scenarios/loyalty-vouchers` tạo sẵn 3 lô Gold 10% / Platinum 20% / Diamond 30%. | Để SmartOmni và e2e test không phải bấm tay. Chỉ là dữ liệu test; mức % thật do staff SmartOmni cấu hình. |
 | Q8 | **Mã thuộc lô bị "đốt" khi đơn UNPAID dùng nó bị hủy**: lượt dùng được hoàn (`redeemed_count` về 0) **và** mã bị tắt (`deactivated = true`) trong cùng transaction hủy đơn. Mã **không dùng lại được**. Voucher lẻ giữ quy tắc 09a-5 (hoàn lượt, dùng tiếp). Hủy sau thanh toán: `redeemed_count` giữ 1 như cũ. | Mã một lần đã giao cho một khách thì không được quay lại pool. Mọi trạng thái SmartOmni thấy đều là trạng thái cuối, không quay ngược. |
 | Q9 | Search Coupon List lọc `title_keyword` **không phân biệt hoa thường** (Prisma `mode: 'insensitive'`). | OAS không nói rõ; nới lỏng an toàn hơn cho SmartOmni khi lọc theo tên lô. |
 | Q10 | Router TikTok **không thêm field nào ngoài schema OAS** (không coupon id trong đơn, không `batchId` trong coupon). | Giữ đúng field TTS toolkit. Liên kết đơn ↔ mã chỉ có ở `/test-admin` để test kiểm chứng. |
@@ -231,9 +231,9 @@ Gate: backend. Commit ⭐.
 File: `backend/src/test-admin/loyalty-admin.controller.ts` (cạnh `scenarios/loyalty-orders`, cùng `AdminTokenGuard`).
 
 - `POST /test-admin/scenarios/loyalty-vouchers`
-  `{ "shopId": "...", "quantityPerTier": 20, "validDays": 30, "tiers"?: [{ "name": "Silver", "percentage": 10, "maxDiscountVnd"?: ... }] }`
-  - Mặc định `tiers` = Silver 10 / Platinum 20 / Diamond 30, `quantityPerTier` 1–500 (mặc định 20), `validDays` 1–365 (mặc định 30).
-  - Tạo mỗi tier một lô bằng `CouponBatchService.createBatch`. Title: `Loyalty Silver 10%`, `Loyalty Platinum 20%`, `Loyalty Diamond 30%`.
+  `{ "shopId": "...", "quantityPerTier": 100, "validDays": 365, "tiers"?: [{ "name": "Gold", "percentage": 10, "maxDiscountVnd"?: ... }] }`
+  - Mặc định `tiers` = Gold 10 / Platinum 20 / Diamond 30, `quantityPerTier` 1–500 (mặc định 100), `validDays` 1–365 (mặc định 365).
+  - Tạo mỗi tier một lô bằng `CouponBatchService.createBatch`. Title: `Loyalty Gold 10%`, `Loyalty Platinum 20%`, `Loyalty Diamond 30%`.
   - Trả `{ batches: [{ tier, batchId, title, codes: [...] }] }`.
   - Mỗi lần gọi tạo lô mới (không idempotent); ghi rõ trong OpenAPI.
 - `GET /test-admin/coupons`:
