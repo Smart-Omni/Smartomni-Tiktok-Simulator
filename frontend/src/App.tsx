@@ -52,7 +52,7 @@ export function App() {
     <AuthProvider>
       <TooltipProvider>
         <Routes>
-          {/* Tiptop Shop (buyer) */}
+          {/* TikTok Shop (buyer) */}
           <Route element={<ShopLayout />}>
             <Route index element={<HomePage />} />
             <Route path="product/:shopId/:id" element={<ProductPage />} />

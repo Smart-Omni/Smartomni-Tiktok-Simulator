@@ -53,7 +53,7 @@ Domain logic lives in feature modules (`orders`, `fulfillment`, `aftersale`, `ch
 
 Conventional Commits with scope (`fix(inventory): ...`). Branches `feature/*`/`fix/*` → `develop` → `main`; never push directly to `develop`/`main`. Stage only files related to the task.
 
-## Workflow (Tiptopshop UI, branch feat/tiptopshop-ui)
+## Workflow (TikTok Shop UI, branch feat/tiptopshop-ui)
 - Work one step at a time following docs/tiptopshop-plan.md; never start work belonging to a later step.
 - End every step by running, in frontend/: `npm run typecheck && npm run lint && npm test && npm run build`, and report the results (pass/fail + relevant output).
 - Never push and never open a PR unless the user asks.

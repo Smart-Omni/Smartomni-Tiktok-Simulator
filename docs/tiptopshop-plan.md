@@ -1,4 +1,4 @@
-# Tiptopshop FE – Plan + Prompts cho Claude Code
+# TikTok Shop FE – Plan + Prompts cho Claude Code
 
 Design (10 board): https://claude.ai/artifact/4tae5Qdrpv7ncLQL6BXMV9
 Repo: `Hxvf123/Smartomni-Tiktok-Simulator`, thư mục `frontend/`.
@@ -86,7 +86,7 @@ Chạy typecheck/lint/test/build.
 ```text
 Theo docs/tiptopshop-plan.md, Bước 3. Đưa plan trước, chờ "go".
 1. Sửa App.tsx: bỏ topbar cũ khỏi các route mới. Route mới: "/", "/product/:id", "/login", "/cart", "/checkout", "/account/orders", "/seller-center/*". Giữ nguyên route cũ /buyer/*, /seller/*, /seller/authorize, /console/* (bọc trong layout cũ).
-2. Tạo src/layouts/ShopLayout.tsx (buyer, board Home/Product): sidebar trái 280px ở Home (logo "t" + "Tiptop Shop", Sell, More, link footer) và icon rail 76px ở các trang còn lại; góc phải: ô search pill + pill "Cart | Sign in" (hoặc avatar khi đã login).
+2. Tạo src/layouts/ShopLayout.tsx (buyer, board Home/Product): sidebar trái 280px ở Home (logo "t" + "TikTok Shop", Sell, More, link footer) và icon rail 76px ở các trang còn lại; góc phải: ô search pill + pill "Cart | Sign in" (hoặc avatar khi đã login).
 3. Tạo src/layouts/SellerLayout.tsx (board SellerHome): header đen 56px, chữ "Seller Center" màu teal nhạt, chọn shop, avatar; menu trái 232px: Home / Orders(Manage orders, Returns & refunds) / Products / Marketing(Vouchers) / Customer service(Messages) / Shop. Bọc .theme-seller.
 4. Guard: /cart, /checkout, /account/* cần BUYER -> nếu chưa login chuyển /login?next=...; /seller-center/* cần SELLER.
 5. Các trang con tạm để placeholder "Coming soon".
@@ -97,7 +97,7 @@ Chạy typecheck/lint/test/build. Chụp mô tả ngắn các route để tôi t
 ```text
 Theo docs/tiptopshop-plan.md, Bước 4. Đưa plan trước, chờ "go".
 Làm trang /login giống board "Sign in (shared, role-based)":
-- Header đen "Tiptop Shop | Sign in" + "Back to shopping".
+- Header đen "TikTok Shop | Sign in" + "Back to shopping".
 - Banner hồng khi có ?next=: "Sign in to buy. You will return to <tên sản phẩm> after signing in."
 - Card trắng: hình minh hoạ bên trái; bên phải Tabs Buyer/Seller, RadioGroup danh sách account từ GET /demo/identities (avatar chữ cái, tên, shop, thành phố), hint "No password. A buyer can only buy from their own shop.", nút pill đỏ "Sign in as <name>", "Continue browsing as guest".
 - Đăng nhập: POST /demo/sessions -> lưu qua useAuth -> BUYER về ?next hoặc "/", SELLER về "/seller-center".
