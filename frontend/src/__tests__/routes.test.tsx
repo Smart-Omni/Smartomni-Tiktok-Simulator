@@ -49,7 +49,7 @@ describe('routes', () => {
     expect(await screen.findByText('Demo Shop VN')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'TikTok Shop SELLER AUTHORIZATION' }).getAttribute('href')).toBe('/seller-center');
     expect(screen.getByRole('button', { name: 'Authorize' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Deny' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to SmartOmni' })).toBeTruthy();
   });
 
   it('sends links of the removed /buyer and /seller pages to the new UI', () => {

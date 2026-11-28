@@ -88,7 +88,7 @@ describe('AuthorizePage', () => {
   it('sends deny and reports a missing app_key', async () => {
     const navigate = vi.fn();
     const { unmount } = render(<MemoryRouter initialEntries={['/seller/authorize?app_key=k']}><AuthorizePage navigate={navigate} /></MemoryRouter>);
-    fireEvent.click(await screen.findByText('Deny'));
+    fireEvent.click(await screen.findByText('Return to SmartOmni'));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(JSON.parse(calls.find((c) => c.init?.method === 'POST')!.init!.body as string).decision).toBe('deny');
     unmount();
@@ -98,7 +98,7 @@ describe('AuthorizePage', () => {
 
   it.each([
     ['Authorize', 'accept', 'smartomni://oauth/tiktok?code=C&state=st'],
-    ['Deny', 'deny', 'smartomni://oauth/tiktok?error=access_denied&state=st'],
+    ['Return to SmartOmni', 'deny', 'smartomni://oauth/tiktok?error=access_denied&state=st'],
   ])('sends the mobile redirect and navigates to the API URL on %s', async (button, decision, redirectUrl) => {
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init });

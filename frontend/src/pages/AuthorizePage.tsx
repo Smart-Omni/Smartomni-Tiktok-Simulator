@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowRightLeft, Check, ChevronDown, Link2, LockKeyhole, ShoppingBag, Store } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowRightLeft, Check, ChevronDown, Link2, LockKeyhole, Store, UserRound } from 'lucide-react';
+import tiktokShopLogo from '@/assets/tiktok-shop-logo.svg';
 import '../authorize.css';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AsyncState } from '../components/AsyncState';
@@ -103,19 +104,19 @@ function Consent(props: { sessionToken: string; signInUrl: string; appKey: strin
 
   return (
     <div className="consent-page">
-      <header className="consent-topbar"><Link to="/seller-center" className="consent-brand"><ShoppingBag size={24} aria-hidden="true" /><span>TikTok Shop<small>SELLER AUTHORIZATION</small></span></Link><span className="consent-environment">Simulator environment</span></header>
+      <header className="consent-topbar"><Link to="/seller-center" className="consent-brand" aria-label="TikTok Shop SELLER AUTHORIZATION"><span className="consent-brand-logo"><img src={tiktokShopLogo} alt="TikTok Shop" /></span><span>Seller authorization<small>TIKTOK SHOP CONNECTION</small></span></Link><span className="consent-environment">Simulator environment</span></header>
       <div className="consent-heading"><span className="consent-eyebrow">CONNECT YOUR WORKSPACE</span><h1>One connection. More possibilities.</h1><p>Review the permissions below to connect your shop to SmartOmni.</p></div>
       {err ? <div className="state state-error" role="alert">{err}</div> : null}
       <AsyncState {...ctx} onRetry={ctx.reload}>
         {(d) => (
           <section className="consent-card" aria-label="Shop connection authorization">
             <aside className="consent-overview">
-              <div className="consent-app-bridge" aria-hidden="true"><span className="consent-app-mark">S<span /></span><ArrowRightLeft size={20} /><span className="consent-shop-mark"><ShoppingBag size={30} /></span></div>
+              <div className="consent-app-bridge" aria-hidden="true"><span className="consent-app-mark">S<span /></span><ArrowRightLeft size={20} /><span className="consent-shop-mark"><img src={tiktokShopLogo} alt="" /></span></div>
               <span className="consent-eyebrow">APP CONNECTION</span>
               <h2>Connect with<br />{d.app.name}</h2>
               <p>Bring your shop operations together in one workspace.</p>
               <div className="consent-shop"><span className="consent-store-icon"><Store size={20} aria-hidden="true" /></span><div><small>YOU ARE CONNECTING</small><strong>{d.shop.name}</strong><span>{d.shop.region} · {d.shop.currency}</span></div></div>
-              <Link className="consent-switch" to={props.signInUrl}>Sign in as another seller <ArrowRight size={14} aria-hidden="true" /></Link>
+              <Link className="consent-switch" to={props.signInUrl}><UserRound size={16} aria-hidden="true" /><span>Sign in as another seller</span><ArrowRight size={14} aria-hidden="true" /></Link>
               <div className="consent-overview-note"><Link2 size={16} aria-hidden="true" /><span>Access applies to the shop shown above.</span></div>
             </aside>
             <div className="consent-review">
@@ -128,9 +129,9 @@ function Consent(props: { sessionToken: string; signInUrl: string; appKey: strin
               ) : (
                 <Permissions scopes={d.scopes} />
               )}
-              <div className="consent-return"><ArrowRightLeft size={16} aria-hidden="true" /><div><strong>Return to SmartOmni</strong><p>After your decision, you will be redirected to:</p><code>{d.redirectUri}</code></div></div>
+              <details className="consent-return"><summary><Link2 size={14} aria-hidden="true" /><span>Redirect destination</span><ChevronDown size={14} aria-hidden="true" /></summary><p>After your decision, you will be redirected to:</p><code>{d.redirectUri}</code></details>
               <div className="consent-actions" aria-busy={busy}>
-                <button className="consent-deny" disabled={busy} onClick={() => void decide('deny')}><ArrowLeft size={16} aria-hidden="true" />Deny</button>
+                <button className="consent-deny" title="Cancel connection and return to SmartOmni" disabled={busy} onClick={() => void decide('deny')}><ArrowLeft size={16} aria-hidden="true" />Return to SmartOmni</button>
                 <button className="consent-accept" disabled={busy} onClick={() => void decide('accept')}>Authorize <ArrowRight size={16} aria-hidden="true" /></button>
               </div>
               {busy && <p className="consent-progress" role="status">Processing your decision…</p>}
