@@ -117,7 +117,7 @@ function SellerMenu({ owner }: { owner: SellerIdentity | undefined }) {
         <DropdownMenuLabel>{name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/">Go to Tiptop Shop</Link>
+          <Link to="/">Go to TikTok Shop</Link>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={async () => {
@@ -157,7 +157,7 @@ export function SellerLayout() {
         </aside>
         <div className="seller-workspace" ref={workspace}>
           <header className="seller-context-bar"><strong>Seller Center</strong><div className="seller-header-actions">
-            <Link to="/" className="seller-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link>
+            <Link to="/" className="seller-role-link" aria-label="Open TikTok Shop" title="TikTok Shop"><ShoppingBag size={17} /></Link>
             <Link to="/console" className="seller-role-link" aria-label="Open Test Console" title="Test Console"><ShieldCheck size={17} /></Link>
             <SellerMenu owner={owner} />
           </div></header>

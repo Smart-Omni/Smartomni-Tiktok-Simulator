@@ -9,7 +9,7 @@ export function LegacyLayout() {
         <div className="brand">TikTok Shop Simulator <span className="badge">local / fake data</span></div>
         <nav>
           <NavLink to="/" end>
-            Tiptop Shop
+            TikTok Shop
           </NavLink>
           <NavLink to="/seller-center">Seller Center</NavLink>
           <NavLink to="/console">Test Console</NavLink>

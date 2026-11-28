@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 /**
  * Drop-in Test Console tabs: `src/features/<name>.console.tsx` default-exports a ConsoleTab[] and Vite picks it up
- * (no edit of the shared console page). The legacy /buyer and /seller tab files were replaced by the Tiptop Shop UI.
+ * (no edit of the shared console page). The legacy /buyer and /seller tab files were replaced by the TikTok Shop UI.
  */
 export interface ConsoleContext {
   shopId: string;

@@ -40,7 +40,7 @@ Ba nhóm route được tách riêng có chủ đích. `backend/test/routers.e2e
 | Router | Tiền tố | Ai gọi | Xác thực |
 |---|---|---|---|
 | **TikTok** | `/api/v2/token/*`, `/authorization/*`, `/product/*`, `/order/*`, `/fulfillment/*`, `/logistics/*`, `/return_refund/*`, `/customer_service/*`, `/promotion/*`, `/event/*` | SmartOmni (thay cho TikTok Shop thật) | Ký request + `x-tts-access-token` (mục 3). Riêng hai endpoint token dùng `app_key` + `app_secret`. |
-| **Demo** | `/demo/*` | UI Seller Center và Buyer (Tiptop Shop) | Header `x-demo-session` (một số endpoint công khai) |
+| **Demo** | `/demo/*` | UI Seller Center và Buyer (TikTok Shop) | Header `x-demo-session` (một số endpoint công khai) |
 | **Test admin** | `/test-admin/*` | Test Console, nút **Test tools** trong Seller Center, Playwright, người kiểm thử | Header `x-test-admin-token` = biến môi trường `TEST_ADMIN_TOKEN` |
 
 Trên giao diện, mỗi API `/test-admin/*` và API giả lập đều dùng được ngay trong Seller Center (trừ reset và ba danh sách trùng với `/demo`). Bảng API → trang nằm ở `docs/seller-center-test-tools-plan.md`, mục 3.

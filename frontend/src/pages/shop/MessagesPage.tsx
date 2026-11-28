@@ -32,7 +32,7 @@ function Messages({ buyer }: { buyer: DemoSession }) {
   const filtered = options.filter((s) => s.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   return <div className="buyer-messages-page">
     <header className="buyer-messenger-topbar">
-      <Link to="/" className="buyer-messenger-brand" aria-label="Tiptop Shop home"><span>TikTok<span className="buyer-messenger-brand-dot" /></span><small>SHOP SIMULATOR</small></Link>
+      <Link to="/" className="buyer-messenger-brand" aria-label="TikTok Shop home"><span>TikTok<span className="buyer-messenger-brand-dot" /></span><small>SHOP SIMULATOR</small></Link>
       <div className="buyer-messenger-title"><span className="buyer-messenger-title-icon"><MessageSquare size={19} /></span><div><h1>Messages</h1><p>A little conversation. A better shopping experience.</p></div></div>
       <nav aria-label="Messaging navigation"><button className="buyer-messenger-shop-toggle" aria-label={showShops ? 'Hide shops' : 'Show shops'} aria-controls="buyer-chat-shops" aria-expanded={showShops} onClick={() => setShowShops(!showShops)}>{showShops ? <X size={18} /> : <Store size={18} />}</button><Link to="/account/orders" aria-label="My orders" title="My orders"><Package size={17} /></Link><Link to="/" aria-label="Back to shopping" title="Back to shopping"><ShoppingBag size={17} /></Link></nav>
     </header>

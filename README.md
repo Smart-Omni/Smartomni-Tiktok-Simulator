@@ -9,7 +9,7 @@ Status: phases 01-09 are implemented on the simulator side (contracts, foundatio
 | Path | Purpose |
 |---|---|
 | `backend/` | NestJS + TypeScript + Prisma API (port 8090) |
-| `frontend/` | React + TypeScript + Vite UI (port 3090): Tiptop Shop (buyer), Seller Center, Test Console |
+| `frontend/` | React + TypeScript + Vite UI (port 3090): TikTok Shop (buyer), Seller Center, Test Console |
 | `docker-compose.yml` | db (internal only), api, ui; named volumes for DB, media and PDF |
 | `contracts/`, `docs/` | Owned by Phase 01 (API contracts and documentation) |
 
@@ -84,7 +84,7 @@ Team tích hợp công việc trên `develop`; `main` là nhánh phát hành. M�
 
 Xem [quy trình GitHub](docs/github-workflow.md) để tạo nhánh, kiểm tra, mở PR và phát hành. [CONTRIBUTING.md](CONTRIBUTING.md) ghi quy ước commit và checklist review. Dự án dùng npm trong `backend/` và `frontend/`, không dùng lệnh Maven.
 
-## Frontend (Tiptop Shop UI)
+## Frontend (TikTok Shop UI)
 
 React 18 + Vite, Tailwind CSS v4 and shadcn/ui (`frontend/src/components/ui/`). All UI text is English. Sign-in is the demo sign-in of `/demo/sessions` with a fake account (see [Demo accounts](#demo-accounts)); the session of each role is kept in `sessionStorage` (`sim.demo-session.BUYER` / `.SELLER`), so a tab can hold a buyer and a seller at the same time. The last seller sign-in is also kept in `localStorage`; the consent page uses only that one.
 
@@ -213,7 +213,7 @@ Every request (except health probes and console polling reads) is stored in `Htt
 
 ## Test Console
 
-Status (DB, worker, clock, queue, seed), Shop & scenario, Reset (two-step), Clock, HTTP log (request-ID filter), Webhooks (history, replay, queue a test event), Faults, plus feature tabs (Orders, Inventory, Fulfillment, Chat, Coupons, Aftersale). Tabs are drop-in files `frontend/src/features/<name>.console.tsx`; every list has loading, error and empty states. The buyer and seller sides of the same features are the Tiptop Shop and Seller Center pages (see Frontend).
+Status (DB, worker, clock, queue, seed), Shop & scenario, Reset (two-step), Clock, HTTP log (request-ID filter), Webhooks (history, replay, queue a test event), Faults, plus feature tabs (Orders, Inventory, Fulfillment, Chat, Coupons, Aftersale). Tabs are drop-in files `frontend/src/features/<name>.console.tsx`; every list has loading, error and empty states. The buyer and seller sides of the same features are the TikTok Shop and Seller Center pages (see Frontend).
 
 ## Phase 03: authorization and token lifecycle (simulator side)
 
@@ -276,7 +276,7 @@ Failures return the error-envelope shape `{code:-1,message,request_id,simulator_
 
 ## Browser tests (Playwright)
 
-`e2e/` drives the running Docker stack through the UI (Tiptop Shop checkout, Seller Center, Test Console, chat, coupons, fulfillment, aftersale, restart persistence). Tests sign in through `/login` (`signInAs(page, role, name, next)` in `e2e/tests/helpers.ts`) and reset + re-seed the demo data at the start of each file. It never runs against production.
+`e2e/` drives the running Docker stack through the UI (TikTok Shop checkout, Seller Center, Test Console, chat, coupons, fulfillment, aftersale, restart persistence). Tests sign in through `/login` (`signInAs(page, role, name, next)` in `e2e/tests/helpers.ts`) and reset + re-seed the demo data at the start of each file. It never runs against production.
 
 ```bash
 docker compose up --build -d      # from the repo root, with a filled-in .env
