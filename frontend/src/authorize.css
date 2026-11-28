@@ -13,11 +13,6 @@ body:has(.consent-page) { background:#f5f5f5; }
 .consent-heading p { color:#737373; font-size:13px; margin:0; }
 .consent-card { display:grid; grid-template-columns:310px minmax(0,1fr); background:#fff; border:1px solid #e5e5e5; border-radius:20px; overflow:hidden; box-shadow:0 14px 42px #16182307; }
 .consent-overview { background:#f3f3f4; padding:36px 28px 24px; display:flex; flex-direction:column; align-items:flex-start; }
-.consent-app-bridge { display:flex; gap:15px; align-items:center; margin-bottom:34px; color:#929298; }
-.consent-app-mark,.consent-shop-mark { width:62px; height:62px; display:grid; place-items:center; border-radius:17px; }
-.consent-app-mark { position:relative; background:#161823; color:#ffffff; font-size:35px; font-weight:700; letter-spacing:-4px; padding-right:4px; }
-.consent-app-mark > span { position:absolute; width:7px; height:7px; border-radius:50%; background:var(--primary); right:11px; top:12px; }
-.consent-shop-mark { background:#161823; color:#fff; box-shadow:0 3px 8px #16182308; }
 .app .consent-overview h2 { font-size:27px; letter-spacing:-1px; line-height:1.25; margin:11px 0 13px; overflow-wrap:anywhere; }
 .consent-overview > p { font-size:12px; line-height:1.8; color:#737378; margin:0 0 30px; }
 .consent-shop { display:flex; gap:11px; align-items:flex-start; border-top:1px solid #dedee1; width:100%; padding-top:22px; }
@@ -72,7 +67,6 @@ body:has(.consent-page) { background:#f5f5f5; }
   .consent-scope-details { margin-top:15px; }
   .consent-return { margin-top:15px; padding:12px 0; }
   .consent-overview { padding:28px 26px 22px; }
-  .consent-app-bridge { margin-bottom:26px; }
   .consent-footer { margin-top:15px; }
 }
 @media (max-width:760px) {
@@ -82,7 +76,6 @@ body:has(.consent-page) { background:#f5f5f5; }
   .app .consent-heading h1 { font-size:26px; }
   .consent-card { grid-template-columns:1fr; }
   .consent-overview { padding:26px; }
-  .consent-app-bridge { margin-bottom:24px; }
   .consent-overview > p { margin-bottom:22px; }
   .consent-review { padding:26px; }
   .consent-environment { font-size:9px; }
@@ -97,7 +90,6 @@ body:has(.consent-page) { background:#f5f5f5; }
 
 .consent-brand-logo { display:grid; place-items:center; width:47px; height:50px; border-radius:10px; background:#161823; flex-shrink:0; }
 .consent-brand-logo img { width:35px; height:39px; object-fit:contain; }
-.consent-shop-mark img { width:43px; height:47px; object-fit:contain; }
 @media (max-width:500px) {
   .consent-actions { flex-direction:column-reverse; }
   .app .consent-actions button { width:100%; }

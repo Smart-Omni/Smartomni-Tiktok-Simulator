@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowRightLeft, Check, ChevronDown, Link2, LockKeyhole, Store, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Link2, LockKeyhole, Store, UserRound } from 'lucide-react';
 import tiktokShopLogo from '@/assets/tiktok-shop-logo.svg';
 import '../authorize.css';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
@@ -111,7 +111,6 @@ function Consent(props: { sessionToken: string; signInUrl: string; appKey: strin
         {(d) => (
           <section className="consent-card" aria-label="Shop connection authorization">
             <aside className="consent-overview">
-              <div className="consent-app-bridge" aria-hidden="true"><span className="consent-app-mark">S<span /></span><ArrowRightLeft size={20} /><span className="consent-shop-mark"><img src={tiktokShopLogo} alt="" /></span></div>
               <span className="consent-eyebrow">APP CONNECTION</span>
               <h2>Connect with<br />{d.app.name}</h2>
               <p>Bring your shop operations together in one workspace.</p>
