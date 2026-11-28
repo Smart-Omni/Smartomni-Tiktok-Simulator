@@ -5,7 +5,7 @@
  */
 import type { StorefrontProduct } from '@/lib/types';
 
-/** Fields the Tiptop Shop design shows that the backend does not have yet. */
+/** Fields the TikTok Shop design shows that the backend does not have yet. */
 export interface MockProductFields {
   originalPriceVnd: number;
   /** 0 when there is no discount. */

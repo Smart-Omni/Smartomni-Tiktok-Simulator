@@ -35,7 +35,7 @@ import type {
   UploadedImage,
 } from './types';
 
-/** One function per /demo endpoint used by the Tiptop Shop screens. Shop-scoped calls take the signed-in session. */
+/** One function per /demo endpoint used by the TikTok Shop screens. Shop-scoped calls take the signed-in session. */
 
 const shop = (s: DemoSession, path = '') => `/demo/shops/${encodeURIComponent(s.shopId)}${path}`;
 const id = encodeURIComponent;

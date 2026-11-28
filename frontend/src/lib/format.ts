@@ -1,4 +1,4 @@
-/** Formatting for the Tiptop Shop UI (the legacy pages keep `vnd()` from ./api). */
+/** Formatting for the TikTok Shop UI (the legacy pages keep `vnd()` from ./api). */
 
 const vndNumber = new Intl.NumberFormat('vi-VN');
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });

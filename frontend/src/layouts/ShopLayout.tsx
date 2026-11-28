@@ -25,9 +25,9 @@ const nav: { to: string; label: string; icon: LucideIcon }[] = [
 
 export function Logo({ withName = false, className }: { withName?: boolean; className?: string }) {
   return (
-    <Link to="/" className={cn('flex items-center gap-2.5 font-bold text-ink', className)} aria-label="Tiptop Shop home">
+    <Link to="/" className={cn('flex items-center gap-2.5 font-bold text-ink', className)} aria-label="TikTok Shop home">
       <span className="flex size-9 items-center justify-center rounded-[10px] bg-ink text-lg text-white">t</span>
-      {withName ? <span className="text-lg tracking-tight">Tiptop Shop</span> : null}
+      {withName ? <span className="text-lg tracking-tight">TikTok Shop</span> : null}
     </Link>
   );
 }

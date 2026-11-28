@@ -1,5 +1,5 @@
 /**
- * Response shapes of the /demo API used by the Tiptop Shop screens (see docs/openapi.json).
+ * Response shapes of the /demo API used by the TikTok Shop screens (see docs/openapi.json).
  * Only the fields the screens need; amounts are integer VND.
  */
 

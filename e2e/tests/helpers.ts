@@ -14,7 +14,7 @@ export async function resetAll(baseURL: string | undefined): Promise<void> {
 }
 
 /**
- * Signs in on the Tiptop Shop sign-in page (/login) and waits until the app has brought the user to `next`.
+ * Signs in on the TikTok Shop sign-in page (/login) and waits until the app has brought the user to `next`.
  * Every call creates a fresh demo session for that role in this tab (sessions live in sessionStorage, one per role).
  */
 export async function signInAs(page: Page, role: 'BUYER' | 'SELLER', name: string, next: string): Promise<void> {

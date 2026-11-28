@@ -97,7 +97,7 @@ export function ConsolePage() {
       <div className="admin-workspace" ref={workspaceRef}>
         <div className="admin-context-bar">
           <div className="admin-workspace-welcome"><strong>Admin Console</strong></div>
-          <div className="admin-header-actions"><Link to="/" className="admin-role-link" aria-label="Open Tiptop Shop" title="Tiptop Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
+          <div className="admin-header-actions"><Link to="/" className="admin-role-link" aria-label="Open TikTok Shop" title="TikTok Shop"><ShoppingBag size={17} /></Link><Link to="/seller-center" className="admin-role-link" aria-label="Open Seller Center" title="Seller Center"><Store size={17} /></Link><span className="admin-operator" title="Admin test workspace">AD</span></div>
         </div>
         <div className="admin-content">
           {tab !== 'Shop & scenario' && <section className="admin-shop-context" aria-label="Shop context">

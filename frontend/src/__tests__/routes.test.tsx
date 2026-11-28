@@ -41,15 +41,15 @@ describe('routes', () => {
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/login?next=%2Fseller%2Fauthorize%3Fapp_key%3Dk%26state%3Ds&role=seller'), { timeout: 10_000 });
   });
 
-  it('keeps the simulator topbar on the OAuth consent page, with links to the new UI', async () => {
+  it('shows the dedicated OAuth consent screen with the shop and seller navigation', async () => {
     localStorage.setItem('sim.demo-session.SELLER', JSON.stringify(sellerSession));
     renderAt('/seller/authorize?app_key=k&state=s');
-    expect(screen.getByText('TikTok Shop Simulator')).toBeTruthy();
-    expect(await screen.findByRole('heading', { name: 'Authorize app' })).toBeTruthy();
-    const nav = screen.getByRole('banner');
-    expect(within(nav).getByRole('link', { name: 'Tiptop Shop' }).getAttribute('href')).toBe('/');
-    expect(within(nav).getByRole('link', { name: 'Seller Center' }).getAttribute('href')).toBe('/seller-center');
-    expect(within(nav).getByRole('link', { name: 'Test Console' }).getAttribute('href')).toBe('/console');
+    expect(await screen.findByRole('heading', { name: 'One connection. More possibilities.' })).toBeTruthy();
+    expect(screen.queryByText('TikTok Shop Simulator')).toBeNull();
+    expect(await screen.findByText('Demo Shop VN')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'TikTok Shop SELLER AUTHORIZATION' }).getAttribute('href')).toBe('/seller-center');
+    expect(screen.getByRole('button', { name: 'Authorize' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to SmartOmni' })).toBeTruthy();
   });
 
   it('sends links of the removed /buyer and /seller pages to the new UI', () => {
