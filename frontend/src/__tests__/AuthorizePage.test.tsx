@@ -56,6 +56,19 @@ describe('AuthorizePage', () => {
       </MemoryRouter>,
     );
 
+  it('groups view and edit access without losing unknown permission identifiers', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ...consent, scopes: ['sim.product.read', 'sim.product.write', 'future.custom.permission'],
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    renderWithLocation('/seller/authorize?app_key=k');
+    expect(await screen.findByText('Products')).toBeTruthy();
+    expect(screen.getByText('View & Edit')).toBeTruthy();
+    expect(screen.getAllByText('future.custom.permission')).toHaveLength(2);
+    fireEvent.click(screen.getByText('View permission identifiers'));
+    expect(screen.getByText('sim.product.read').closest('details')?.open).toBe(true);
+    expect(screen.getByText('sim.product.write')).toBeTruthy();
+  });
+
   it('sends the user to sign in, with this page as next, when no seller is signed in', () => {
     localStorage.clear();
     // A session left in the tab does not count: only the current browser-wide sign-in does.
